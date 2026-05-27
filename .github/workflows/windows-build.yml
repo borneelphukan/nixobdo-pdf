@@ -22,15 +22,13 @@ jobs:
       run: |
         Invoke-WebRequest -Uri https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-win-x64.tgz -OutFile pdfium.tgz
         tar -xzf pdfium.tgz
+        Get-ChildItem -Recurse -Filter pdfium.dll | Copy-Item -Destination .
         
-    - name: Prepare Release Bundle
-      run: |
-        mkdir PDFViewer-Windows
-        copy target\release\PDFViewer.exe PDFViewer-Windows\
-        Get-ChildItem -Recurse -Filter pdfium.dll | Copy-Item -Destination PDFViewer-Windows\
+    - name: Build Installer (Inno Setup)
+      run: iscc setup.iss
         
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: PDFViewer-Windows
-        path: PDFViewer-Windows
+        name: PDFViewer-Installer
+        path: Output\PDFViewerSetup.exe
