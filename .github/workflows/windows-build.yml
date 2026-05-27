@@ -1,0 +1,36 @@
+name: Build Windows Release
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+      
+    - name: Build PDFViewer
+      run: cargo build --release
+      
+    - name: Download and Extract pdfium
+      run: |
+        Invoke-WebRequest -Uri https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-win-x64.tgz -OutFile pdfium.tgz
+        tar -xzf pdfium.tgz
+        
+    - name: Prepare Release Bundle
+      run: |
+        mkdir PDFViewer-Windows
+        copy target\release\PDFViewer.exe PDFViewer-Windows\
+        Get-ChildItem -Recurse -Filter pdfium.dll | Copy-Item -Destination PDFViewer-Windows\
+        
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: PDFViewer-Windows
+        path: PDFViewer-Windows
