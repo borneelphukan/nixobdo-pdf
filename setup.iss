@@ -8,6 +8,7 @@ Compression=lzma2
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64
 OutputDir=Output
+SetupIconFile=assets\logo.ico
 
 [Files]
 Source: "target\release\PDFViewer.exe"; DestDir: "{app}"; Flags: ignoreversion

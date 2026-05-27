@@ -3,10 +3,20 @@ use pdfium_render::prelude::*;
 use std::path::PathBuf;
 
 fn main() -> eframe::Result<()> {
+    let icon_bytes = include_bytes!("../assets/logo.png");
+    let image = image::load_from_memory(icon_bytes).expect("Failed to load icon").into_rgba8();
+    let (width, height) = image.dimensions();
+    let icon_data = egui::IconData {
+        rgba: image.into_raw(),
+        width,
+        height,
+    };
+
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([800.0, 1000.0])
-            .with_title("PDF Viewer"),
+            .with_title("PDF Viewer")
+            .with_icon(icon_data),
         ..Default::default()
     };
     eframe::run_native(
@@ -134,7 +144,12 @@ struct PdfViewerApp {
 impl Default for PdfViewerApp {
     fn default() -> Self {
         // Try to initialize pdfium from local lib folder first
-        let pdfium = match Pdfium::bind_to_library("./lib/libpdfium.dylib")
+        let exe_path = std::env::current_exe().ok().unwrap_or_default();
+        let exe_dir = exe_path.parent().unwrap_or(std::path::Path::new(""));
+        
+        let pdfium = match Pdfium::bind_to_library(exe_dir.join("libpdfium.dylib").to_str().unwrap_or_default())
+            .or_else(|_| Pdfium::bind_to_library(exe_dir.join("pdfium.dll").to_str().unwrap_or_default()))
+            .or_else(|_| Pdfium::bind_to_library("./lib/libpdfium.dylib"))
             .or_else(|_| Pdfium::bind_to_library("libpdfium.dylib"))
             .or_else(|_| Pdfium::bind_to_library("./lib/pdfium.dll"))
             .or_else(|_| Pdfium::bind_to_library("pdfium.dll"))

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="100%" height="100%">
+  <defs>
+    <clipPath id="clip-page">
+      <path d="M230 190h380l160 160v460c0 22-18 40-40 40H230c-22 0-40-18-40-40V230c0-22 18-40 40-40z"/>
+    </clipPath>
+  </defs>
+
+  <rect x="25" y="25" width="950" height="950" rx="180" fill="#0b53a7" />
+  
+  <rect x="70" y="70" width="860" height="860" rx="140" fill="none" stroke="#0066d4" stroke-width="35" />
+
+  <path d="M270 170h360l170 170v450c0 44-36 80-80 80H270c-44 0-80-36-80-80V250c0-44 36-80 80-80z" fill="#ffffff" />
+  
+  <path d="M270 170h360l170 170v450c0 44-36 80-80 80H270c-44 0-80-36-80-80V250c0-44 36-80 80-80z" fill="none" stroke="#005ec4" stroke-width="25" stroke-linejoin="round" />
+
+  <path d="M630 170v110c0 60 50 60 60 60h110" fill="#ffffff" stroke="#005ec4" stroke-width="25" stroke-linejoin="round" stroke-linecap="round" />
+
+  <g fill="#005ec4">
+    <path d="M295 430h80c35 0 60 20 60 55s-25 55-60 55h-45v50h-35V430zm35 30v50h45c18 0 30-10 30-25s-12-25-30-25h-45z"/>
+    <path d="M475 430h65c50 0 85 30 85 80s-35 80-85 80h-65V430zm35 30v100h30c30 0 50-18 50-50s-20-50-50-50h-30z"/>
+    <path d="M665 430h110v30H700v35h65v30H700v65h-35V430z"/>
+  </g>
+
+  <rect x="295" y="625" width="415" height="28" rx="14" fill="#005ec4" />
+  <rect x="295" y="695" width="265" height="28" rx="14" fill="#005ec4" />
+</svg>
