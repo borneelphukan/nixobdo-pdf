@@ -11,6 +11,7 @@ image = "0.25.5"
 anyhow = "1.0.95"
 rfd = "0.15.2"
 webbrowser = "1.2.1"
+docx-rs = "0.4.20"
 
 [build-dependencies]
 winres = "0.1.12"
