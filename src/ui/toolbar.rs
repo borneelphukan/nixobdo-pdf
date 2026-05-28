@@ -57,11 +57,9 @@ impl PdfViewerApp {
                             }
                         }
                     }
-                } else {
-                    ui.label("-");
+                    
+                    ui.separator();
                 }
-
-                ui.separator();
 
                 let any_loading = self.tabs.iter().any(|t| t.is_loading);
                 if any_loading {
