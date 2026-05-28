@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 eframe = "0.31.0"
 egui = "0.31.0"
-pdfium-render = "0.8.37"
+pdfium-render = { version = "0.8.37", features = ["image"] }
 image = "0.25.5"
 anyhow = "1.0.95"
 rfd = "0.15.2"

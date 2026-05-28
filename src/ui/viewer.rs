@@ -144,7 +144,13 @@ impl PdfViewerApp {
                     
                     if let Some(error) = &tab.error {
                         ui.centered_and_justified(|ui| {
-                            ui.colored_label(egui::Color32::RED, error);
+                            ui.vertical_centered(|ui| {
+                                ui.label(egui::RichText::new("⚠️").size(64.0));
+                                ui.add_space(20.0);
+                                ui.label(egui::RichText::new("Failed to Load Document").size(24.0).strong());
+                                ui.add_space(10.0);
+                                ui.label(error);
+                            });
                         });
                     } else if tab.is_loading {
                         ui.centered_and_justified(|ui| {
@@ -277,7 +283,7 @@ impl PdfViewerApp {
                                                 }
                                             }
 
-                                            // Draw blue text selection overlays
+                                            // Image rendering is moved to the bottom                                            // Draw blue text selection overlays
                                             if let (Some(start), Some(end)) = (self.selection_start, self.selection_end) {
                                                 if index < tab.page_chars.len() {
                                                     for char_idx in 0..tab.page_chars[index].len() {
@@ -342,7 +348,8 @@ impl PdfViewerApp {
                                                 }
                                             }
                                             
-                                            // Draw the actual PDF page image with transparent background over the top
+                                            // Draw the actual PDF page image LAST so text is drawn cleanly ON TOP of highlights,
+                                            // while the transparent background lets the highlights show through.
                                             if ui.is_rect_visible(response.rect) {
                                                 let uv = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
                                                 ui.painter().image(texture.id(), response.rect, uv, egui::Color32::WHITE);

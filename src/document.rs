@@ -237,7 +237,33 @@ impl PdfDocumentState {
 
                     let image = if let Ok(bitmap) = page.render_with_config(&render_config) {
                         let img = bitmap.as_image();
-                        let rgba = img.to_rgba8();
+                        let mut rgba = img.to_rgba8();
+                        
+                        // Mathematically remove the white background to make it transparent
+                        // so highlights can be drawn underneath the text.
+                        for pixel in rgba.pixels_mut() {
+                            let r = pixel[0] as f32;
+                            let g = pixel[1] as f32;
+                            let b = pixel[2] as f32;
+                            
+                            let max_diff = (255.0 - r).max(255.0 - g).max(255.0 - b);
+                            let alpha = max_diff as u8;
+                            
+                            if alpha < 255 {
+                                pixel[3] = alpha;
+                                if alpha > 0 {
+                                    let a_f32 = alpha as f32 / 255.0;
+                                    pixel[0] = ((r - 255.0 * (1.0 - a_f32)) / a_f32).clamp(0.0, 255.0) as u8;
+                                    pixel[1] = ((g - 255.0 * (1.0 - a_f32)) / a_f32).clamp(0.0, 255.0) as u8;
+                                    pixel[2] = ((b - 255.0 * (1.0 - a_f32)) / a_f32).clamp(0.0, 255.0) as u8;
+                                } else {
+                                    pixel[0] = 0;
+                                    pixel[1] = 0;
+                                    pixel[2] = 0;
+                                }
+                            }
+                        }
+                        
                         let pixels = rgba.as_flat_samples();
                         egui::ColorImage::from_rgba_unmultiplied(
                             [rgba.width() as usize, rgba.height() as usize],

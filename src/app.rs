@@ -33,6 +33,9 @@ pub struct PdfViewerApp {
     pub export_name: String,
     pub export_format: ExportFormat,
     pub export_location: Option<PathBuf>,
+    pub export_settings_open: bool,
+    pub export_layout_retain_page: bool,
+    pub export_include_images: bool,
 }
 
 impl Default for PdfViewerApp {
@@ -77,6 +80,9 @@ impl Default for PdfViewerApp {
             export_name: String::new(),
             export_format: ExportFormat::Docx,
             export_location: None,
+            export_settings_open: false,
+            export_layout_retain_page: true,
+            export_include_images: true,
         }
     }
 }
@@ -87,11 +93,21 @@ impl eframe::App for PdfViewerApp {
         while let Ok(msg) = self.pdf_receiver.try_recv() {
             match msg {
                 PdfWorkerMessage::DocumentInfo { path, file_name, page_count, error } => {
-                    for tab in self.tabs.iter_mut() {
+                    let mut tab_to_remove = None;
+                    for (i, tab) in self.tabs.iter_mut().enumerate() {
                         if tab.path == path {
                             if let Some(err) = error {
-                                tab.error = Some(err);
-                                tab.is_loading = false;
+                                if err.contains("NotFound") || err.contains("cannot find the path specified") || err.contains("cannot find the file specified") {
+                                    rfd::MessageDialog::new()
+                                        .set_title("File Not Available")
+                                        .set_description("The file you are trying to open is no longer available and cannot be opened.")
+                                        .set_level(rfd::MessageLevel::Warning)
+                                        .show();
+                                    tab_to_remove = Some(i);
+                                } else {
+                                    tab.error = Some(err);
+                                    tab.is_loading = false;
+                                }
                             } else {
                                 tab.file_name = file_name;
                                 tab.pages = vec![None; page_count];
@@ -102,6 +118,9 @@ impl eframe::App for PdfViewerApp {
                             }
                             break;
                         }
+                    }
+                    if let Some(idx) = tab_to_remove {
+                        self.close_tab(idx);
                     }
                 }
                 PdfWorkerMessage::PageData { path, index, image, text, chars, links } => {

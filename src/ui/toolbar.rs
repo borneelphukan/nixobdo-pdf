@@ -28,38 +28,56 @@ impl PdfViewerApp {
         egui::TopBottomPanel::top("toolbar_panel").show(ctx, |ui| {
             ui.add_space(4.0);
             ui.horizontal(|ui| {
-                if let Some(active_idx) = self.active_tab_index {
-                    if let Some(tab) = self.tabs.get_mut(active_idx) {
-                        if ui.button("➖ Zoom Out").clicked() {
-                            tab.zoom = (tab.zoom - 0.1).max(0.0);
+                let has_active_tab = self.active_tab_index.is_some();
+                
+                ui.add_enabled_ui(has_active_tab, |ui| {
+                    let mut zoom_out = false;
+                    let mut zoom_in = false;
+                    let mut zoom_reset = false;
+                    let mut page_up = false;
+                    let mut page_down = false;
+                    
+                    let (zoom_disp, page_disp) = if let Some(active_idx) = self.active_tab_index {
+                        if let Some(tab) = self.tabs.get(active_idx) {
+                            (tab.zoom + 1.0, format!("{}/{}", tab.selected_page + 1, tab.pages.len().max(1)))
+                        } else {
+                            (1.0, "0/0".to_string())
                         }
-                        ui.label(format!("{:.1}x", tab.zoom + 1.0));
-                        if ui.button("➕ Zoom In").clicked() {
-                            tab.zoom += 0.1;
-                        }
-                        if ui.button("Reset").clicked() {
-                            tab.zoom = 0.0;
-                        }
-                        
-                        ui.separator();
-                        
-                        if ui.button("⬆").clicked() {
-                            if tab.selected_page > 0 {
-                                tab.selected_page -= 1;
-                                tab.scroll_to_page = Some(tab.selected_page);
-                            }
-                        }
-                        ui.label(format!("{}/{}", tab.selected_page + 1, tab.pages.len().max(1)));
-                        if ui.button("⬇").clicked() {
-                            if tab.selected_page + 1 < tab.pages.len() {
-                                tab.selected_page += 1;
-                                tab.scroll_to_page = Some(tab.selected_page);
+                    } else {
+                        (1.0, "0/0".to_string())
+                    };
+
+                    if ui.button("➖ Zoom Out").clicked() { zoom_out = true; }
+                    ui.label(format!("{:.1}x", zoom_disp));
+                    if ui.button("➕ Zoom In").clicked() { zoom_in = true; }
+                    if ui.button("Reset").clicked() { zoom_reset = true; }
+                    
+                    ui.separator();
+                    
+                    if ui.button("⬆").clicked() { page_up = true; }
+                    ui.label(page_disp);
+                    if ui.button("⬇").clicked() { page_down = true; }
+                    
+                    if has_active_tab {
+                        if let Some(active_idx) = self.active_tab_index {
+                            if let Some(tab) = self.tabs.get_mut(active_idx) {
+                                if zoom_out { tab.zoom = (tab.zoom - 0.1).max(0.0); }
+                                if zoom_in { tab.zoom += 0.1; }
+                                if zoom_reset { tab.zoom = 0.0; }
+                                if page_up && tab.selected_page > 0 {
+                                    tab.selected_page -= 1;
+                                    tab.scroll_to_page = Some(tab.selected_page);
+                                }
+                                if page_down && tab.selected_page + 1 < tab.pages.len() {
+                                    tab.selected_page += 1;
+                                    tab.scroll_to_page = Some(tab.selected_page);
+                                }
                             }
                         }
                     }
-                    
-                    ui.separator();
-                }
+                });
+                
+                ui.separator();
 
                 let any_loading = self.tabs.iter().any(|t| t.is_loading);
                 if any_loading {
