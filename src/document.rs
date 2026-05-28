@@ -111,7 +111,17 @@ pub enum PdfWorkerMessage {
     Finished {
         #[allow(dead_code)]
         path: PathBuf,
-    }
+    },
+    ExportProgress {
+        progress: f32,
+    },
+    ExportComplete {
+        success: bool,
+        message: String,
+    },
+    UpdateCheckResult(bool),
+    UpdateDownloadProgress(f32),
+    UpdateDownloadComplete(Result<String, String>),
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]

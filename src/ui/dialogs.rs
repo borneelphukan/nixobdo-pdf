@@ -1,3 +1,4 @@
+use std::sync::atomic::Ordering;
 use crate::app::PdfViewerApp;
 use crate::worker::{ExportFormat, PdfWorkerTask};
 use eframe::egui;
@@ -289,12 +290,16 @@ impl PdfViewerApp {
                             let final_name = format!("{}.{}", self.export_name, self.export_format.extension());
                             let out_path = location.join(final_name);
                             
+                            self.export_cancel_flag.store(false, Ordering::Relaxed);
+                            
                             let _ = self.pdf_task_tx.send(PdfWorkerTask::Export {
                                 path: tab.path.clone(),
                                 out_path,
                                 format: self.export_format,
                                 retain_layout: self.export_layout_retain_page,
                                 include_images: self.export_include_images,
+                                ctx: ctx.clone(),
+                                cancel_flag: self.export_cancel_flag.clone(),
                             });
                         }
                     }

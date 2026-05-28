@@ -116,6 +116,13 @@ impl PdfViewerApp {
                         ui.add_enabled(false, egui::Button::new("    Two Page"));
                     }
                 });
+                ui.menu_button("Help", |ui| {
+                    if ui.button("Get Updates").clicked() {
+                        self.update_state = crate::app::UpdateState::Checking;
+                        let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::CheckUpdate { ctx: ctx.clone() });
+                        ui.close_menu();
+                    }
+                });
             });
         });
     }

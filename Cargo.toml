@@ -12,6 +12,9 @@ anyhow = "1.0.95"
 rfd = "0.15.2"
 webbrowser = "1.2.1"
 docx-rs = "0.4.20"
+zip = "8.6.0"
+ureq = "3.3.0"
+dirs = "6.0.0"
 
 [build-dependencies]
 winres = "0.1.12"
