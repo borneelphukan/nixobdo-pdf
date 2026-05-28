@@ -3,9 +3,7 @@ use crate::worker::PdfWorkerTask;
 use crate::document::PdfDocumentState;
 use eframe::egui;
 use std::path::PathBuf;
-use std::fs;
 
-const RECENT_FILES_PATH: &str = ".recent_files.json";
 
 impl PdfViewerApp {
     pub(crate) fn copy_selection(&self, ctx: &egui::Context) {
@@ -50,7 +48,6 @@ impl PdfViewerApp {
         self.recent_files.retain(|p| p != &path);
         self.recent_files.insert(0, path.clone());
         self.recent_files.truncate(5);
-        self.save_recent_files();
 
         // Check if a tab with this path already exists
         if let Some(existing_idx) = self.tabs.iter().position(|t| t.path == path) {
@@ -87,19 +84,6 @@ impl PdfViewerApp {
 
     // Recent Files persistence
     pub(crate) fn load_recent_files() -> Vec<PathBuf> {
-        if let Ok(data) = fs::read_to_string(RECENT_FILES_PATH) {
-            let paths: Vec<String> = data.lines().map(|s| s.to_string()).collect();
-            paths.into_iter().map(PathBuf::from).collect()
-        } else {
-            Vec::new()
-        }
-    }
-    
-    pub(crate) fn save_recent_files(&self) {
-        let data = self.recent_files.iter()
-            .map(|p| p.to_string_lossy().into_owned())
-            .collect::<Vec<String>>()
-            .join("\n");
-        let _ = fs::write(RECENT_FILES_PATH, data);
+        Vec::new()
     }
 }

@@ -57,7 +57,6 @@ impl PdfViewerApp {
                         if !self.recent_files.contains(&new_path) {
                             self.recent_files.insert(0, new_path);
                             self.recent_files.truncate(5);
-                            self.save_recent_files();
                         }
                     } else {
                         eprintln!("Failed to rename file on disk.");
