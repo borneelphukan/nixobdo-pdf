@@ -58,7 +58,13 @@ fn main() -> eframe::Result<()> {
             
             cc.egui_ctx.set_style(style);
             
-            Ok(Box::new(PdfViewerApp::default()))
+            let mut app = PdfViewerApp::default();
+            
+            if let Some(file_path) = std::env::args().nth(1) {
+                app.load_pdf(&cc.egui_ctx, std::path::PathBuf::from(file_path));
+            }
+            
+            Ok(Box::new(app))
         }),
     )
 }
