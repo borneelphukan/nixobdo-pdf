@@ -1,6 +1,8 @@
 [Setup]
 AppName=PDFViewer
 AppVersion=0.1.0
+AppPublisher=Borneel Bikash Phukan
+AppPublisherURL=http://borneelphukan.com/
 DefaultDirName={autopf}\PDFViewer
 DefaultGroupName=PDFViewer
 OutputBaseFilename=PDFViewerSetup

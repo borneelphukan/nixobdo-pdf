@@ -82,6 +82,7 @@ impl PdfViewerApp {
                 });
                 
                 ui.menu_button("View", |ui| {
+                    ui.set_min_width(220.0);
                     let sidebar_text = if self.sidebar_open { "Hide Sidebar" } else { "Show Sidebar" };
                     if ui.button(sidebar_text).clicked() {
                         self.sidebar_open = !self.sidebar_open;
@@ -117,6 +118,7 @@ impl PdfViewerApp {
                     }
                 });
                 ui.menu_button("Help", |ui| {
+                    ui.set_min_width(220.0);
                     if ui.button("Get Updates").clicked() {
                         self.update_state = crate::app::UpdateState::Checking;
                         let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::CheckUpdate { ctx: ctx.clone() });
