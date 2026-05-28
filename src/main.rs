@@ -1,7 +1,9 @@
 use eframe::egui;
 
 mod app;
-mod document;
+pub mod document;
+pub mod worker;
+pub mod ui;
 
 use app::PdfViewerApp;
 
