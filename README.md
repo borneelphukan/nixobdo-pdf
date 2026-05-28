@@ -1,21 +1,48 @@
+<div align="center">
+
+<img src="./assets/logo.svg" alt="PDFViewer Banner" title="PDFViewer" width="128"/>
+
 # PDFViewer
 
-A simple PDF viewer built with Rust, egui, and PDFium.
+**A simple PDF viewer built with Rust, egui, and PDFium.**
+
+[![Release](https://img.shields.io/github/release/borneelphukan/pdf-viewer?color=fed114&label=Release&style=flat-square)](https://github.com/borneelphukan/pdf-viewer/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/borneelphukan/pdf-viewer/total?label=Downloads&style=flat-square&color=lightgreen)](https://github.com/borneelphukan/pdf-viewer/releases)
+[![CI](https://github.com/borneelphukan/pdf-viewer/actions/workflows/windows-build.yml/badge.svg)](https://github.com/borneelphukan/pdf-viewer/actions/workflows/windows-build.yml)
+
+</div>
+
+---
+
+## Quick Start
+
+1. Download the latest version from **[GitHub Releases](https://github.com/borneelphukan/pdf-viewer/releases/latest)**.
+2. Run the application directly.
+
+> [!NOTE]
+> The project requires the PDFium library to be present alongside the executable or in the `lib/` directory.
+
+---
 
 ## Features
-- View PDF files.
-- Scroll up and down with the mouse wheel.
-- Zoom in and out with `Cmd/Ctrl + Mouse Wheel` or the Zoom slider.
 
-## Setup (macOS)
-1. Ensure Rust is installed.
-2. The project requires `libpdfium.dylib`. It has been downloaded into the `lib/` directory.
+- **View PDF files**: Open and view any standard PDF document.
+- **Scroll**: Scroll up and down pages smoothly using the mouse wheel.
+- **Zoom**: Zoom in and out effortlessly with `Cmd/Ctrl + Mouse Wheel` or by using the built-in Zoom slider.
+
+---
+
+## Setup & Build
+
+### macOS
+1. Ensure Rust is installed on your system.
+2. The project requires `libpdfium.dylib`. Ensure it has been downloaded into the `lib/` directory.
 3. Run the application:
    ```bash
    cargo run
    ```
 
-## Setup (Windows)
+### Windows
 To build for Windows, you will need the Windows version of `pdfium.dll`.
 1. Download `pdfium-win-x64.tgz` (or x86) from [bblanchon/pdfium-binaries](https://github.com/bblanchon/pdfium-binaries/releases).
 2. Extract `pdfium.dll` and place it in the `lib/` directory or next to the executable.
@@ -24,8 +51,21 @@ To build for Windows, you will need the Windows version of `pdfium.dll`.
    cargo xwin build --target x86_64-pc-windows-msvc
    ```
 
-## Development
-This project uses:
-- `eframe`/`egui` for the GUI.
-- `pdfium-render` for PDF processing.
-- `rfd` for file dialogs.
+---
+
+## Technical Details
+
+This project leverages the following technologies:
+- **`eframe`/`egui`**: For a fast, immediate-mode GUI.
+- **`pdfium-render`**: For robust PDF processing and rendering.
+- **`rfd`**: For native file dialogs.
+
+---
+
+## License
+
+<div align="center">
+
+See the [LICENSE](./LICENSE) file for details.
+
+</div>
