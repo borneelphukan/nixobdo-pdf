@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./assets/logo.svg" alt="nixobdo-pdf Banner" title="nixobdo-pdf" width="128"/>
+<img src="./assets/cover.png" alt="nixobdo-pdf Banner" title="nixobdo-pdf" width="128"/>
 
 # nixobdo-pdf
 
@@ -35,6 +35,7 @@
 ## Setup & Build
 
 ### macOS
+
 1. Ensure Rust is installed on your system.
 2. The project requires `libpdfium.dylib`. Ensure it has been downloaded into the `lib/` directory.
 3. Run the application:
@@ -43,7 +44,9 @@
    ```
 
 ### Windows
+
 To build for Windows, you will need the Windows version of `pdfium.dll`.
+
 1. Download `pdfium-win-x64.tgz` (or x86) from [bblanchon/pdfium-binaries](https://github.com/bblanchon/pdfium-binaries/releases).
 2. Extract `pdfium.dll` and place it in the `lib/` directory or next to the executable.
 3. If cross-compiling from Mac, use `cargo-xwin`:
@@ -56,6 +59,7 @@ To build for Windows, you will need the Windows version of `pdfium.dll`.
 ## Technical Details
 
 This project leverages the following technologies:
+
 - **`eframe`/`egui`**: For a fast, immediate-mode GUI.
 - **`pdfium-render`**: For robust PDF processing and rendering.
 - **`rfd`**: For native file dialogs.
