@@ -3,27 +3,6 @@
 version = 4
 
 [[package]]
-name = "PDFViewer"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bincode",
- "dirs",
- "docx-rs",
- "eframe",
- "egui",
- "image",
- "pdfium-render",
- "rayon",
- "rfd",
- "serde",
- "ureq",
- "webbrowser",
- "winres",
- "zip 8.6.0",
-]
-
-[[package]]
 name = "ab_glyph"
 version = "0.2.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2535,6 +2514,27 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "memoffset",
+]
+
+[[package]]
+name = "nixobdo-pdf"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "dirs",
+ "docx-rs",
+ "eframe",
+ "egui",
+ "image",
+ "pdfium-render",
+ "rayon",
+ "rfd",
+ "serde",
+ "ureq",
+ "webbrowser",
+ "winres",
+ "zip 8.6.0",
 ]
 
 [[package]]

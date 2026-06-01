@@ -18,7 +18,7 @@ jobs:
     - name: Convert Logo to ICO
       run: magick -background none -density 256 assets\logo.svg -define icon:auto-resize="256,128,64,48,32,16" assets\logo.ico
       
-    - name: Build PDFViewer
+    - name: Build nixobdo-pdf
       run: cargo build --release
       
     - name: Download and Extract pdfium
@@ -33,5 +33,5 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: PDFViewer-Installer
-        path: Output\PDFViewerSetup.exe
+        name: nixobdo-pdf-Installer
+        path: Output\nixobdo-pdfSetup.exe

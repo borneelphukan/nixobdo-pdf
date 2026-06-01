@@ -7,7 +7,7 @@ use std::hash::{Hash, Hasher};
 pub fn clean_cache() {
     let cache_root = dirs::cache_dir()
         .unwrap_or_else(|| std::env::temp_dir())
-        .join("pdf-viewer-cache");
+        .join("nixobdo-pdf-cache");
         
     if !cache_root.exists() {
         return;
@@ -259,7 +259,7 @@ impl PdfDocumentState {
         
         let cache_dir = dirs::cache_dir()
             .unwrap_or_else(|| std::env::temp_dir())
-            .join("pdf-viewer-cache")
+            .join("nixobdo-pdf-cache")
             .join(&cache_key);
             
         if cache_dir.exists() {

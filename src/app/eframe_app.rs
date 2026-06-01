@@ -1,10 +1,10 @@
-use crate::app::{PdfViewerApp, UpdateState};
+use crate::app::{nixobdo-pdfApp, UpdateState};
 use crate::worker::PdfWorkerTask;
 use crate::document::PdfWorkerMessage;
 use eframe::egui;
 use std::sync::atomic::Ordering;
 
-impl eframe::App for PdfViewerApp {
+impl eframe::App for nixobdo-pdfApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Process background loaded PDFs
         while let Ok(msg) = self.pdf_receiver.try_recv() {
@@ -264,10 +264,10 @@ impl eframe::App for PdfViewerApp {
 
         if let Some(active_idx) = self.active_tab_index {
             if let Some(tab) = self.tabs.get(active_idx) {
-                ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!("{} - PDFViewer", tab.file_name)));
+                ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!("{} - nixobdo-pdf", tab.file_name)));
             }
         } else {
-            ctx.send_viewport_cmd(egui::ViewportCommand::Title("PDFViewer".to_string()));
+            ctx.send_viewport_cmd(egui::ViewportCommand::Title("nixobdo-pdf".to_string()));
         }
 
         // Handle Ctrl+F / Cmd+F to focus search

@@ -1,11 +1,11 @@
 [Setup]
-AppName=PDFViewer
+AppName=nixobdo-pdf
 AppVersion=0.1.0
 AppPublisher=Borneel Bikash Phukan
 AppPublisherURL=http://borneelphukan.com/
-DefaultDirName={autopf}\PDFViewer
-DefaultGroupName=PDFViewer
-OutputBaseFilename=PDFViewerSetup
+DefaultDirName={autopf}\nixobdo-pdf
+DefaultGroupName=nixobdo-pdf
+OutputBaseFilename=nixobdo-pdfSetup
 Compression=lzma2
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64
@@ -13,15 +13,15 @@ OutputDir=Output
 SetupIconFile=assets\logo.ico
 
 [Files]
-Source: "target\release\PDFViewer.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "target\release\nixobdo-pdf.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "pdfium.dll"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\PDFViewer"; Filename: "{app}\PDFViewer.exe"
-Name: "{autodesktop}\PDFViewer"; Filename: "{app}\PDFViewer.exe"; Tasks: desktopicon
+Name: "{group}\nixobdo-pdf"; Filename: "{app}\nixobdo-pdf.exe"
+Name: "{autodesktop}\nixobdo-pdf"; Filename: "{app}\nixobdo-pdf.exe"; Tasks: desktopicon
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional icons:"
 
 [Run]
-Filename: "{app}\PDFViewer.exe"; Description: "Launch PDFViewer"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\nixobdo-pdf.exe"; Description: "Launch nixobdo-pdf"; Flags: nowait postinstall skipifsilent

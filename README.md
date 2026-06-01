@@ -1,14 +1,14 @@
 <div align="center">
 
-<img src="./assets/logo.svg" alt="PDFViewer Banner" title="PDFViewer" width="128"/>
+<img src="./assets/logo.svg" alt="nixobdo-pdf Banner" title="nixobdo-pdf" width="128"/>
 
-# PDFViewer
+# nixobdo-pdf
 
 **A simple PDF viewer built with Rust, egui, and PDFium.**
 
-[![Release](https://img.shields.io/github/release/borneelphukan/pdf-viewer?color=fed114&label=Release&style=flat-square)](https://github.com/borneelphukan/pdf-viewer/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/borneelphukan/pdf-viewer/total?label=Downloads&style=flat-square&color=lightgreen)](https://github.com/borneelphukan/pdf-viewer/releases)
-[![CI](https://github.com/borneelphukan/pdf-viewer/actions/workflows/windows-build.yml/badge.svg)](https://github.com/borneelphukan/pdf-viewer/actions/workflows/windows-build.yml)
+[![Release](https://img.shields.io/github/release/borneelphukan/nixobdo-pdf?color=fed114&label=Release&style=flat-square)](https://github.com/borneelphukan/nixobdo-pdf/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/borneelphukan/nixobdo-pdf/total?label=Downloads&style=flat-square&color=lightgreen)](https://github.com/borneelphukan/nixobdo-pdf/releases)
+[![CI](https://github.com/borneelphukan/nixobdo-pdf/actions/workflows/windows-build.yml/badge.svg)](https://github.com/borneelphukan/nixobdo-pdf/actions/workflows/windows-build.yml)
 
 </div>
 
@@ -16,7 +16,7 @@
 
 ## Quick Start
 
-1. Download the latest version from **[GitHub Releases](https://github.com/borneelphukan/pdf-viewer/releases/latest)**.
+1. Download the latest version from **[GitHub Releases](https://github.com/borneelphukan/nixobdo-pdf/releases/latest)**.
 2. Run the application directly.
 
 > [!NOTE]

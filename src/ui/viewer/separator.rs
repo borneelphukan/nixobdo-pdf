@@ -1,7 +1,7 @@
-use crate::app::PdfViewerApp;
+use crate::app::nixobdo-pdfApp;
 use eframe::egui;
 
-impl PdfViewerApp {
+impl nixobdo-pdfApp {
     pub(crate) fn ui_separator(&mut self, ctx: &egui::Context) {
         // Draggable vertical separator panel
         egui::SidePanel::left("separator_panel")

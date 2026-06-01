@@ -1,8 +1,8 @@
-use crate::app::PdfViewerApp;
+use crate::app::nixobdo-pdfApp;
 use eframe::egui;
 use std::fs;
 
-impl PdfViewerApp {
+impl nixobdo-pdfApp {
     pub(crate) fn ui_rename_dialog(&mut self, ctx: &egui::Context) {
         if !self.rename_window_open {
             return;

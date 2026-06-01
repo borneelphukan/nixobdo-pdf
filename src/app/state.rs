@@ -1,11 +1,11 @@
-use crate::app::PdfViewerApp;
+use crate::app::nixobdo-pdfApp;
 use crate::worker::PdfWorkerTask;
 use crate::document::PdfDocumentState;
 use eframe::egui;
 use std::path::PathBuf;
 
 
-impl PdfViewerApp {
+impl nixobdo-pdfApp {
     pub(crate) fn copy_selection(&self, ctx: &egui::Context) {
         if let (Some(start), Some(end)) = (self.selection_start, self.selection_end) {
             if let Some(active_idx) = self.active_tab_index {

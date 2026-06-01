@@ -1,9 +1,9 @@
-use crate::app::PdfViewerApp;
+use crate::app::nixobdo-pdfApp;
 use crate::worker::{ExportFormat, PdfWorkerTask};
 use eframe::egui;
 use std::sync::atomic::Ordering;
 
-impl PdfViewerApp {
+impl nixobdo-pdfApp {
     pub(crate) fn ui_export_dialog(&mut self, ctx: &egui::Context) {
         if !self.export_window_open {
             return;

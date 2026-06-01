@@ -1,7 +1,7 @@
-use crate::app::PdfViewerApp;
+use crate::app::nixobdo-pdfApp;
 use eframe::egui;
 
-impl PdfViewerApp {
+impl nixobdo-pdfApp {
     pub(crate) fn ui_toolbar(&mut self, ctx: &egui::Context) {
         let has_search_modifier = ctx.input(|i| i.modifiers.command || i.modifiers.ctrl);
 

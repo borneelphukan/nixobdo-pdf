@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-APP_NAME="PDFViewer"
+APP_NAME="nixobdo-pdf"
 APP_DIR="${APP_NAME}.app"
 CONTENTS_DIR="${APP_DIR}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
@@ -16,7 +16,7 @@ mkdir -p "${MACOS_DIR}"
 mkdir -p "${RESOURCES_DIR}"
 
 echo "Copying executable and libraries..."
-cp target/release/PDFViewer "${MACOS_DIR}/"
+cp target/release/nixobdo-pdf "${MACOS_DIR}/"
 cp lib/libpdfium.dylib "${MACOS_DIR}/"
 
 echo "Creating Info.plist..."
@@ -28,7 +28,7 @@ cat <<EOF > "${CONTENTS_DIR}/Info.plist"
     <key>CFBundleExecutable</key>
     <string>${APP_NAME}</string>
     <key>CFBundleIdentifier</key>
-    <string>com.borneelphukan.pdfviewer</string>
+    <string>com.borneelphukan.nixobdo-pdf</string>
     <key>CFBundleName</key>
     <string>${APP_NAME}</string>
     <key>CFBundleVersion</key>

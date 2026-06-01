@@ -1,8 +1,8 @@
-use crate::app::PdfViewerApp;
+use crate::app::nixobdo-pdfApp;
 use crate::document::PageLayoutMode;
 use eframe::egui;
 
-impl PdfViewerApp {
+impl nixobdo-pdfApp {
     pub(crate) fn ui_menu_bar(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::top("menu_bar_panel").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {

@@ -72,7 +72,7 @@ pub fn spawn_worker_thread(
                     PdfWorkerTask::CheckUpdate { ctx } => {
                         let tx = msg_tx_clone.clone();
                         std::thread::spawn(move || {
-                            let url = "https://nightly.link/borneelphukan/pdf-viewer/workflows/windows-build.yml/main/PDFViewer-Installer.zip";
+                            let url = "https://nightly.link/borneelphukan/nixobdo-pdf/workflows/windows-build.yml/main/nixobdo-pdf-Installer.zip";
                             let res = ureq::get(url).call();
                             let is_available = res.is_ok();
                             std::thread::sleep(std::time::Duration::from_secs(1));
@@ -83,13 +83,13 @@ pub fn spawn_worker_thread(
                     PdfWorkerTask::DownloadUpdate { ctx } => {
                         let tx = msg_tx_clone.clone();
                         std::thread::spawn(move || {
-                            let url = "https://nightly.link/borneelphukan/pdf-viewer/workflows/windows-build.yml/main/PDFViewer-Installer.zip";
+                            let url = "https://nightly.link/borneelphukan/nixobdo-pdf/workflows/windows-build.yml/main/nixobdo-pdf-Installer.zip";
                             match ureq::get(url).call() {
                                 Ok(response) => {
                                     let len: Option<u64> = response.headers().get("Content-Length").and_then(|h| h.to_str().ok()).and_then(|s| s.parse().ok());
                                     let mut reader = response.into_body().into_reader();
                                     let download_dir = dirs::download_dir().unwrap_or_else(|| PathBuf::from("."));
-                                    let out_path = download_dir.join("PDFViewerSetup.zip");
+                                    let out_path = download_dir.join("nixobdo-pdfSetup.zip");
                                     if let Ok(mut file) = std::fs::File::create(&out_path) {
                                         use std::io::Read;
                                         let mut buf = [0; 8192];
@@ -133,7 +133,7 @@ pub fn spawn_worker_thread(
                     PdfWorkerTask::CheckUpdate { ctx } => {
                         let tx = msg_tx_clone.clone();
                         std::thread::spawn(move || {
-                            let url = "https://nightly.link/borneelphukan/pdf-viewer/workflows/windows-build.yml/main/PDFViewer-Installer.zip";
+                            let url = "https://nightly.link/borneelphukan/nixobdo-pdf/workflows/windows-build.yml/main/nixobdo-pdf-Installer.zip";
                             let res = ureq::get(url).call();
                             let is_available = res.is_ok();
                             std::thread::sleep(std::time::Duration::from_secs(1));
@@ -144,13 +144,13 @@ pub fn spawn_worker_thread(
                     PdfWorkerTask::DownloadUpdate { ctx } => {
                         let tx = msg_tx_clone.clone();
                         std::thread::spawn(move || {
-                            let url = "https://nightly.link/borneelphukan/pdf-viewer/workflows/windows-build.yml/main/PDFViewer-Installer.zip";
+                            let url = "https://nightly.link/borneelphukan/nixobdo-pdf/workflows/windows-build.yml/main/nixobdo-pdf-Installer.zip";
                             match ureq::get(url).call() {
                                 Ok(response) => {
                                     let len: Option<u64> = response.headers().get("Content-Length").and_then(|h| h.to_str().ok()).and_then(|s| s.parse().ok());
                                     let mut reader = response.into_body().into_reader();
                                     let download_dir = dirs::download_dir().unwrap_or_else(|| PathBuf::from("."));
-                                    let out_path = download_dir.join("PDFViewerSetup.zip");
+                                    let out_path = download_dir.join("nixobdo-pdfSetup.zip");
                                     if let Ok(mut file) = std::fs::File::create(&out_path) {
                                         use std::io::Read;
                                         let mut buf = [0; 8192];

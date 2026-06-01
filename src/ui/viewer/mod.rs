@@ -2,10 +2,10 @@ pub mod sidebar;
 pub mod separator;
 pub mod central_panel;
 
-use crate::app::PdfViewerApp;
+use crate::app::nixobdo-pdfApp;
 use eframe::egui;
 
-impl PdfViewerApp {
+impl nixobdo-pdfApp {
     pub(crate) fn ui_viewer(&mut self, ctx: &egui::Context) {
         self.ui_sidebar(ctx);
         self.ui_separator(ctx);
