@@ -15,7 +15,7 @@ pub enum UpdateState {
     None,
     Checking,
     Prompt,
-    Downloading(f32), // current progress
+    Downloading(f32),
 }
 
 pub struct PdfViewerApp {
@@ -23,9 +23,10 @@ pub struct PdfViewerApp {
     pub tabs: Vec<PdfDocumentState>,
     pub active_tab_index: Option<usize>,
     pub search_query: String,
+    pub search_active_match: usize,
     pub sidebar_open: bool,
-    pub selection_start: Option<(usize, usize)>, // (page_idx, char_idx)
-    pub selection_end: Option<(usize, usize)>,   // (page_idx, char_idx)
+    pub selection_start: Option<(usize, usize)>,
+    pub selection_end: Option<(usize, usize)>,
     pub is_selecting: bool,
     
     // Background Loading
@@ -56,6 +57,9 @@ pub struct PdfViewerApp {
     
     // Updates
     pub update_state: UpdateState,
+    
+    // About Window
+    pub about_window_open: bool,
 }
 
 impl Default for PdfViewerApp {
@@ -78,6 +82,11 @@ impl Default for PdfViewerApp {
         let msg_tx_clone = msg_tx.clone();
         
         crate::worker::spawn_worker_thread(task_rx, msg_tx_clone);
+        
+        // Clean up old or oversized cache entries in the background
+        std::thread::spawn(|| {
+            crate::document::clean_cache();
+        });
 
         let recent_files = Self::load_recent_files();
 
@@ -86,6 +95,7 @@ impl Default for PdfViewerApp {
             tabs: Vec::new(),
             active_tab_index: None,
             search_query: String::new(),
+            search_active_match: 0,
             sidebar_open: true,
             selection_start: None,
             selection_end: None,
@@ -109,6 +119,7 @@ impl Default for PdfViewerApp {
             export_progress: None,
             export_cancel_flag: Arc::new(AtomicBool::new(false)),
             update_state: UpdateState::None,
+            about_window_open: false,
         }
     }
 }

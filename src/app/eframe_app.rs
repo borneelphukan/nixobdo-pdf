@@ -28,6 +28,7 @@ impl eframe::App for PdfViewerApp {
                             } else {
                                 tab.file_name = file_name;
                                 tab.pages = vec![None; page_count];
+                                tab.thumbnails = vec![None; page_count];
                                 tab.page_texts = vec![String::new(); page_count];
                                 tab.page_chars = vec![Vec::new(); page_count];
                                 tab.page_links = vec![Vec::new(); page_count];
@@ -40,16 +41,22 @@ impl eframe::App for PdfViewerApp {
                         self.close_tab(idx);
                     }
                 }
-                PdfWorkerMessage::PageData { path, index, image, text, chars, links } => {
+                PdfWorkerMessage::PageData { path, index, image, thumbnail_image, text, chars, links } => {
                     for tab in self.tabs.iter_mut() {
                         if tab.path == path {
                             if index < tab.pages.len() {
                                 let texture = ctx.load_texture(
                                     format!("doc_{}_page_{}", tab.file_name, index),
                                     image,
-                                    Default::default(),
+                                    egui::TextureOptions::LINEAR,
+                                );
+                                let thumb_texture = ctx.load_texture(
+                                    format!("doc_{}_thumb_{}", tab.file_name, index),
+                                    thumbnail_image,
+                                    egui::TextureOptions::LINEAR,
                                 );
                                 tab.pages[index] = Some(texture);
+                                tab.thumbnails[index] = Some(thumb_texture);
                                 tab.page_texts[index] = text;
                                 tab.page_chars[index] = chars;
                                 tab.page_links[index] = links;
@@ -312,5 +319,24 @@ impl eframe::App for PdfViewerApp {
         self.ui_dialogs(ctx);
 
         self.ui_viewer(ctx);
+        
+        let mut about_open = self.about_window_open;
+        if about_open {
+            egui::Window::new("About")
+                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                .collapsible(false)
+                .resizable(false)
+                .open(&mut about_open)
+                .show(ctx, |ui| {
+                    ui.vertical_centered(|ui| {
+                        ui.heading("PDF Viewer");
+                        ui.add_space(10.0);
+                        ui.label(format!("Developer Name: Borneel Bikash Phukan"));
+                        ui.label(format!("Version: {}", env!("CARGO_PKG_VERSION")));
+                        ui.add_space(10.0);
+                    });
+                });
+            self.about_window_open = about_open;
+        }
     }
 }

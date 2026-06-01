@@ -38,14 +38,69 @@ impl PdfViewerApp {
                             ui.label("No pages found in this PDF.");
                         });
                     } else {
+                        let ctrl_pressed = ui.input(|i| i.modifiers.ctrl);
+                        let scroll_delta = ui.input(|i| i.raw_scroll_delta.y);
+                        let current_time = ui.input(|i| i.time);
+                        
+                        if ui.rect_contains_pointer(ui.max_rect()) {
+                            if ctrl_pressed && scroll_delta != 0.0 {
+                                if current_time - tab.last_page_change_time > 0.05 {
+                                    if scroll_delta > 0.0 {
+                                        tab.zoom += 10.0;
+                                    } else {
+                                        tab.zoom = (tab.zoom - 10.0).max(0.0);
+                                    }
+                                    tab.last_page_change_time = current_time;
+                                }
+                            } else if tab.layout_mode != PageLayoutMode::ContinuousScroll && scroll_delta != 0.0 {
+                                if current_time - tab.last_page_change_time > 0.3 {
+                                    let step = if tab.layout_mode == PageLayoutMode::TwoPage { 2 } else { 1 };
+                                    if scroll_delta > 0.0 && tab.selected_page > 0 {
+                                        tab.selected_page = tab.selected_page.saturating_sub(step);
+                                        tab.scroll_to_page = Some(tab.selected_page);
+                                        tab.last_page_change_time = current_time;
+                                    } else if scroll_delta < 0.0 && tab.selected_page + step < tab.pages.len() {
+                                        tab.selected_page += step;
+                                        tab.scroll_to_page = Some(tab.selected_page);
+                                        tab.last_page_change_time = current_time;
+                                    } else if scroll_delta < 0.0 && tab.selected_page + 1 < tab.pages.len() {
+                                        tab.selected_page += 1;
+                                        tab.scroll_to_page = Some(tab.selected_page);
+                                        tab.last_page_change_time = current_time;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        let available_height_before_scroll = ui.available_height() - 20.0;
+                        
                         egui::ScrollArea::vertical()
                             .auto_shrink([false; 2])
                             .show(ui, |ui| {
+                                if ui.input(|i| i.pointer.button_down(egui::PointerButton::Middle)) {
+                                    if let Some(press_origin) = ui.input(|i| i.pointer.press_origin()) {
+                                        if let Some(current_pos) = ui.input(|i| i.pointer.interact_pos()) {
+                                            let delta_y = current_pos.y - press_origin.y;
+                                            
+                                            // Apply a small deadzone
+                                            if delta_y.abs() > 5.0 {
+                                                // Exponential velocity scale for comfortable endless joystick scrolling
+                                                let speed = (delta_y.abs() - 5.0).powf(1.15) * 0.08 * delta_y.signum();
+                                                ui.scroll_with_delta(egui::vec2(0.0, -speed));
+                                                ui.ctx().request_repaint(); // Keep repainting to allow endless scroll
+                                            }
+                                        }
+                                    }
+                                    ui.ctx().set_cursor_icon(egui::CursorIcon::AllScroll);
+                                }
+                                
                                 let available_width = ui.available_width() - 24.0;
                                 let chunks = if tab.layout_mode == PageLayoutMode::TwoPage { 2 } else { 1 };
                                 let page_width = if chunks == 2 { available_width * (1.0 + tab.zoom) / 2.0 - 10.0 } else { available_width * (1.0 + tab.zoom) };
                                 
                                 let mut scrolled = false;
+                                let mut best_page = tab.selected_page;
+                                let mut max_overlap_area = 0.0;
                                 
                                 let mut page_indices = Vec::new();
                                 match tab.layout_mode {
@@ -63,7 +118,21 @@ impl PdfViewerApp {
                                 
                                 ui.vertical_centered(|ui| {
                                     for chunk in page_indices.chunks(chunks) {
+                                        let mut total_row_width = 0.0;
+                                        for &index in chunk {
+                                            let texture_opt = &tab.pages[index];
+                                            let aspect = texture_opt.as_ref().map(|t| t.size_vec2().y / t.size_vec2().x).unwrap_or(1.414);
+                                            let fit_page_width = (available_height_before_scroll / aspect).min(available_width / chunks as f32);
+                                            let fit_width_width = available_width / chunks as f32;
+                                            let final_width = (fit_page_width + (tab.zoom / 50.0) * (fit_width_width - fit_page_width)).max(100.0);
+                                            total_row_width += final_width;
+                                        }
+                                        total_row_width += (chunk.len().saturating_sub(1)) as f32 * 15.0;
+                                        
                                         ui.horizontal_centered(|ui| {
+                                            let extra_space = (ui.available_width() - total_row_width).max(0.0) / 2.0;
+                                            ui.add_space(extra_space);
+                                            
                                             for &index in chunk {
                                                 let texture_opt = &tab.pages[index];
                                                 // Default aspect ratio for A4
@@ -72,10 +141,24 @@ impl PdfViewerApp {
                                                 } else {
                                                     1.414 
                                                 };
-                                                let size = egui::vec2(page_width, page_width * aspect);
+                                                
+                                                let fit_page_width = (available_height_before_scroll / aspect).min(available_width / chunks as f32);
+                                                let fit_width_width = available_width / chunks as f32;
+                                                let final_width = (fit_page_width + (tab.zoom / 50.0) * (fit_width_width - fit_page_width)).max(100.0);
+                                                
+                                                let size = egui::vec2(final_width, final_width * aspect);
                                                 
                                                 // Allocate space for the page and get interaction response
                                                 let (rect, response) = ui.allocate_exact_size(size, egui::Sense::click_and_drag());
+                                                
+                                                let overlap = rect.intersect(ui.clip_rect());
+                                                if overlap.is_positive() {
+                                                    let area = overlap.width() * overlap.height();
+                                                    if area > max_overlap_area {
+                                                        max_overlap_area = area;
+                                                        best_page = index;
+                                                    }
+                                                }
                                                 
                                                 if ui.is_rect_visible(rect) {
                                                     // Draw solid white background for the page behind everything
@@ -85,7 +168,7 @@ impl PdfViewerApp {
                                                 if let Some(texture) = texture_opt {
                                                     // Handle drag/selection input on the page
                                                     if index < tab.page_chars.len() {
-                                                        if response.drag_started() {
+                                                        if response.drag_started_by(egui::PointerButton::Primary) {
                                                             if let Some(mouse_pos) = ctx.pointer_interact_pos() {
                                                                 if let Some(char_idx) = find_closest_char(response.rect, mouse_pos, &tab.page_chars[index]) {
                                                                     self.selection_start = Some((index, char_idx));
@@ -95,7 +178,7 @@ impl PdfViewerApp {
                                                             }
                                                         }
                                                         
-                                                        if self.is_selecting && response.dragged() {
+                                                        if self.is_selecting && response.dragged_by(egui::PointerButton::Primary) {
                                                             if let Some(mouse_pos) = ctx.pointer_interact_pos() {
                                                                 if let Some(char_idx) = find_closest_char(response.rect, mouse_pos, &tab.page_chars[index]) {
                                                                     self.selection_end = Some((index, char_idx));
@@ -103,11 +186,11 @@ impl PdfViewerApp {
                                                             }
                                                         }
                                                         
-                                                        if self.is_selecting && response.drag_stopped() {
+                                                        if self.is_selecting && response.drag_stopped_by(egui::PointerButton::Primary) {
                                                             self.is_selecting = false;
                                                         }
                                                         
-                                                        if response.clicked() && !response.dragged() {
+                                                        if response.clicked() && !response.dragged_by(egui::PointerButton::Primary) {
                                                             self.selection_start = None;
                                                             self.selection_end = None;
                                                         }
@@ -186,38 +269,47 @@ impl PdfViewerApp {
                                                     
                                                     // Draw Y-axis-oriented yellow highlights overlay on matched words
                                                     if !self.search_query.is_empty() && index < tab.page_chars.len() {
-                                                        let query_lower = self.search_query.to_lowercase();
+                                                        let query_chars: Vec<char> = self.search_query.to_lowercase().chars().collect();
+                                                        let page_chars_lower: Vec<char> = tab.page_chars[index].iter().map(|char_info| {
+                                                            char_info.c.to_lowercase().next().unwrap_or(char_info.c)
+                                                        }).collect();
                                                         
-                                                        let page_string: String = tab.page_chars[index].iter().map(|char_info| char_info.c).collect();
-                                                        let page_string_lower = page_string.to_lowercase();
-                                                        
-                                                        let mut start = 0;
-                                                        while let Some(pos) = page_string_lower[start..].find(&query_lower) {
-                                                            let absolute_pos = start + pos;
-                                                            
-                                                            for char_idx in absolute_pos..(absolute_pos + query_lower.len()) {
-                                                                if let Some(char_info) = tab.page_chars[index].get(char_idx) {
-                                                                    if !char_info.c.is_whitespace() {
-                                                                        let rect_min = egui::pos2(
-                                                                            response.rect.min.x + char_info.left * response.rect.width(),
-                                                                            response.rect.min.y + char_info.top * response.rect.height(),
-                                                                        );
-                                                                        let rect_max = egui::pos2(
-                                                                            response.rect.min.x + char_info.right * response.rect.width(),
-                                                                            response.rect.min.y + char_info.bottom * response.rect.height(),
-                                                                        );
-                                                                        let highlight_rect = egui::Rect::from_min_max(rect_min, rect_max);
-                                                                        
-                                                                        ui.painter().rect_filled(
-                                                                            highlight_rect,
-                                                                            0.0,
-                                                                            egui::Color32::from_rgba_unmultiplied(255, 255, 0, 75),
-                                                                        );
-                                                                    }
+                                                        let mut i = 0;
+                                                        while i + query_chars.len() <= page_chars_lower.len() && !query_chars.is_empty() {
+                                                            let mut is_match = true;
+                                                            for j in 0..query_chars.len() {
+                                                                if page_chars_lower[i + j] != query_chars[j] {
+                                                                    is_match = false;
+                                                                    break;
                                                                 }
                                                             }
                                                             
-                                                            start = start + pos + query_lower.len();
+                                                            if is_match {
+                                                                for char_idx in i..(i + query_chars.len()) {
+                                                                    if let Some(char_info) = tab.page_chars[index].get(char_idx) {
+                                                                        if !char_info.c.is_whitespace() {
+                                                                            let rect_min = egui::pos2(
+                                                                                response.rect.min.x + char_info.left * response.rect.width(),
+                                                                                response.rect.min.y + char_info.top * response.rect.height(),
+                                                                            );
+                                                                            let rect_max = egui::pos2(
+                                                                                response.rect.min.x + char_info.right * response.rect.width(),
+                                                                                response.rect.min.y + char_info.bottom * response.rect.height(),
+                                                                            );
+                                                                            let highlight_rect = egui::Rect::from_min_max(rect_min, rect_max);
+                                                                            
+                                                                            ui.painter().rect_filled(
+                                                                                highlight_rect,
+                                                                                0.0,
+                                                                                egui::Color32::from_rgba_unmultiplied(255, 255, 0, 75),
+                                                                            );
+                                                                        }
+                                                                    }
+                                                                }
+                                                                i += query_chars.len();
+                                                            } else {
+                                                                i += 1;
+                                                            }
                                                         }
                                                     }
                                                     
@@ -282,6 +374,10 @@ impl PdfViewerApp {
                                         ui.add_space(15.0); // Vertical spacing between rows
                                     }
                                 });
+                                
+                                if tab.scroll_to_page.is_none() {
+                                    tab.selected_page = best_page;
+                                }
                                         
                                 if scrolled {
                                     tab.scroll_to_page = None;

@@ -18,7 +18,7 @@ impl PdfViewerApp {
                         if !pages_empty {
                             egui::ScrollArea::vertical().show(ui, |ui| {
                                 ui.vertical_centered(|ui| {
-                                    for (index, texture_opt) in tab.pages.iter().enumerate() {
+                                    for (index, texture_opt) in tab.thumbnails.iter().enumerate() {
                                         let thumb_w = (ui.available_width() - 16.0).max(40.0);
                                         let thumb_h = thumb_w * 1.414; // Default A4 ratio for placeholder
                                         let thumb_size = egui::vec2(thumb_w, thumb_h);
@@ -45,9 +45,13 @@ impl PdfViewerApp {
                                                     let actual_aspect = texture.size_vec2().y / texture.size_vec2().x;
                                                     let actual_h = thumb_w * actual_aspect;
                                                     
-                                                    let img = egui::Image::new(egui::load::SizedTexture::new(texture.id(), egui::vec2(thumb_w, actual_h)))
-                                                        .sense(egui::Sense::click());
-                                                    let response = ui.add(img);
+                                                    let size = egui::vec2(thumb_w, actual_h);
+                                                    let (rect, response) = ui.allocate_exact_size(size, egui::Sense::click());
+                                                    if ui.is_rect_visible(rect) {
+                                                        ui.painter().rect_filled(rect, 0.0, egui::Color32::WHITE);
+                                                        let uv = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
+                                                        ui.painter().image(texture.id(), rect, uv, egui::Color32::WHITE);
+                                                    }
                                                     if response.clicked() {
                                                         tab.selected_page = index;
                                                         tab.scroll_to_page = Some(index);

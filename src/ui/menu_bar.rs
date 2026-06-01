@@ -124,6 +124,10 @@ impl PdfViewerApp {
                         let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::CheckUpdate { ctx: ctx.clone() });
                         ui.close_menu();
                     }
+                    if ui.button("About").clicked() {
+                        self.about_window_open = true;
+                        ui.close_menu();
+                    }
                 });
             });
         });

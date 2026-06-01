@@ -2,8 +2,73 @@ use eframe::egui;
 use pdfium_render::prelude::*;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
+use std::hash::{Hash, Hasher};
 
-#[derive(Clone)]
+pub fn clean_cache() {
+    let cache_root = dirs::cache_dir()
+        .unwrap_or_else(|| std::env::temp_dir())
+        .join("pdf-viewer-cache");
+        
+    if !cache_root.exists() {
+        return;
+    }
+    
+    let now = std::time::SystemTime::now();
+    let max_age = std::time::Duration::from_secs(7 * 24 * 60 * 60); // 7 days
+    
+    let mut dirs_with_access = Vec::new();
+    let mut total_size: u64 = 0;
+    
+    if let Ok(entries) = std::fs::read_dir(&cache_root) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                let accessed_file = path.join("accessed.txt");
+                let mut last_access = std::time::UNIX_EPOCH;
+                
+                if let Ok(meta) = std::fs::metadata(&accessed_file) {
+                    last_access = meta.modified().unwrap_or(std::time::UNIX_EPOCH);
+                } else if let Ok(meta) = std::fs::metadata(&path) {
+                    last_access = meta.modified().unwrap_or(std::time::UNIX_EPOCH);
+                }
+                
+                if let Ok(age) = now.duration_since(last_access) {
+                    if age > max_age {
+                        let _ = std::fs::remove_dir_all(&path);
+                        continue;
+                    }
+                }
+                
+                let mut dir_size = 0;
+                if let Ok(files) = std::fs::read_dir(&path) {
+                    for f in files.flatten() {
+                        if let Ok(meta) = f.metadata() {
+                            dir_size += meta.len();
+                        }
+                    }
+                }
+                
+                total_size += dir_size;
+                dirs_with_access.push((path, last_access, dir_size));
+            }
+        }
+    }
+    
+    // Sort by oldest access time first
+    dirs_with_access.sort_by_key(|k| k.1);
+    
+    let max_size: u64 = 400 * 1024 * 1024; // 400MB
+    while total_size > max_size && !dirs_with_access.is_empty() {
+        let (path, _, size) = dirs_with_access.remove(0);
+        if std::fs::remove_dir_all(&path).is_ok() {
+            total_size = total_size.saturating_sub(size);
+        }
+    }
+}
+
+use serde::{Serialize, Deserialize};
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct PdfCharInfo {
     pub c: char,
     pub left: f32,
@@ -12,13 +77,13 @@ pub struct PdfCharInfo {
     pub bottom: f32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum PdfLinkTarget {
     Url(String),
     Page(usize),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct PdfLinkInfo {
     pub left: f32,
     pub right: f32,
@@ -104,6 +169,7 @@ pub enum PdfWorkerMessage {
         path: PathBuf,
         index: usize,
         image: egui::ColorImage,
+        thumbnail_image: egui::ColorImage,
         text: String,
         chars: Vec<PdfCharInfo>,
         links: Vec<PdfLinkInfo>,
@@ -141,6 +207,7 @@ pub struct PdfDocumentState {
     pub file_name: String,
     pub path: PathBuf,
     pub pages: Vec<Option<egui::TextureHandle>>,
+    pub thumbnails: Vec<Option<egui::TextureHandle>>,
     #[allow(dead_code)]
     pub page_texts: Vec<String>,
     pub page_chars: Vec<Vec<PdfCharInfo>>,
@@ -151,6 +218,7 @@ pub struct PdfDocumentState {
     pub layout_mode: PageLayoutMode,
     pub error: Option<String>,
     pub is_loading: bool,
+    pub last_page_change_time: f64,
 }
 
 impl PdfDocumentState {
@@ -160,6 +228,7 @@ impl PdfDocumentState {
             file_name,
             path,
             pages: Vec::new(),
+            thumbnails: Vec::new(),
             page_texts: Vec::new(),
             page_chars: Vec::new(),
             page_links: Vec::new(),
@@ -169,11 +238,69 @@ impl PdfDocumentState {
             layout_mode: PageLayoutMode::ContinuousScroll,
             error: None,
             is_loading: true,
+            last_page_change_time: 0.0,
         }
     }
 
     pub fn background_load_with_pdfium(path: PathBuf, pdfium: &Pdfium, tx: Sender<PdfWorkerMessage>, ctx: egui::Context) {
         let file_name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "Untitled".to_string());
+        
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        path.hash(&mut hasher);
+        if let Ok(meta) = std::fs::metadata(&path) {
+            meta.len().hash(&mut hasher);
+            if let Ok(time) = meta.modified() {
+                if let Ok(duration) = time.duration_since(std::time::UNIX_EPOCH) {
+                    duration.as_secs().hash(&mut hasher);
+                }
+            }
+        }
+        let cache_key = format!("{:x}", hasher.finish());
+        
+        let cache_dir = dirs::cache_dir()
+            .unwrap_or_else(|| std::env::temp_dir())
+            .join("pdf-viewer-cache")
+            .join(&cache_key);
+            
+        if cache_dir.exists() {
+            if let Ok(meta_bytes) = std::fs::read(cache_dir.join("metadata.bin")) {
+                if let Ok((page_count, page_texts, page_chars, page_links)) = bincode::deserialize::<(usize, Vec<String>, Vec<Vec<PdfCharInfo>>, Vec<Vec<PdfLinkInfo>>)>(&meta_bytes) {
+                    let _ = tx.send(PdfWorkerMessage::DocumentInfo {
+                        path: path.clone(), file_name: file_name.clone(), page_count, error: None,
+                    });
+                    ctx.request_repaint();
+                    
+                    let mut success = true;
+                    for index in 0..page_count {
+                        if let (Ok(img), Ok(thumb)) = (
+                            image::open(cache_dir.join(format!("page_{}.png", index))),
+                            image::open(cache_dir.join(format!("thumb_{}.png", index)))
+                        ) {
+                            let img_rgba = img.to_rgba8();
+                            let thumb_rgba = thumb.to_rgba8();
+                            let image = egui::ColorImage::from_rgba_unmultiplied(
+                                [img_rgba.width() as usize, img_rgba.height() as usize],
+                                img_rgba.as_flat_samples().as_slice(),
+                            );
+                            let thumbnail_image = egui::ColorImage::from_rgba_unmultiplied(
+                                [thumb_rgba.width() as usize, thumb_rgba.height() as usize],
+                                thumb_rgba.as_flat_samples().as_slice(),
+                            );
+                            let _ = tx.send(PdfWorkerMessage::PageData {
+                                path: path.clone(), index, image, thumbnail_image, text: page_texts[index].clone(), chars: page_chars[index].clone(), links: page_links[index].clone(),
+                            });
+                            ctx.request_repaint();
+                        } else { success = false; break; }
+                    }
+                    if success {
+                        let _ = tx.send(PdfWorkerMessage::Finished { path: path.clone() });
+                        ctx.request_repaint();
+                        let _ = std::fs::File::create(cache_dir.join("accessed.txt"));
+                        return;
+                    }
+                }
+            }
+        }
         
         match pdfium.load_pdf_from_file(path.to_str().unwrap_or_default(), None) {
             Ok(doc) => {
@@ -189,11 +316,19 @@ impl PdfDocumentState {
                 ctx.request_repaint();
 
                 let render_config = PdfRenderConfig::new()
-                    .set_target_width(1200) // Optimal resolution for fast loading and crisp visuals
-                    .set_clear_color(PdfColor::new(255, 255, 255, 0));
+                    .set_target_width(2400) // Optimal resolution for fast loading and crisp visuals
+                    .set_clear_color(PdfColor::new(255, 255, 255, 255));
+
+                let mut all_texts = Vec::new();
+                let mut all_chars = Vec::new();
+                let mut all_links = Vec::new();
+                
+                let _ = std::fs::create_dir_all(&cache_dir);
+                let _ = std::fs::File::create(cache_dir.join("accessed.txt"));
 
                 for (index, page) in doc.pages().iter().enumerate() {
                     let page_text = page.text().map(|t| t.all()).unwrap_or_default();
+                    all_texts.push(page_text.clone());
                     
                     let page_w = page.width().value;
                     let page_h = page.height().value;
@@ -244,10 +379,23 @@ impl PdfDocumentState {
                             }
                         }
                     }
+                    
+                    all_chars.push(chars.clone());
+                    all_links.push(links.clone());
 
-                    let image = if let Ok(bitmap) = page.render_with_config(&render_config) {
+                    let (image, thumbnail_image) = if let Ok(bitmap) = page.render_with_config(&render_config) {
                         let img = bitmap.as_image();
                         let mut rgba = img.to_rgba8();
+                        
+                        // Generate a high-quality downscaled thumbnail BEFORE removing the white background
+                        let thumb_w = 300;
+                        let thumb_h = (300.0 * (rgba.height() as f32 / rgba.width() as f32)) as u32;
+                        let thumb_rgba = image::imageops::resize(&rgba, thumb_w, thumb_h, image::imageops::FilterType::Lanczos3);
+                        let thumb_pixels = thumb_rgba.as_flat_samples();
+                        let thumbnail_image = egui::ColorImage::from_rgba_unmultiplied(
+                            [thumb_rgba.width() as usize, thumb_rgba.height() as usize],
+                            thumb_pixels.as_slice(),
+                        );
                         
                         // Mathematically remove the white background to make it transparent
                         // so highlights can be drawn underneath the text.
@@ -274,24 +422,33 @@ impl PdfDocumentState {
                             }
                         }
                         
+                        let _ = rgba.save(cache_dir.join(format!("page_{}.png", index)));
+                        let _ = thumb_rgba.save(cache_dir.join(format!("thumb_{}.png", index)));
+                        
                         let pixels = rgba.as_flat_samples();
-                        egui::ColorImage::from_rgba_unmultiplied(
+                        let image = egui::ColorImage::from_rgba_unmultiplied(
                             [rgba.width() as usize, rgba.height() as usize],
                             pixels.as_slice(),
-                        )
+                        );
+                        (image, thumbnail_image)
                     } else {
-                        egui::ColorImage::example() // Fallback empty image
+                        (egui::ColorImage::example(), egui::ColorImage::example()) // Fallback empty image
                     };
 
                     let _ = tx.send(PdfWorkerMessage::PageData {
                         path: path.clone(),
                         index,
                         image,
+                        thumbnail_image,
                         text: page_text,
                         chars,
                         links,
                     });
                     ctx.request_repaint();
+                }
+
+                if let Ok(meta_bytes) = bincode::serialize(&(page_count, all_texts, all_chars, all_links)) {
+                    let _ = std::fs::write(cache_dir.join("metadata.bin"), meta_bytes);
                 }
 
                 let _ = tx.send(PdfWorkerMessage::Finished { path: path.clone() });
