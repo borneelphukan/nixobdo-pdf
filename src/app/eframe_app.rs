@@ -1,10 +1,10 @@
-use crate::app::{nixobdo-pdfApp, UpdateState};
+use crate::app::{NixobdoPdfApp, UpdateState};
 use crate::worker::PdfWorkerTask;
 use crate::document::PdfWorkerMessage;
 use eframe::egui;
 use std::sync::atomic::Ordering;
 
-impl eframe::App for nixobdo-pdfApp {
+impl eframe::App for NixobdoPdfApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Process background loaded PDFs
         while let Ok(msg) = self.pdf_receiver.try_recv() {

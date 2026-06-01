@@ -7,7 +7,7 @@ pub mod document;
 pub mod worker;
 pub mod ui;
 
-use app::nixobdo-pdfApp;
+use app::NixobdoPdfApp;
 
 fn main() -> eframe::Result<()> {
     let icon_bytes = include_bytes!("../assets/logo.png");
@@ -58,7 +58,7 @@ fn main() -> eframe::Result<()> {
             
             cc.egui_ctx.set_style(style);
             
-            let mut app = nixobdo-pdfApp::default();
+            let mut app = NixobdoPdfApp::default();
             
             if let Some(file_path) = std::env::args().nth(1) {
                 app.load_pdf(&cc.egui_ctx, std::path::PathBuf::from(file_path));

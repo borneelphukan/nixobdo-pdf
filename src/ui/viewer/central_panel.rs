@@ -1,8 +1,8 @@
-use crate::app::nixobdo-pdfApp;
+use crate::app::NixobdoPdfApp;
 use crate::document::{PageLayoutMode, PdfLinkTarget, find_closest_char, is_char_selected};
 use eframe::egui;
 
-impl nixobdo-pdfApp {
+impl NixobdoPdfApp {
     pub(crate) fn ui_central_panel(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
             let mut show_placeholder = true;

@@ -18,7 +18,7 @@ pub enum UpdateState {
     Downloading(f32),
 }
 
-pub struct nixobdo-pdfApp {
+pub struct NixobdoPdfApp {
     pub has_pdfium_bindings: bool,
     pub tabs: Vec<PdfDocumentState>,
     pub active_tab_index: Option<usize>,
@@ -62,7 +62,7 @@ pub struct nixobdo-pdfApp {
     pub about_window_open: bool,
 }
 
-impl Default for nixobdo-pdfApp {
+impl Default for NixobdoPdfApp {
     fn default() -> Self {
         let exe_path = std::env::current_exe().ok().unwrap_or_default();
         let exe_dir = exe_path.parent().unwrap_or(std::path::Path::new(""));

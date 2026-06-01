@@ -1,7 +1,7 @@
-use crate::app::nixobdo-pdfApp;
+use crate::app::NixobdoPdfApp;
 use eframe::egui;
 
-impl nixobdo-pdfApp {
+impl NixobdoPdfApp {
     pub(crate) fn ui_separator(&mut self, ctx: &egui::Context) {
         // Draggable vertical separator panel
         egui::SidePanel::left("separator_panel")
