@@ -96,7 +96,6 @@ impl PdfViewerApp {
                                 
                                 let available_width = ui.available_width() - 24.0;
                                 let chunks = if tab.layout_mode == PageLayoutMode::TwoPage { 2 } else { 1 };
-                                let page_width = if chunks == 2 { available_width * (1.0 + tab.zoom) / 2.0 - 10.0 } else { available_width * (1.0 + tab.zoom) };
                                 
                                 let mut scrolled = false;
                                 let mut best_page = tab.selected_page;
