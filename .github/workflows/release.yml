@@ -34,7 +34,9 @@ jobs:
             $patch = [int]$Matches[3] + 1
             $newVersion = "$major.$minor.$patch"
             # Replace only the first occurrence (package version, not dependencies)
-            $cargo = [regex]::Replace($cargo, '(version\s*=\s*")(\d+\.\d+\.\d+)(")', "`${1}$newVersion`${3}", 1)
+            # Use instance method — static [regex]::Replace has no count overload
+            $regex = [regex]'(version\s*=\s*")(\d+\.\d+\.\d+)(")'
+            $cargo = $regex.Replace($cargo, "`${1}$newVersion`${3}", 1)
             Set-Content Cargo.toml $cargo -NoNewline
             # Update setup.iss
             $iss = Get-Content setup.iss -Raw
@@ -51,6 +53,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Cargo.toml setup.iss
           git commit -m "chore: bump version to ${{ steps.version.outputs.VERSION }}"
+          git pull --rebase origin main
           git push
 
       - name: Convert Logo to ICO
