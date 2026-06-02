@@ -1,0 +1,78 @@
+name: Dev Build (Pre-release)
+
+on:
+  push:
+    branches: [ "dev" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  dev-build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Get current version
+        id: version
+        shell: pwsh
+        run: |
+          $cargo = Get-Content Cargo.toml -Raw
+          if ($cargo -match 'version\s*=\s*"(\d+\.\d+\.\d+)"') {
+            $version = $Matches[1]
+            $devVersion = "$version-dev.${{ github.run_number }}"
+            echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+            echo "DEV_VERSION=$devVersion" >> $env:GITHUB_OUTPUT
+            Write-Host "Dev version: $devVersion"
+          }
+
+      - name: Convert Logo to ICO
+        run: magick -background none -density 256 assets\logo.svg -define icon:auto-resize="256,128,64,48,32,16" assets\logo.ico
+
+      - name: Build nixobdo-pdf
+        run: cargo build --release
+
+      - name: Download and Extract pdfium
+        run: |
+          Invoke-WebRequest -Uri https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-win-x64.tgz -OutFile pdfium.tgz
+          tar -xzf pdfium.tgz
+          Get-ChildItem -Recurse -Filter pdfium.dll | Copy-Item -Destination .
+
+      - name: Build Installer (Inno Setup)
+        run: iscc setup.iss
+
+      - name: Rename installer for dev build
+        shell: pwsh
+        run: |
+          Rename-Item -Path "Output\nixobdo-pdfSetup.exe" -NewName "nixobdo-pdf-dev-${{ github.run_number }}.exe"
+
+      - name: Delete existing dev release (rolling update)
+        shell: pwsh
+        run: gh release delete dev --yes --cleanup-tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Publish dev pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dev
+          name: "Dev Build (latest)"
+          body: |
+            ⚠️ **Unstable development build — not for production use.**
+
+            **Version:** `${{ steps.version.outputs.DEV_VERSION }}`
+            **Commit:** `${{ github.sha }}`
+            **Branch:** `dev`
+
+            This release is automatically overwritten on every push to `dev`.
+            For the latest stable release, see the [Releases page](../../releases/latest).
+          files: Output\nixobdo-pdf-dev-${{ github.run_number }}.exe
+          draft: false
+          prerelease: true
+          make_latest: false
