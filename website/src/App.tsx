@@ -12,7 +12,7 @@ import { DocsChangelog } from './pages/DocsChangelog';
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/nixobdo-pdf">
       <div className="min-h-screen flex flex-col bg-slate-950">
         <Navbar />
         <main className="flex-1">
