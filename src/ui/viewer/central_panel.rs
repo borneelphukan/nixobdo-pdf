@@ -411,5 +411,25 @@ impl NixobdoPdfApp {
                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             }
         });
+        
+        // Fullscreen toggle floating button at bottom right
+        egui::Area::new(egui::Id::new("fullscreen_button_area"))
+            .anchor(egui::Align2::RIGHT_BOTTOM, [-24.0, -24.0])
+            .order(egui::Order::Foreground)
+            .show(ctx, |ui| {
+                let is_fullscreen = ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
+                let icon = if is_fullscreen { "⤡" } else { "⤢" };
+                let tooltip = if is_fullscreen { "Exit Fullscreen" } else { "Fullscreen" };
+                
+                let response = ui.add(
+                    egui::Button::new(egui::RichText::new(icon).size(20.0))
+                        .fill(egui::Color32::from_rgba_premultiplied(40, 40, 45, 200))
+                        .frame(true)
+                ).on_hover_text(tooltip);
+                
+                if response.clicked() {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(!is_fullscreen));
+                }
+            });
     }
 }

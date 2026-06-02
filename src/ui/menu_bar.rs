@@ -83,9 +83,16 @@ impl NixobdoPdfApp {
                 
                 ui.menu_button("View", |ui| {
                     ui.set_min_width(220.0);
-                    let sidebar_text = if self.sidebar_open { "Hide Sidebar" } else { "Show Sidebar" };
+                    let sidebar_text = if self.sidebar_open { "✔ Show Sidebar" } else { "    Show Sidebar" };
                     if ui.button(sidebar_text).clicked() {
                         self.sidebar_open = !self.sidebar_open;
+                        ui.close_menu();
+                    }
+                    
+                    let is_fullscreen = ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
+                    let fullscreen_text = if is_fullscreen { "✔ Fullscreen" } else { "    Fullscreen" };
+                    if ui.button(fullscreen_text).clicked() {
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(!is_fullscreen));
                         ui.close_menu();
                     }
                     

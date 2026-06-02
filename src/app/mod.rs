@@ -60,6 +60,9 @@ pub struct NixobdoPdfApp {
     
     // About Window
     pub about_window_open: bool,
+    
+    // Splash screen
+    pub startup_time: std::time::Instant,
 }
 
 impl Default for NixobdoPdfApp {
@@ -120,6 +123,7 @@ impl Default for NixobdoPdfApp {
             export_cancel_flag: Arc::new(AtomicBool::new(false)),
             update_state: UpdateState::None,
             about_window_open: false,
+            startup_time: std::time::Instant::now(),
         }
     }
 }

@@ -6,6 +6,26 @@ use std::sync::atomic::Ordering;
 
 impl eframe::App for NixobdoPdfApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Splash screen logic
+        let elapsed = self.startup_time.elapsed().as_secs_f32();
+        if elapsed < 2.5 {
+            egui::CentralPanel::default()
+                .frame(egui::Frame::NONE.fill(ctx.style().visuals.window_fill()))
+                .show(ctx, |ui| {
+                    ui.vertical_centered(|ui| {
+                        ui.add_space(ui.available_height() / 2.0 - 100.0);
+                        
+                        ui.add(egui::Image::new(egui::include_image!("../../assets/logo.svg")).max_width(250.0).max_height(250.0));
+                        
+                        ui.add_space(20.0);
+                        ui.heading(egui::RichText::new("Nixobdo PDF Reader").size(28.0).strong());
+                    });
+                });
+            
+            ctx.request_repaint();
+            return;
+        }
+
         // Process background loaded PDFs
         while let Ok(msg) = self.pdf_receiver.try_recv() {
             match msg {
@@ -276,9 +296,15 @@ impl eframe::App for NixobdoPdfApp {
             ctx.memory_mut(|mem| mem.request_focus(egui::Id::new("search_bar")));
         }
 
-        self.ui_menu_bar(ctx);
+        let is_fullscreen = ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
+        if is_fullscreen && ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(false));
+        }
 
-        egui::TopBottomPanel::top("tab_bar_panel").show(ctx, |ui| {
+        if !is_fullscreen {
+            self.ui_menu_bar(ctx);
+
+            egui::TopBottomPanel::top("tab_bar_panel").show(ctx, |ui| {
             if !self.tabs.is_empty() {
                 ui.horizontal(|ui| {
                     let mut tab_to_close = None;
@@ -313,7 +339,8 @@ impl eframe::App for NixobdoPdfApp {
             }
         });
 
-        self.ui_toolbar(ctx);
+            self.ui_toolbar(ctx);
+        }
 
         // Rename & Export Window Popups
         self.ui_dialogs(ctx);

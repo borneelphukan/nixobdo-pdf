@@ -3,7 +3,8 @@ use eframe::egui;
 
 impl NixobdoPdfApp {
     pub(crate) fn ui_sidebar(&mut self, ctx: &egui::Context) {
-        if !self.sidebar_open {
+        let is_fullscreen = ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
+        if !self.sidebar_open || is_fullscreen {
             return;
         }
         egui::SidePanel::left("preview_panel")

@@ -3,6 +3,11 @@ use eframe::egui;
 
 impl NixobdoPdfApp {
     pub(crate) fn ui_separator(&mut self, ctx: &egui::Context) {
+        let is_fullscreen = ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
+        if is_fullscreen {
+            return;
+        }
+        
         // Draggable vertical separator panel
         egui::SidePanel::left("separator_panel")
             .resizable(false)

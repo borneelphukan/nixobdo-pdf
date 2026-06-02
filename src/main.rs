@@ -58,6 +58,8 @@ fn main() -> eframe::Result<()> {
             
             cc.egui_ctx.set_style(style);
             
+            egui_extras::install_image_loaders(&cc.egui_ctx);
+            
             let mut app = NixobdoPdfApp::default();
             
             if let Some(file_path) = std::env::args().nth(1) {
