@@ -4,11 +4,13 @@
 
 # nixobdo-pdf
 
-**A simple PDF viewer built with Rust, egui, and PDFium.**
+**An open-source PDF viewer with the sole intention to provide distraction-free PDF experience that we enjoyed in the old Adobe PDF reader, before they added multiple entities and made it too distracting. Its free and will always remain free.**
 
 [![Release](https://img.shields.io/github/release/borneelphukan/nixobdo-pdf?color=fed114&label=Release&style=flat-square)](https://github.com/borneelphukan/nixobdo-pdf/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/borneelphukan/nixobdo-pdf/total?label=Downloads&style=flat-square&color=lightgreen)](https://github.com/borneelphukan/nixobdo-pdf/releases)
 [![CI](https://github.com/borneelphukan/nixobdo-pdf/actions/workflows/windows-build.yml/badge.svg)](https://github.com/borneelphukan/nixobdo-pdf/actions/workflows/windows-build.yml)
+
+<a href="https://www.buymeacoffee.com/borneelphukan" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 50px !important;width: 200px !important;" ></a>
 
 </div>
 
