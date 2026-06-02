@@ -40,7 +40,7 @@ export function Home() {
           <div className="flex-1 w-full flex justify-center items-center py-10 lg:py-0">
             <div className="relative">
               <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full scale-150"></div>
-              <img src="/logo.svg" alt="Nixobdo PDF Logo" className="relative z-10 w-64 h-64 lg:w-96 lg:h-96 object-contain drop-shadow-2xl" />
+              <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="Nixobdo PDF Logo" className="relative z-10 w-64 h-64 lg:w-96 lg:h-96 object-contain drop-shadow-2xl" />
             </div>
           </div>
         </div>
