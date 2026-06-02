@@ -62,7 +62,7 @@ impl NixobdoPdfApp {
                         ui.close_menu();
                     }
                     
-                    ui.separator();
+
                     
                     if ui.add_enabled(self.active_tab_index.is_some(), egui::Button::new("Export...")).clicked() {
                         if let Some(active_idx) = self.active_tab_index {

@@ -120,7 +120,11 @@ impl NixobdoPdfApp {
                                         let mut total_row_width = 0.0;
                                         for &index in chunk {
                                             let texture_opt = &tab.pages[index];
-                                            let aspect = texture_opt.as_ref().map(|t| t.size_vec2().y / t.size_vec2().x).unwrap_or(1.414);
+                                            let rot = *tab.page_rotations.get(index).unwrap_or(&0);
+                                            let mut aspect = texture_opt.as_ref().map(|t| t.size_vec2().y / t.size_vec2().x).unwrap_or(1.414);
+                                            if rot % 180 != 0 {
+                                                aspect = 1.0 / aspect;
+                                            }
                                             let fit_page_width = (available_height_before_scroll / aspect).min(available_width / chunks as f32);
                                             let fit_width_width = available_width / chunks as f32;
                                             let final_width = (fit_page_width + (tab.zoom / 50.0) * (fit_width_width - fit_page_width)).max(100.0);
@@ -134,12 +138,15 @@ impl NixobdoPdfApp {
                                             
                                             for &index in chunk {
                                                 let texture_opt = &tab.pages[index];
-                                                // Default aspect ratio for A4
-                                                let aspect = if let Some(texture) = texture_opt {
+                                                let rot = *tab.page_rotations.get(index).unwrap_or(&0);
+                                                let mut aspect = if let Some(texture) = texture_opt {
                                                     texture.size_vec2().y / texture.size_vec2().x
                                                 } else {
                                                     1.414 
                                                 };
+                                                if rot % 180 != 0 {
+                                                    aspect = 1.0 / aspect;
+                                                }
                                                 
                                                 let fit_page_width = (available_height_before_scroll / aspect).min(available_width / chunks as f32);
                                                 let fit_width_width = available_width / chunks as f32;
@@ -164,12 +171,48 @@ impl NixobdoPdfApp {
                                                     ui.painter().rect_filled(rect, 0.0, egui::Color32::WHITE);
                                                 }
                                                 
+                                                let transform_pos_to_unrot = |pos: egui::Pos2, rect: egui::Rect, rot: i32| -> egui::Pos2 {
+                                                    let rx = (pos.x - rect.min.x) / rect.width();
+                                                    let ry = (pos.y - rect.min.y) / rect.height();
+                                                    let (unrot_x, unrot_y) = match rot % 360 {
+                                                        90 => (ry, 1.0 - rx),
+                                                        180 => (1.0 - rx, 1.0 - ry),
+                                                        270 => (1.0 - ry, rx),
+                                                        _ => (rx, ry),
+                                                    };
+                                                    egui::pos2(rect.min.x + unrot_x * rect.width(), rect.min.y + unrot_y * rect.height())
+                                                };
+                                                
+                                                let transform_rect_to_rot = |char_left: f32, char_top: f32, char_right: f32, char_bottom: f32, rect: egui::Rect, rot: i32| -> egui::Rect {
+                                                    let transform = |x: f32, y: f32| -> (f32, f32) {
+                                                        match rot % 360 {
+                                                            90 => (1.0 - y, x),
+                                                            180 => (1.0 - x, 1.0 - y),
+                                                            270 => (y, 1.0 - x),
+                                                            _ => (x, y),
+                                                        }
+                                                    };
+                                                    let (x1, y1) = transform(char_left, char_top);
+                                                    let (x2, y2) = transform(char_right, char_bottom);
+                                                    
+                                                    let new_left = x1.min(x2);
+                                                    let new_right = x1.max(x2);
+                                                    let new_top = y1.min(y2);
+                                                    let new_bottom = y1.max(y2);
+                                                    
+                                                    egui::Rect::from_min_max(
+                                                        egui::pos2(rect.min.x + new_left * rect.width(), rect.min.y + new_top * rect.height()),
+                                                        egui::pos2(rect.min.x + new_right * rect.width(), rect.min.y + new_bottom * rect.height())
+                                                    )
+                                                };
+                                                
                                                 if let Some(texture) = texture_opt {
                                                     // Handle drag/selection input on the page
                                                     if index < tab.page_chars.len() {
                                                         if response.drag_started_by(egui::PointerButton::Primary) {
                                                             if let Some(mouse_pos) = ctx.pointer_interact_pos() {
-                                                                if let Some(char_idx) = find_closest_char(response.rect, mouse_pos, &tab.page_chars[index]) {
+                                                                let unrot_pos = transform_pos_to_unrot(mouse_pos, response.rect, rot);
+                                                                if let Some(char_idx) = find_closest_char(response.rect, unrot_pos, &tab.page_chars[index]) {
                                                                     self.selection_start = Some((index, char_idx));
                                                                     self.selection_end = Some((index, char_idx));
                                                                     self.is_selecting = true;
@@ -179,7 +222,8 @@ impl NixobdoPdfApp {
                                                         
                                                         if self.is_selecting && response.dragged_by(egui::PointerButton::Primary) {
                                                             if let Some(mouse_pos) = ctx.pointer_interact_pos() {
-                                                                if let Some(char_idx) = find_closest_char(response.rect, mouse_pos, &tab.page_chars[index]) {
+                                                                let unrot_pos = transform_pos_to_unrot(mouse_pos, response.rect, rot);
+                                                                if let Some(char_idx) = find_closest_char(response.rect, unrot_pos, &tab.page_chars[index]) {
                                                                     self.selection_end = Some((index, char_idx));
                                                                 }
                                                             }
@@ -245,15 +289,9 @@ impl NixobdoPdfApp {
                                                                 if is_char_selected(index, char_idx, start, end) {
                                                                     let char_info = &tab.page_chars[index][char_idx];
                                                                     if !char_info.c.is_whitespace() {
-                                                                        let rect_min = egui::pos2(
-                                                                            response.rect.min.x + char_info.left * response.rect.width(),
-                                                                            response.rect.min.y + char_info.top * response.rect.height(),
+                                                                        let highlight_rect = transform_rect_to_rot(
+                                                                            char_info.left, char_info.top, char_info.right, char_info.bottom, response.rect, rot
                                                                         );
-                                                                        let rect_max = egui::pos2(
-                                                                            response.rect.min.x + char_info.right * response.rect.width(),
-                                                                            response.rect.min.y + char_info.bottom * response.rect.height(),
-                                                                        );
-                                                                        let highlight_rect = egui::Rect::from_min_max(rect_min, rect_max);
                                                                         
                                                                         ui.painter().rect_filled(
                                                                             highlight_rect,
@@ -287,15 +325,9 @@ impl NixobdoPdfApp {
                                                                 for char_idx in i..(i + query_chars.len()) {
                                                                     if let Some(char_info) = tab.page_chars[index].get(char_idx) {
                                                                         if !char_info.c.is_whitespace() {
-                                                                            let rect_min = egui::pos2(
-                                                                                response.rect.min.x + char_info.left * response.rect.width(),
-                                                                                response.rect.min.y + char_info.top * response.rect.height(),
+                                                                            let highlight_rect = transform_rect_to_rot(
+                                                                                char_info.left, char_info.top, char_info.right, char_info.bottom, response.rect, rot
                                                                             );
-                                                                            let rect_max = egui::pos2(
-                                                                                response.rect.min.x + char_info.right * response.rect.width(),
-                                                                                response.rect.min.y + char_info.bottom * response.rect.height(),
-                                                                            );
-                                                                            let highlight_rect = egui::Rect::from_min_max(rect_min, rect_max);
                                                                             
                                                                             ui.painter().rect_filled(
                                                                                 highlight_rect,
@@ -315,22 +347,55 @@ impl NixobdoPdfApp {
                                                     // Draw the actual PDF page image LAST so text is drawn cleanly ON TOP of highlights,
                                                     // while the transparent background lets the highlights show through.
                                                     if ui.is_rect_visible(response.rect) {
-                                                        let uv = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
-                                                        ui.painter().image(texture.id(), response.rect, uv, egui::Color32::WHITE);
+                                                        let mut mesh = egui::Mesh::with_texture(texture.id());
+                                                        let uvs = match rot % 360 {
+                                                            90 => [
+                                                                egui::pos2(0.0, 1.0),
+                                                                egui::pos2(0.0, 0.0),
+                                                                egui::pos2(1.0, 0.0),
+                                                                egui::pos2(1.0, 1.0),
+                                                            ],
+                                                            180 => [
+                                                                egui::pos2(1.0, 1.0),
+                                                                egui::pos2(0.0, 1.0),
+                                                                egui::pos2(0.0, 0.0),
+                                                                egui::pos2(1.0, 0.0),
+                                                            ],
+                                                            270 => [
+                                                                egui::pos2(1.0, 0.0),
+                                                                egui::pos2(1.0, 1.0),
+                                                                egui::pos2(0.0, 1.0),
+                                                                egui::pos2(0.0, 0.0),
+                                                            ],
+                                                            _ => [
+                                                                egui::pos2(0.0, 0.0),
+                                                                egui::pos2(1.0, 0.0),
+                                                                egui::pos2(1.0, 1.0),
+                                                                egui::pos2(0.0, 1.0),
+                                                            ],
+                                                        };
+                                                        
+                                                        let idx = mesh.vertices.len() as u32;
+                                                        mesh.vertices.push(egui::epaint::Vertex { pos: response.rect.left_top(), uv: uvs[0], color: egui::Color32::WHITE });
+                                                        mesh.vertices.push(egui::epaint::Vertex { pos: response.rect.right_top(), uv: uvs[1], color: egui::Color32::WHITE });
+                                                        mesh.vertices.push(egui::epaint::Vertex { pos: response.rect.right_bottom(), uv: uvs[2], color: egui::Color32::WHITE });
+                                                        mesh.vertices.push(egui::epaint::Vertex { pos: response.rect.left_bottom(), uv: uvs[3], color: egui::Color32::WHITE });
+                                                        
+                                                        mesh.indices.push(idx);
+                                                        mesh.indices.push(idx + 1);
+                                                        mesh.indices.push(idx + 2);
+                                                        mesh.indices.push(idx);
+                                                        mesh.indices.push(idx + 2);
+                                                        mesh.indices.push(idx + 3);
+                                                        
+                                                        ui.painter().add(egui::Shape::mesh(mesh));
                                                     }
                                                     
                                                     // Handle PDF links interaction
                                                     if index < tab.page_links.len() {
                                                         for (link_idx, link_info) in tab.page_links[index].iter().enumerate() {
-                                                            let link_rect = egui::Rect::from_min_max(
-                                                                egui::pos2(
-                                                                    response.rect.min.x + link_info.left * response.rect.width(),
-                                                                    response.rect.min.y + link_info.top * response.rect.height(),
-                                                                ),
-                                                                egui::pos2(
-                                                                    response.rect.min.x + link_info.right * response.rect.width(),
-                                                                    response.rect.min.y + link_info.bottom * response.rect.height(),
-                                                                ),
+                                                            let link_rect = transform_rect_to_rot(
+                                                                link_info.left, link_info.top, link_info.right, link_info.bottom, response.rect, rot
                                                             );
                                                             
                                                             let link_response = ui.interact(link_rect, ui.id().with(format!("link_{}_{}", index, link_idx)), egui::Sense::click());
@@ -418,11 +483,22 @@ impl NixobdoPdfApp {
             .order(egui::Order::Foreground)
             .show(ctx, |ui| {
                 let is_fullscreen = ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
-                let icon = if is_fullscreen { "⤡" } else { "⤢" };
                 let tooltip = if is_fullscreen { "Exit Fullscreen" } else { "Fullscreen" };
                 
+                let image = if is_fullscreen {
+                    egui::Image::new(egui::include_image!("../../../assets/exit_fullscreen.svg"))
+                        .tint(egui::Color32::WHITE)
+                        .max_height(20.0)
+                        .max_width(20.0)
+                } else {
+                    egui::Image::new(egui::include_image!("../../../assets/fullscreen.svg"))
+                        .tint(egui::Color32::WHITE)
+                        .max_height(20.0)
+                        .max_width(20.0)
+                };
+                
                 let response = ui.add(
-                    egui::Button::new(egui::RichText::new(icon).size(20.0))
+                    egui::Button::image(image)
                         .fill(egui::Color32::from_rgba_premultiplied(40, 40, 45, 200))
                         .frame(true)
                 ).on_hover_text(tooltip);

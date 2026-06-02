@@ -52,6 +52,7 @@ impl eframe::App for NixobdoPdfApp {
                                 tab.page_texts = vec![String::new(); page_count];
                                 tab.page_chars = vec![Vec::new(); page_count];
                                 tab.page_links = vec![Vec::new(); page_count];
+                                tab.page_rotations = vec![0; page_count];
                                 tab.is_loading = false; // Turn off main loading, pages will pop in
                             }
                             break;
@@ -95,6 +96,7 @@ impl eframe::App for NixobdoPdfApp {
                     self.toast_success = success;
                     self.toast_timer = ctx.input(|i| i.time) + 4.0; // show for 4 seconds
                 }
+
                 PdfWorkerMessage::UpdateCheckResult(is_available) => {
                     if is_available {
                         self.update_state = UpdateState::Prompt;
@@ -140,9 +142,23 @@ impl eframe::App for NixobdoPdfApp {
                     ui.vertical_centered(|ui| {
                         ui.label(egui::RichText::new("Exporting document...").size(14.0));
                         ui.add_space(12.0);
-                        let progress_bar = egui::ProgressBar::new(progress)
-                            .show_percentage();
-                        ui.add(progress_bar);
+                        let rect = ui.available_rect_before_wrap();
+                        let size = egui::vec2(rect.width(), 20.0);
+                        let (rect, _response) = ui.allocate_exact_size(size, egui::Sense::hover());
+                        let corner_radius = egui::CornerRadius::same(4);
+                        ui.painter().rect_filled(rect, corner_radius, ui.visuals().extreme_bg_color);
+                        let fill_width = rect.width() * progress;
+                        if fill_width > 0.0 {
+                            let fill_rect = egui::Rect::from_min_size(rect.min, egui::vec2(fill_width, rect.height()));
+                            ui.painter().rect_filled(fill_rect, corner_radius, ui.visuals().selection.bg_fill);
+                        }
+                        ui.painter().text(
+                            rect.center(),
+                            egui::Align2::CENTER_CENTER,
+                            format!("{:.0}%", progress * 100.0),
+                            egui::FontId::proportional(14.0),
+                            ui.visuals().text_color(),
+                        );
                         ui.add_space(16.0);
                         if ui.button("Cancel").clicked() {
                             self.export_cancel_flag.store(true, Ordering::Relaxed);
@@ -267,7 +283,23 @@ impl eframe::App for NixobdoPdfApp {
                         ui.vertical_centered(|ui| {
                             ui.label(egui::RichText::new("Downloading update...").size(14.0));
                             ui.add_space(12.0);
-                            ui.add(egui::ProgressBar::new(progress).show_percentage());
+                            let rect = ui.available_rect_before_wrap();
+                            let size = egui::vec2(rect.width(), 20.0);
+                            let (rect, _response) = ui.allocate_exact_size(size, egui::Sense::hover());
+                            let corner_radius = egui::CornerRadius::same(4);
+                            ui.painter().rect_filled(rect, corner_radius, ui.visuals().extreme_bg_color);
+                            let fill_width = rect.width() * progress;
+                            if fill_width > 0.0 {
+                                let fill_rect = egui::Rect::from_min_size(rect.min, egui::vec2(fill_width, rect.height()));
+                                ui.painter().rect_filled(fill_rect, corner_radius, ui.visuals().selection.bg_fill);
+                            }
+                            ui.painter().text(
+                                rect.center(),
+                                egui::Align2::CENTER_CENTER,
+                                format!("{:.0}%", progress * 100.0),
+                                egui::FontId::proportional(14.0),
+                                ui.visuals().text_color(),
+                            );
                             ui.add_space(16.0);
                             // We don't support cancellation of the actual HTTP req yet, so we just close the dialog visually.
                             if ui.button("Cancel").clicked() {
@@ -291,10 +323,11 @@ impl eframe::App for NixobdoPdfApp {
         }
 
         // Handle Ctrl+F / Cmd+F to focus search
-        let has_search_modifier = ctx.input(|i| i.modifiers.command || i.modifiers.ctrl);
-        if has_search_modifier && ctx.input(|i| i.key_pressed(egui::Key::F)) {
+        let has_ctrl_modifier = ctx.input(|i| i.modifiers.command || i.modifiers.ctrl);
+        if has_ctrl_modifier && ctx.input(|i| i.key_pressed(egui::Key::F)) {
             ctx.memory_mut(|mem| mem.request_focus(egui::Id::new("search_bar")));
         }
+
 
         let is_fullscreen = ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
         if is_fullscreen && ctx.input(|i| i.key_pressed(egui::Key::Escape)) {

@@ -48,6 +48,8 @@ impl NixobdoPdfApp {
                     let mut zoom_reset = false;
                     let mut page_up = false;
                     let mut page_down = false;
+                    let mut rotate_left = false;
+                    let mut rotate_right = false;
                     
                     let page_disp = if let Some(active_idx) = self.active_tab_index {
                         if let Some(tab) = self.tabs.get(active_idx) {
@@ -84,6 +86,11 @@ impl NixobdoPdfApp {
                     ui.label(page_disp);
                     if ui.button("⬇").clicked() || ui.input(|i| i.key_pressed(egui::Key::ArrowDown) || i.key_pressed(egui::Key::ArrowRight)) { page_down = true; }
                     
+                    ui.separator();
+                    
+                    if ui.button("⟲").clicked() { rotate_left = true; }
+                    if ui.button("⟳").clicked() { rotate_right = true; }
+                    
                     if has_active_tab {
                         if let Some(active_idx) = self.active_tab_index {
                             if let Some(tab) = self.tabs.get_mut(active_idx) {
@@ -107,6 +114,16 @@ impl NixobdoPdfApp {
                                 } else if page_down && tab.selected_page + 1 < tab.pages.len() {
                                     tab.selected_page += 1;
                                     tab.scroll_to_page = Some(tab.selected_page);
+                                }
+                                
+                                if rotate_left || rotate_right {
+                                    let d = if rotate_left { -90 } else { 90 };
+                                    if tab.selected_page < tab.page_rotations.len() {
+                                        tab.page_rotations[tab.selected_page] = (tab.page_rotations[tab.selected_page] + d).rem_euclid(360);
+                                    }
+                                    if tab.layout_mode == crate::document::PageLayoutMode::TwoPage && tab.selected_page + 1 < tab.page_rotations.len() {
+                                        tab.page_rotations[tab.selected_page + 1] = (tab.page_rotations[tab.selected_page + 1] + d).rem_euclid(360);
+                                    }
                                 }
                             }
                         }

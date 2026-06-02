@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./assets/cover.png" alt="nixobdo-pdf Banner" title="nixobdo-pdf" width="128"/>
+<img src="./assets/cover.png" alt="nixobdo-pdf Banner" title="nixobdo-pdf" width="100%"/>
 
 # nixobdo-pdf
 
