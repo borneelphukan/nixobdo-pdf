@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@theme {
+  --color-slate-950: #141419; /* App panel_fill */
+  --color-slate-900: #1E1E23; /* App noninteractive.bg_fill */
+  --color-slate-800: #2D2D37; /* App inactive.bg_fill */
+  --color-slate-700: #414150; /* App hovered.bg_fill */
+  
+  /* App Accent Color: #00DCFF */
+  --color-indigo-400: #00DCFF;
+  --color-indigo-300: #33e3ff;
+  --color-indigo-500: #00b8d4;
+  
+  --color-blue-400: #00DCFF;
+  --color-blue-500: #00b8d4;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
