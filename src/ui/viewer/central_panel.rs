@@ -42,6 +42,10 @@ impl NixobdoPdfApp {
                         let scroll_delta = ui.input(|i| i.raw_scroll_delta.y);
                         let current_time = ui.input(|i| i.time);
                         
+                        if ui.input(|i| (i.modifiers.ctrl || i.modifiers.command) && i.key_pressed(egui::Key::A)) {
+                            select_all_triggered = true;
+                        }
+                        
                         if ui.rect_contains_pointer(ui.max_rect()) {
                             if ctrl_pressed && scroll_delta != 0.0 {
                                 if current_time - tab.last_page_change_time > 0.05 {
@@ -250,7 +254,7 @@ impl NixobdoPdfApp {
                                                         
                                                         response.context_menu(|ui| {
                                                             if has_selection {
-                                                                if ui.button("📋 Copy Selected Text").clicked() {
+                                                                if ui.button("📋 Copy").clicked() {
                                                                     copy_triggered = true;
                                                                     ui.close_menu();
                                                                 }

@@ -15,7 +15,7 @@ pub enum PdfWorkerTask {
     Load { path: PathBuf, ctx: egui::Context },
     Export { path: PathBuf, out_path: PathBuf, format: ExportFormat, retain_layout: bool, include_images: bool, ctx: egui::Context, cancel_flag: Arc<AtomicBool> },
     CheckUpdate { ctx: egui::Context },
-    DownloadUpdate { ctx: egui::Context },
+    DownloadUpdate { version: String, ctx: egui::Context },
 }
 
 pub fn spawn_worker_thread(
@@ -72,24 +72,44 @@ pub fn spawn_worker_thread(
                     PdfWorkerTask::CheckUpdate { ctx } => {
                         let tx = msg_tx_clone.clone();
                         std::thread::spawn(move || {
-                            let url = "https://nightly.link/borneelphukan/nixobdo-pdf/workflows/windows-build.yml/main/nixobdo-pdf-Installer.zip";
-                            let res = ureq::get(url).call();
-                            let is_available = res.is_ok();
+                            let url = "https://api.github.com/repos/borneelphukan/nixobdo-pdf/releases/latest";
+                            let mut is_available = false;
+                            let mut version = None;
+                            if let Ok(response) = ureq::get(url).header("User-Agent", "nixobdo-pdf").call() {
+                                use std::io::Read;
+                                let mut json = String::new();
+                                if response.into_body().into_reader().read_to_string(&mut json).is_ok() {
+                                    if let Some(tag_idx) = json.find("\"tag_name\":") {
+                                        let rest = &json[tag_idx + 11..];
+                                        if let Some(start_quote) = rest.find('"') {
+                                            let rest = &rest[start_quote + 1..];
+                                            if let Some(end_quote) = rest.find('"') {
+                                                let tag = &rest[..end_quote];
+                                                let latest_version = tag.trim_start_matches('v');
+                                                if latest_version != env!("CARGO_PKG_VERSION") {
+                                                    is_available = true;
+                                                    version = Some(latest_version.to_string());
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                             std::thread::sleep(std::time::Duration::from_secs(1));
-                            let _ = tx.send(PdfWorkerMessage::UpdateCheckResult(is_available));
+                            let _ = tx.send(PdfWorkerMessage::UpdateCheckResult(is_available, version));
                             ctx.request_repaint();
                         });
                     }
-                    PdfWorkerTask::DownloadUpdate { ctx } => {
+                    PdfWorkerTask::DownloadUpdate { version, ctx } => {
                         let tx = msg_tx_clone.clone();
                         std::thread::spawn(move || {
-                            let url = "https://nightly.link/borneelphukan/nixobdo-pdf/workflows/windows-build.yml/main/nixobdo-pdf-Installer.zip";
-                            match ureq::get(url).call() {
+                            let url = format!("https://github.com/borneelphukan/nixobdo-pdf/releases/download/v{}/nixobdo-pdfSetup.exe", version);
+                            match ureq::get(&url).header("User-Agent", "nixobdo-pdf").call() {
                                 Ok(response) => {
                                     let len: Option<u64> = response.headers().get("Content-Length").and_then(|h| h.to_str().ok()).and_then(|s| s.parse().ok());
                                     let mut reader = response.into_body().into_reader();
                                     let download_dir = dirs::download_dir().unwrap_or_else(|| PathBuf::from("."));
-                                    let out_path = download_dir.join("nixobdo-pdfSetup.zip");
+                                    let out_path = download_dir.join("nixobdo-pdfSetup.exe");
                                     if let Ok(mut file) = std::fs::File::create(&out_path) {
                                         use std::io::Read;
                                         let mut buf = [0; 8192];
@@ -133,24 +153,44 @@ pub fn spawn_worker_thread(
                     PdfWorkerTask::CheckUpdate { ctx } => {
                         let tx = msg_tx_clone.clone();
                         std::thread::spawn(move || {
-                            let url = "https://nightly.link/borneelphukan/nixobdo-pdf/workflows/windows-build.yml/main/nixobdo-pdf-Installer.zip";
-                            let res = ureq::get(url).call();
-                            let is_available = res.is_ok();
+                            let url = "https://api.github.com/repos/borneelphukan/nixobdo-pdf/releases/latest";
+                            let mut is_available = false;
+                            let mut version = None;
+                            if let Ok(response) = ureq::get(url).header("User-Agent", "nixobdo-pdf").call() {
+                                use std::io::Read;
+                                let mut json = String::new();
+                                if response.into_body().into_reader().read_to_string(&mut json).is_ok() {
+                                    if let Some(tag_idx) = json.find("\"tag_name\":") {
+                                        let rest = &json[tag_idx + 11..];
+                                        if let Some(start_quote) = rest.find('"') {
+                                            let rest = &rest[start_quote + 1..];
+                                            if let Some(end_quote) = rest.find('"') {
+                                                let tag = &rest[..end_quote];
+                                                let latest_version = tag.trim_start_matches('v');
+                                                if latest_version != env!("CARGO_PKG_VERSION") {
+                                                    is_available = true;
+                                                    version = Some(latest_version.to_string());
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                             std::thread::sleep(std::time::Duration::from_secs(1));
-                            let _ = tx.send(PdfWorkerMessage::UpdateCheckResult(is_available));
+                            let _ = tx.send(PdfWorkerMessage::UpdateCheckResult(is_available, version));
                             ctx.request_repaint();
                         });
                     }
-                    PdfWorkerTask::DownloadUpdate { ctx } => {
+                    PdfWorkerTask::DownloadUpdate { version, ctx } => {
                         let tx = msg_tx_clone.clone();
                         std::thread::spawn(move || {
-                            let url = "https://nightly.link/borneelphukan/nixobdo-pdf/workflows/windows-build.yml/main/nixobdo-pdf-Installer.zip";
-                            match ureq::get(url).call() {
+                            let url = format!("https://github.com/borneelphukan/nixobdo-pdf/releases/download/v{}/nixobdo-pdfSetup.exe", version);
+                            match ureq::get(&url).header("User-Agent", "nixobdo-pdf").call() {
                                 Ok(response) => {
                                     let len: Option<u64> = response.headers().get("Content-Length").and_then(|h| h.to_str().ok()).and_then(|s| s.parse().ok());
                                     let mut reader = response.into_body().into_reader();
                                     let download_dir = dirs::download_dir().unwrap_or_else(|| PathBuf::from("."));
-                                    let out_path = download_dir.join("nixobdo-pdfSetup.zip");
+                                    let out_path = download_dir.join("nixobdo-pdfSetup.exe");
                                     if let Ok(mut file) = std::fs::File::create(&out_path) {
                                         use std::io::Read;
                                         let mut buf = [0; 8192];

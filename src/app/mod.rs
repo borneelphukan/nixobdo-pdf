@@ -14,7 +14,7 @@ use crate::worker::{ExportFormat, PdfWorkerTask};
 pub enum UpdateState {
     None,
     Checking,
-    Prompt,
+    Prompt(String),
     Downloading(f32),
 }
 

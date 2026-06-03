@@ -40,11 +40,14 @@ impl eframe::App for NixobdoPdfApp {
                                         .set_description("The file you are trying to open is no longer available and cannot be opened.")
                                         .set_level(rfd::MessageLevel::Warning)
                                         .show();
-                                    tab_to_remove = Some(i);
                                 } else {
-                                    tab.error = Some(err);
-                                    tab.is_loading = false;
+                                    rfd::MessageDialog::new()
+                                        .set_title("Nixobdo PDF Reader")
+                                        .set_description(&format!("Nixobdo PDF Reader could not open '{}' because it is either not a supported file type or because the file has been damaged.", file_name))
+                                        .set_level(rfd::MessageLevel::Info)
+                                        .show();
                                 }
+                                tab_to_remove = Some(i);
                             } else {
                                 tab.file_name = file_name;
                                 tab.pages = vec![None; page_count];
@@ -97,9 +100,9 @@ impl eframe::App for NixobdoPdfApp {
                     self.toast_timer = ctx.input(|i| i.time) + 4.0; // show for 4 seconds
                 }
 
-                PdfWorkerMessage::UpdateCheckResult(is_available) => {
+                PdfWorkerMessage::UpdateCheckResult(is_available, version) => {
                     if is_available {
-                        self.update_state = UpdateState::Prompt;
+                        self.update_state = UpdateState::Prompt(version.unwrap_or_else(|| "unknown".into()));
                     } else {
                         self.update_state = UpdateState::None;
                         rfd::MessageDialog::new()
@@ -116,15 +119,21 @@ impl eframe::App for NixobdoPdfApp {
                     self.update_state = UpdateState::None;
                     match result {
                         Ok(path) => {
-                            self.toast_message = Some(format!("Update downloaded to {}", path));
-                            self.toast_success = true;
+                            if let Err(e) = std::process::Command::new(&path).spawn() {
+                                self.toast_message = Some(format!("Failed to start installer: {}", e));
+                                self.toast_success = false;
+                                self.toast_timer = ctx.input(|i| i.time) + 4.0;
+                            } else {
+                                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                                std::process::exit(0);
+                            }
                         }
                         Err(e) => {
                             self.toast_message = Some(format!("Download failed: {}", e));
                             self.toast_success = false;
+                            self.toast_timer = ctx.input(|i| i.time) + 4.0;
                         }
                     }
-                    self.toast_timer = ctx.input(|i| i.time) + 4.0;
                 }
             }
         }
@@ -216,7 +225,7 @@ impl eframe::App for NixobdoPdfApp {
         }
         
         // Update check and download logic
-        match self.update_state {
+        match self.update_state.clone() {
             UpdateState::None => {}
             UpdateState::Checking => {
                 let mut is_open = true;
@@ -238,37 +247,40 @@ impl eframe::App for NixobdoPdfApp {
                     self.update_state = UpdateState::None;
                 }
             }
-            UpdateState::Prompt => {
-                let mut is_open = true;
-                egui::Window::new("Update Available")
-                    .collapsible(false)
-                    .resizable(false)
-                    .open(&mut is_open)
-                    .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-                    .frame(egui::Frame::window(&ctx.style()).inner_margin(16.0).corner_radius(8))
+            UpdateState::Prompt(version) => {
+                egui::Area::new(egui::Id::new("update_banner"))
+                    .anchor(egui::Align2::CENTER_TOP, [0.0, 10.0])
+                    .order(egui::Order::Foreground)
                     .show(ctx, |ui| {
-                        ui.vertical_centered(|ui| {
-                            ui.label(egui::RichText::new("New update available. Download Now?").size(14.0));
-                            ui.add_space(16.0);
-                            ui.horizontal(|ui| {
-                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                    if ui.button("Cancel").clicked() {
-                                        self.update_state = UpdateState::None;
-                                    }
-                                    if ui.button("Skip").clicked() {
-                                        self.update_state = UpdateState::None;
-                                    }
-                                    if ui.button("Yes").clicked() {
+                        egui::Frame::window(&ctx.style())
+                            .fill(egui::Color32::from_rgb(0, 120, 215))
+                            .corner_radius(egui::CornerRadius::same(6))
+                            .inner_margin(egui::Margin::symmetric(16, 10))
+                            .shadow(egui::epaint::Shadow {
+                                offset: [0, 4],
+                                blur: 16,
+                                spread: 0,
+                                color: egui::Color32::from_black_alpha(80),
+                            })
+                            .show(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.label(egui::RichText::new(format!("New update available: v{}", version)).color(egui::Color32::WHITE).strong());
+                                    ui.add_space(20.0);
+                                    
+                                    ui.visuals_mut().widgets.inactive.bg_fill = egui::Color32::from_rgba_unmultiplied(255, 255, 255, 40);
+                                    ui.visuals_mut().widgets.hovered.bg_fill = egui::Color32::from_rgba_unmultiplied(255, 255, 255, 80);
+                                    ui.visuals_mut().widgets.active.bg_fill = egui::Color32::from_rgba_unmultiplied(255, 255, 255, 120);
+                                    
+                                    if ui.button(egui::RichText::new("Download Now").color(egui::Color32::WHITE)).clicked() {
                                         self.update_state = UpdateState::Downloading(0.0);
-                                        let _ = self.pdf_task_tx.send(PdfWorkerTask::DownloadUpdate { ctx: ctx.clone() });
+                                        let _ = self.pdf_task_tx.send(PdfWorkerTask::DownloadUpdate { version: version.clone(), ctx: ctx.clone() });
+                                    }
+                                    if ui.button(egui::RichText::new("Skip").color(egui::Color32::WHITE)).clicked() {
+                                        self.update_state = UpdateState::None;
                                     }
                                 });
                             });
-                        });
                     });
-                if !is_open {
-                    self.update_state = UpdateState::None;
-                }
             }
             UpdateState::Downloading(progress) => {
                 let mut is_open = true;

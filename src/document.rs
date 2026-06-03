@@ -185,7 +185,7 @@ pub enum PdfWorkerMessage {
         success: bool,
         message: String,
     },
-    UpdateCheckResult(bool),
+    UpdateCheckResult(bool, Option<String>),
     UpdateDownloadProgress(f32),
     UpdateDownloadComplete(Result<String, String>),
 }
