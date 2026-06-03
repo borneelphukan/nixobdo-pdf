@@ -25,6 +25,11 @@ impl eframe::App for NixobdoPdfApp {
             ctx.request_repaint();
             return;
         }
+        
+        if !self.has_checked_for_updates {
+            self.has_checked_for_updates = true;
+            let _ = self.pdf_task_tx.send(PdfWorkerTask::CheckUpdate { is_manual: false, ctx: ctx.clone() });
+        }
 
         // Process background loaded PDFs
         while let Ok(msg) = self.pdf_receiver.try_recv() {
@@ -100,16 +105,18 @@ impl eframe::App for NixobdoPdfApp {
                     self.toast_timer = ctx.input(|i| i.time) + 4.0; // show for 4 seconds
                 }
 
-                PdfWorkerMessage::UpdateCheckResult(is_available, version) => {
+                PdfWorkerMessage::UpdateCheckResult(is_available, version, is_manual) => {
                     if is_available {
                         self.update_state = UpdateState::Prompt(version.unwrap_or_else(|| "unknown".into()));
                     } else {
                         self.update_state = UpdateState::None;
-                        rfd::MessageDialog::new()
-                            .set_title("No Update")
-                            .set_description("No update available.")
-                            .set_level(rfd::MessageLevel::Warning)
-                            .show();
+                        if is_manual {
+                            rfd::MessageDialog::new()
+                                .set_title("No Update")
+                                .set_description("No update available.")
+                                .set_level(rfd::MessageLevel::Warning)
+                                .show();
+                        }
                     }
                 }
                 PdfWorkerMessage::UpdateDownloadProgress(progress) => {
@@ -401,10 +408,20 @@ impl eframe::App for NixobdoPdfApp {
                 .open(&mut about_open)
                 .show(ctx, |ui| {
                     ui.vertical_centered(|ui| {
-                        ui.heading("PDF Viewer");
-                        ui.add_space(10.0);
-                        ui.label(format!("Developer Name: Borneel Bikash Phukan"));
-                        ui.label(format!("Version: {}", env!("CARGO_PKG_VERSION")));
+                        ui.heading(egui::RichText::new("Nixobdo PDF Reader").size(24.0).strong());
+                        ui.add_space(12.0);
+                        ui.label(egui::RichText::new("Developer: Borneel Bikash Phukan").size(16.0));
+                        ui.label(egui::RichText::new(format!("Version: {}", env!("CARGO_PKG_VERSION"))).size(14.0));
+                        ui.add_space(16.0);
+                        ui.hyperlink_to(
+                            egui::RichText::new("🌐 http://borneelphukan.com/").size(14.0),
+                            "http://borneelphukan.com/"
+                        );
+                        ui.add_space(8.0);
+                        ui.hyperlink_to(
+                            egui::RichText::new("🤝 Contribute on GitHub").size(14.0),
+                            "https://github.com/borneelphukan/nixobdo-pdf"
+                        );
                         ui.add_space(10.0);
                     });
                 });

@@ -14,7 +14,7 @@ pub use export::ExportFormat;
 pub enum PdfWorkerTask {
     Load { path: PathBuf, ctx: egui::Context },
     Export { path: PathBuf, out_path: PathBuf, format: ExportFormat, retain_layout: bool, include_images: bool, ctx: egui::Context, cancel_flag: Arc<AtomicBool> },
-    CheckUpdate { ctx: egui::Context },
+    CheckUpdate { is_manual: bool, ctx: egui::Context },
     DownloadUpdate { version: String, ctx: egui::Context },
 }
 
@@ -69,7 +69,7 @@ pub fn spawn_worker_thread(
                         let _ = msg_tx_clone.send(PdfWorkerMessage::ExportComplete { success, message });
                         ctx.request_repaint();
                     }
-                    PdfWorkerTask::CheckUpdate { ctx } => {
+                    PdfWorkerTask::CheckUpdate { is_manual, ctx } => {
                         let tx = msg_tx_clone.clone();
                         std::thread::spawn(move || {
                             let url = "https://api.github.com/repos/borneelphukan/nixobdo-pdf/releases/latest";
@@ -96,7 +96,7 @@ pub fn spawn_worker_thread(
                                 }
                             }
                             std::thread::sleep(std::time::Duration::from_secs(1));
-                            let _ = tx.send(PdfWorkerMessage::UpdateCheckResult(is_available, version));
+                            let _ = tx.send(PdfWorkerMessage::UpdateCheckResult(is_available, version, is_manual));
                             ctx.request_repaint();
                         });
                     }
@@ -150,7 +150,7 @@ pub fn spawn_worker_thread(
                 }
             } else {
                 match task {
-                    PdfWorkerTask::CheckUpdate { ctx } => {
+                    PdfWorkerTask::CheckUpdate { is_manual, ctx } => {
                         let tx = msg_tx_clone.clone();
                         std::thread::spawn(move || {
                             let url = "https://api.github.com/repos/borneelphukan/nixobdo-pdf/releases/latest";
@@ -177,7 +177,7 @@ pub fn spawn_worker_thread(
                                 }
                             }
                             std::thread::sleep(std::time::Duration::from_secs(1));
-                            let _ = tx.send(PdfWorkerMessage::UpdateCheckResult(is_available, version));
+                            let _ = tx.send(PdfWorkerMessage::UpdateCheckResult(is_available, version, is_manual));
                             ctx.request_repaint();
                         });
                     }

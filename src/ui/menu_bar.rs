@@ -126,9 +126,9 @@ impl NixobdoPdfApp {
                 });
                 ui.menu_button("Help", |ui| {
                     ui.set_min_width(220.0);
-                    if ui.button("Get Updates").clicked() {
+                    if ui.button("Check for Updates").clicked() {
                         self.update_state = crate::app::UpdateState::Checking;
-                        let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::CheckUpdate { ctx: ctx.clone() });
+                        let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::CheckUpdate { is_manual: true, ctx: ctx.clone() });
                         ui.close_menu();
                     }
                     if ui.button("About").clicked() {

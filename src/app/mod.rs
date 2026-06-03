@@ -63,6 +63,9 @@ pub struct NixobdoPdfApp {
     
     // Splash screen
     pub startup_time: std::time::Instant,
+    
+    // Auto update
+    pub has_checked_for_updates: bool,
 }
 
 impl Default for NixobdoPdfApp {
@@ -124,6 +127,7 @@ impl Default for NixobdoPdfApp {
             update_state: UpdateState::None,
             about_window_open: false,
             startup_time: std::time::Instant::now(),
+            has_checked_for_updates: false,
         }
     }
 }
