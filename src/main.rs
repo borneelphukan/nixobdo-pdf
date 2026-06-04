@@ -24,7 +24,7 @@ fn main() -> eframe::Result<()> {
             .with_inner_size([800.0, 1000.0])
             .with_title("PDF Viewer")
             .with_icon(icon_data)
-            .with_transparent(true),
+            .with_transparent(false),
         ..Default::default()
     };
     eframe::run_native(
@@ -38,9 +38,9 @@ fn main() -> eframe::Result<()> {
             let accent = egui::Color32::from_rgb(0, 220, 255);
             style.visuals.selection.bg_fill = accent;
             
-            // Semi-transparent panel backgrounds for glass effect
-            style.visuals.panel_fill = egui::Color32::from_rgba_premultiplied(20, 20, 25, 210);
-            style.visuals.window_fill = egui::Color32::from_rgba_premultiplied(20, 20, 25, 230);
+            // Opaque panel and window backgrounds
+            style.visuals.panel_fill = egui::Color32::from_rgb(20, 20, 25);
+            style.visuals.window_fill = egui::Color32::from_rgb(25, 25, 30);
             
             // Generous rounding for a softer, premium feel
             style.visuals.window_corner_radius = egui::CornerRadius::same(12);
@@ -51,10 +51,10 @@ fn main() -> eframe::Result<()> {
             style.visuals.widgets.hovered.corner_radius = egui::CornerRadius::same(8);
             style.visuals.widgets.active.corner_radius = egui::CornerRadius::same(8);
             
-            // Slightly translucent widgets to blend with the glass theme
-            style.visuals.widgets.noninteractive.bg_fill = egui::Color32::from_rgba_premultiplied(30, 30, 35, 150);
-            style.visuals.widgets.inactive.bg_fill = egui::Color32::from_rgba_premultiplied(45, 45, 55, 150);
-            style.visuals.widgets.hovered.bg_fill = egui::Color32::from_rgba_premultiplied(65, 65, 80, 180);
+            // Opaque widgets
+            style.visuals.widgets.noninteractive.bg_fill = egui::Color32::from_rgb(30, 30, 35);
+            style.visuals.widgets.inactive.bg_fill = egui::Color32::from_rgb(45, 45, 55);
+            style.visuals.widgets.hovered.bg_fill = egui::Color32::from_rgb(65, 65, 80);
             
             cc.egui_ctx.set_style(style);
             

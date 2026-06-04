@@ -42,9 +42,6 @@ pub struct NixobdoPdfApp {
     pub export_name: String,
     pub export_format: ExportFormat,
     pub export_location: Option<PathBuf>,
-    pub export_settings_open: bool,
-    pub export_layout_retain_page: bool,
-    pub export_include_images: bool,
     
     // Toast notification
     pub toast_message: Option<String>,
@@ -75,6 +72,11 @@ pub struct NixobdoPdfApp {
     pub signature_active_page: Option<usize>,
     pub signature_scale: f32,
     pub is_saving_signature: bool,
+    
+    // Rotation feature
+    pub is_rotating_document: bool,
+    pub is_saving_rotation: bool,
+    pub pending_rotation: i32,
 }
 
 impl Default for NixobdoPdfApp {
@@ -125,9 +127,6 @@ impl Default for NixobdoPdfApp {
             export_name: String::new(),
             export_format: ExportFormat::Docx,
             export_location: None,
-            export_settings_open: false,
-            export_layout_retain_page: true,
-            export_include_images: true,
             toast_message: None,
             toast_success: false,
             toast_timer: 0.0,
@@ -144,6 +143,9 @@ impl Default for NixobdoPdfApp {
             signature_active_page: None,
             signature_scale: 1.0,
             is_saving_signature: false,
+            is_rotating_document: false,
+            is_saving_rotation: false,
+            pending_rotation: 0,
         }
     }
 }

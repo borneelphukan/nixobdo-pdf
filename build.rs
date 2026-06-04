@@ -10,4 +10,16 @@ fn main() {
             }
         }
     }
+    if let Ok(output) = std::process::Command::new("git")
+        .args(&["rev-parse", "--abbrev-ref", "HEAD"])
+        .output()
+    {
+        if let Ok(branch) = String::from_utf8(output.stdout) {
+            println!("cargo:rustc-env=GIT_BRANCH={}", branch.trim());
+        } else {
+            println!("cargo:rustc-env=GIT_BRANCH=unknown");
+        }
+    } else {
+        println!("cargo:rustc-env=GIT_BRANCH=unknown");
+    }
 }

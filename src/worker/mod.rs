@@ -17,6 +17,7 @@ pub enum PdfWorkerTask {
     CheckUpdate { is_manual: bool, ctx: egui::Context },
     DownloadUpdate { version: String, ctx: egui::Context },
     SaveSignature { path: PathBuf, page_index: usize, image_path: PathBuf, position: (f32, f32), scale: f32, ctx: egui::Context },
+    SaveRotation { path: PathBuf, rotation: i32, ctx: egui::Context },
 }
 
 pub fn spawn_worker_thread(
@@ -197,6 +198,43 @@ pub fn spawn_worker_thread(
                                 Err(_) => {
                                     let _ = tx.send(PdfWorkerMessage::ExportComplete { success: false, message: "Failed to load PDF for saving".into() });
                                 }
+                            }
+                        }
+                        ctx.request_repaint();
+                    }
+                    PdfWorkerTask::SaveRotation { path, rotation, ctx } => {
+                        let tx = msg_tx_clone.clone();
+                        match pdf.load_pdf_from_file(path.to_str().unwrap_or_default(), None) {
+                            Ok(doc) => {
+                                for i in 0..doc.pages().len() {
+                                    if let Ok(mut page) = doc.pages().get(i) {
+                                        let current_rot = match page.rotation().unwrap_or(pdfium_render::prelude::PdfPageRenderRotation::None) {
+                                            pdfium_render::prelude::PdfPageRenderRotation::None => 0,
+                                            pdfium_render::prelude::PdfPageRenderRotation::Degrees90 => 90,
+                                            pdfium_render::prelude::PdfPageRenderRotation::Degrees180 => 180,
+                                            pdfium_render::prelude::PdfPageRenderRotation::Degrees270 => 270,
+                                        };
+                                        let mut new_deg = (current_rot + rotation) % 360;
+                                        if new_deg < 0 {
+                                            new_deg += 360;
+                                        }
+                                        let new_rot = match new_deg {
+                                            90 => pdfium_render::prelude::PdfPageRenderRotation::Degrees90,
+                                            180 => pdfium_render::prelude::PdfPageRenderRotation::Degrees180,
+                                            270 => pdfium_render::prelude::PdfPageRenderRotation::Degrees270,
+                                            _ => pdfium_render::prelude::PdfPageRenderRotation::None,
+                                        };
+                                        page.set_rotation(new_rot);
+                                    }
+                                }
+                                if let Ok(_) = doc.save_to_file(path.to_str().unwrap_or_default()) {
+                                    let _ = tx.send(PdfWorkerMessage::RotationSaved { path: path.clone() });
+                                } else {
+                                    let _ = tx.send(PdfWorkerMessage::ExportComplete { success: false, message: "Failed to save PDF".into() });
+                                }
+                            }
+                            Err(_) => {
+                                let _ = tx.send(PdfWorkerMessage::ExportComplete { success: false, message: "Failed to load PDF for saving".into() });
                             }
                         }
                         ctx.request_repaint();

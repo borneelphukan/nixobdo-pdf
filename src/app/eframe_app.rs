@@ -112,6 +112,15 @@ impl eframe::App for NixobdoPdfApp {
                     self.is_saving_signature = false;
                     self.reload_pdf(ctx, path);
                 }
+                PdfWorkerMessage::RotationSaved { path } => {
+                    self.toast_message = Some("Document rotated successfully".to_string());
+                    self.toast_success = true;
+                    self.toast_timer = ctx.input(|i| i.time) + 4.0;
+                    self.is_rotating_document = false;
+                    self.is_saving_rotation = false;
+                    self.pending_rotation = 0;
+                    self.reload_pdf(ctx, path);
+                }
 
                 PdfWorkerMessage::UpdateCheckResult(is_available, version, is_manual) => {
                     if is_available {
@@ -409,28 +418,50 @@ impl eframe::App for NixobdoPdfApp {
         
         let mut about_open = self.about_window_open;
         if about_open {
+            let branch = option_env!("GIT_BRANCH").unwrap_or("unknown");
+            let stability = if branch == "main" || branch == "master" { "Stable" } else { "Unstable" };
+            
             egui::Window::new("About")
                 .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
                 .collapsible(false)
                 .resizable(false)
                 .open(&mut about_open)
                 .show(ctx, |ui| {
-                    ui.vertical_centered(|ui| {
-                        ui.heading(egui::RichText::new("Nixobdo PDF Reader").size(24.0).strong());
-                        ui.add_space(12.0);
-                        ui.label(egui::RichText::new("Developer: Borneel Bikash Phukan").size(16.0));
-                        ui.label(egui::RichText::new(format!("Version: {}", env!("CARGO_PKG_VERSION"))).size(14.0));
-                        ui.add_space(16.0);
-                        ui.hyperlink_to(
-                            egui::RichText::new("🌐 http://borneelphukan.com/").size(14.0),
-                            "http://borneelphukan.com/"
-                        );
-                        ui.add_space(8.0);
-                        ui.hyperlink_to(
-                            egui::RichText::new("🤝 Contribute on GitHub").size(14.0),
-                            "https://github.com/borneelphukan/nixobdo-pdf"
-                        );
-                        ui.add_space(10.0);
+                    egui::Frame::NONE.inner_margin(egui::Margin::same(24)).show(ui, |ui| {
+                        ui.vertical_centered(|ui| {
+                            ui.heading(egui::RichText::new("Nixobdo PDF Reader").size(20.0).strong());
+                            ui.add_space(8.0);
+                            ui.label(egui::RichText::new("Developer: Borneel B. Phukan").size(14.0));
+                            ui.label(egui::RichText::new(format!("Version: {} ({})", env!("CARGO_PKG_VERSION"), stability)).size(12.0));
+                            ui.add_space(20.0);
+                            
+                            ui.horizontal(|ui| {
+                                ui.add_space(ui.available_width() / 2.0 - 68.0);
+                                
+                                let website_icon = egui::Image::new(egui::include_image!("../../assets/website.svg"))
+                                    .max_height(14.0)
+                                    .tint(ui.visuals().hyperlink_color);
+                                ui.add(website_icon);
+                                ui.add_space(2.0);
+                                ui.hyperlink_to(
+                                    egui::RichText::new("Website").size(13.0),
+                                    "http://borneelphukan.com/"
+                                );
+                                
+                                ui.add_space(16.0);
+                                
+                                let github_icon = egui::Image::new(egui::include_image!("../../assets/github.svg"))
+                                    .max_height(14.0)
+                                    .tint(ui.visuals().hyperlink_color);
+                                ui.add(github_icon);
+                                ui.add_space(2.0);
+                                ui.hyperlink_to(
+                                    egui::RichText::new("GitHub").size(13.0),
+                                    "https://github.com/borneelphukan/nixobdo-pdf"
+                                );
+                            });
+                            ui.add_space(8.0);
+                        });
                     });
                 });
             self.about_window_open = about_open;

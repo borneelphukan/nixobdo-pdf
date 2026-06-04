@@ -56,6 +56,55 @@ impl NixobdoPdfApp {
                 }
             }
             
+            if self.is_rotating_document {
+                if self.active_tab_index.is_none() {
+                    self.is_rotating_document = false;
+                } else {
+                    egui::Window::new("Rotation Actions")
+                        .anchor(egui::Align2::CENTER_TOP, [0.0, 20.0])
+                        .title_bar(false)
+                        .resizable(false)
+                        .order(egui::Order::Foreground)
+                        .show(ctx, |ui| {
+                        ui.horizontal(|ui| {
+                            if self.is_saving_rotation {
+                                ui.label("Saving rotation to PDF...");
+                            } else {
+                                ui.label("Document rotated. Save to apply permanently.");
+                                ui.add_space(10.0);
+                                let save_clicked = ui.button("Save (Ctrl+S)").clicked() || ui.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::S));
+                                if save_clicked {
+                                    if let Some(active_idx) = self.active_tab_index {
+                                        if let Some(tab) = self.tabs.get(active_idx) {
+                                            self.is_saving_rotation = true;
+                                            
+                                            let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::SaveRotation {
+                                                path: tab.path.clone(),
+                                                rotation: self.pending_rotation,
+                                                ctx: ctx.clone(),
+                                            });
+                                        }
+                                    }
+                                }
+                                if ui.button("Cancel").clicked() {
+                                    if let Some(active_idx) = self.active_tab_index {
+                                        if let Some(tab) = self.tabs.get_mut(active_idx) {
+                                            let rot_diff = self.pending_rotation;
+                                            for rot in &mut tab.page_rotations {
+                                                *rot -= rot_diff;
+                                            }
+                                        }
+                                    }
+                                    self.is_rotating_document = false;
+                                    self.is_saving_rotation = false;
+                                    self.pending_rotation = 0;
+                                }
+                            }
+                        });
+                    });
+                }
+            }
+            
             if let Some(active_idx) = self.active_tab_index {
                 if let Some(tab) = self.tabs.get_mut(active_idx) {
                     show_placeholder = false;
@@ -223,7 +272,7 @@ impl NixobdoPdfApp {
                                                 let transform_pos_to_unrot = |pos: egui::Pos2, rect: egui::Rect, rot: i32| -> egui::Pos2 {
                                                     let rx = (pos.x - rect.min.x) / rect.width();
                                                     let ry = (pos.y - rect.min.y) / rect.height();
-                                                    let (unrot_x, unrot_y) = match rot % 360 {
+                                                    let (unrot_x, unrot_y) = match (rot % 360 + 360) % 360 {
                                                         90 => (ry, 1.0 - rx),
                                                         180 => (1.0 - rx, 1.0 - ry),
                                                         270 => (1.0 - ry, rx),
@@ -234,7 +283,7 @@ impl NixobdoPdfApp {
                                                 
                                                 let transform_rect_to_rot = |char_left: f32, char_top: f32, char_right: f32, char_bottom: f32, rect: egui::Rect, rot: i32| -> egui::Rect {
                                                     let transform = |x: f32, y: f32| -> (f32, f32) {
-                                                        match rot % 360 {
+                                                        match (rot % 360 + 360) % 360 {
                                                             90 => (1.0 - y, x),
                                                             180 => (1.0 - x, 1.0 - y),
                                                             270 => (y, 1.0 - x),
@@ -397,7 +446,7 @@ impl NixobdoPdfApp {
                                                     // while the transparent background lets the highlights show through.
                                                     if ui.is_rect_visible(response.rect) {
                                                         let mut mesh = egui::Mesh::with_texture(texture.id());
-                                                        let uvs = match rot % 360 {
+                                                        let uvs = match (rot % 360 + 360) % 360 {
                                                             90 => [
                                                                 egui::pos2(0.0, 1.0),
                                                                 egui::pos2(0.0, 0.0),

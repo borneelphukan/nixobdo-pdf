@@ -191,6 +191,9 @@ pub enum PdfWorkerMessage {
     SignatureSaved {
         path: PathBuf,
     },
+    RotationSaved {
+        path: PathBuf,
+    },
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]

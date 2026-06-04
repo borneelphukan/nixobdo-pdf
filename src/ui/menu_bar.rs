@@ -82,8 +82,8 @@ impl NixobdoPdfApp {
                 });
                 
                 ui.menu_button("Edit", |ui| {
+                    let has_pdf = self.active_tab_index.is_some();
                     ui.horizontal(|ui| {
-                        let has_pdf = self.active_tab_index.is_some();
                         if ui.add_enabled(has_pdf, egui::Button::new("Add Signature")).clicked() {
                             if let Some(path) = rfd::FileDialog::new()
                                 .add_filter("Images", &["png", "jpg", "jpeg"])
@@ -112,6 +112,42 @@ impl NixobdoPdfApp {
                             ui.close_menu();
                         }
                     });
+                    
+                    ui.separator();
+                    
+                    if ui.add_enabled(has_pdf, egui::Button::image_and_text(
+                        egui::Image::new(egui::include_image!("../../assets/rotate_left.svg")).max_height(14.0).tint(ui.visuals().text_color()),
+                        "Rotate Left"
+                    )).clicked()
+                    {
+                        if let Some(active_idx) = self.active_tab_index {
+                            if let Some(tab) = self.tabs.get_mut(active_idx) {
+                                self.pending_rotation -= 90;
+                                for rot in &mut tab.page_rotations {
+                                    *rot -= 90;
+                                }
+                                self.is_rotating_document = true;
+                            }
+                        }
+                        ui.close_menu();
+                    }
+                    
+                    if ui.add_enabled(has_pdf, egui::Button::image_and_text(
+                        egui::Image::new(egui::include_image!("../../assets/rotate_right.svg")).max_height(14.0).tint(ui.visuals().text_color()),
+                        "Rotate Right"
+                    )).clicked()
+                    {
+                        if let Some(active_idx) = self.active_tab_index {
+                            if let Some(tab) = self.tabs.get_mut(active_idx) {
+                                self.pending_rotation += 90;
+                                for rot in &mut tab.page_rotations {
+                                    *rot += 90;
+                                }
+                                self.is_rotating_document = true;
+                            }
+                        }
+                        ui.close_menu();
+                    }
                 });
                 
                 ui.menu_button("View", |ui| {
