@@ -201,5 +201,112 @@ impl NixobdoPdfApp {
             });
             ui.add_space(4.0);
         });
+
+        if self.is_annotation_mode {
+            egui::TopBottomPanel::top("annotation_toolbar_panel").show(ctx, |ui| {
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new("Annotation Tools:").strong());
+                    ui.add_space(8.0);
+                    
+                    let tool_selected = self.active_annotation_tool;
+                    
+
+                    let highlight_selected = tool_selected == Some(crate::document::AnnotationTool::Highlight);
+                    if ui.add(
+                        egui::Button::image(
+                            egui::Image::new(egui::include_image!("../../assets/highlight.svg"))
+                                .max_height(16.0)
+                                .max_width(16.0)
+                                .tint(ui.visuals().text_color())
+                        )
+                        .selected(highlight_selected)
+                    ).on_hover_text("Highlight").clicked() {
+                        self.active_annotation_tool = Some(crate::document::AnnotationTool::Highlight);
+                    }
+                    
+                    let underline_selected = tool_selected == Some(crate::document::AnnotationTool::Underline);
+                    if ui.add(
+                        egui::Button::image(
+                            egui::Image::new(egui::include_image!("../../assets/underline.svg"))
+                                .max_height(16.0)
+                                .max_width(16.0)
+                                .tint(ui.visuals().text_color())
+                        )
+                        .selected(underline_selected)
+                    ).on_hover_text("Underline").clicked() {
+                        self.active_annotation_tool = Some(crate::document::AnnotationTool::Underline);
+                    }
+                    
+                    let strike_selected = tool_selected == Some(crate::document::AnnotationTool::Strikethrough);
+                    if ui.add(
+                        egui::Button::image(
+                            egui::Image::new(egui::include_image!("../../assets/strikethrough.svg"))
+                                .max_height(16.0)
+                                .max_width(16.0)
+                                .tint(ui.visuals().text_color())
+                        )
+                        .selected(strike_selected)
+                    ).on_hover_text("Strikethrough").clicked() {
+                        self.active_annotation_tool = Some(crate::document::AnnotationTool::Strikethrough);
+                    }
+                    
+                    let redact_selected = tool_selected == Some(crate::document::AnnotationTool::Redact);
+                    if ui.add(
+                        egui::Button::image(
+                            egui::Image::new(egui::include_image!("../../assets/redact.svg"))
+                                .max_height(16.0)
+                                .max_width(16.0)
+                                .tint(ui.visuals().text_color())
+                        )
+                        .selected(redact_selected)
+                    ).on_hover_text("Redact").clicked() {
+                        self.active_annotation_tool = Some(crate::document::AnnotationTool::Redact);
+                    }
+                    
+                    // Unselect if clicked again
+                    if self.active_annotation_tool == tool_selected && ui.input(|i| i.pointer.any_click()) {
+                        // Handled by standard selectable_value logic above but we can also add escape logic in central_panel
+                    }
+                    
+                    ui.separator();
+                    
+                    if ui.add_enabled(!self.pending_annotations.is_empty(), egui::Button::new("Undo")).clicked() || ctx.input(|i| i.modifiers.command && i.key_pressed(egui::Key::Z)) {
+                        if let Some(action) = self.pending_annotations.pop() {
+                            self.redo_annotations.push(action);
+                        }
+                    }
+                    if ui.add_enabled(!self.redo_annotations.is_empty(), egui::Button::new("Redo")).clicked() || ctx.input(|i| i.modifiers.command && i.key_pressed(egui::Key::Y)) {
+                        if let Some(action) = self.redo_annotations.pop() {
+                            self.pending_annotations.push(action);
+                        }
+                    }
+                    
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.button("Cancel").clicked() {
+                            self.is_annotation_mode = false;
+                            self.active_annotation_tool = None;
+                            self.pending_annotations.clear();
+                            self.redo_annotations.clear();
+                        }
+                        
+                        let can_save = !self.pending_annotations.is_empty() && self.active_tab_index.is_some() && !self.is_saving_annotations;
+                        if ui.add_enabled(can_save, egui::Button::new(if self.is_saving_annotations { "Saving..." } else { "Save" })).clicked() {
+                            if let Some(active_idx) = self.active_tab_index {
+                                if let Some(tab) = self.tabs.get(active_idx) {
+                                    self.is_saving_annotations = true;
+                                    let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::SaveAnnotations {
+                                        path: tab.path.clone(),
+                                        annotations: self.pending_annotations.clone(),
+                                        ctx: ctx.clone(),
+                                    });
+                                }
+                            }
+                        }
+                    });
+                });
+                ui.add_space(4.0);
+            });
+        }
     }
 }

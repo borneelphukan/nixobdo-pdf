@@ -113,6 +113,18 @@ impl NixobdoPdfApp {
                         }
                     });
                     
+                    let annot_text = if self.is_annotation_mode { "✔ Annotation" } else { "    Annotation" };
+                    if ui.add_enabled(has_pdf, egui::Button::new(annot_text)).clicked() {
+                        self.is_annotation_mode = !self.is_annotation_mode;
+                        if !self.is_annotation_mode {
+                            // Reset state when turning off
+                            self.active_annotation_tool = None;
+                            self.pending_annotations.clear();
+                            self.redo_annotations.clear();
+                        }
+                        ui.close_menu();
+                    }
+                    
                     ui.separator();
                     
                     if ui.add_enabled(has_pdf, egui::Button::image_and_text(

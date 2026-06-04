@@ -121,6 +121,17 @@ impl eframe::App for NixobdoPdfApp {
                     self.pending_rotation = 0;
                     self.reload_pdf(ctx, path);
                 }
+                PdfWorkerMessage::AnnotationsSaved { path } => {
+                    self.toast_message = Some("Annotations saved successfully".to_string());
+                    self.toast_success = true;
+                    self.toast_timer = ctx.input(|i| i.time) + 4.0;
+                    self.is_saving_annotations = false;
+                    self.is_annotation_mode = false;
+                    self.active_annotation_tool = None;
+                    self.pending_annotations.clear();
+                    self.redo_annotations.clear();
+                    self.reload_pdf(ctx, path);
+                }
 
                 PdfWorkerMessage::UpdateCheckResult(is_available, version, is_manual) => {
                     if is_available {

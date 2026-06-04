@@ -34,10 +34,9 @@ fn main() -> eframe::Result<()> {
             let mut style = egui::Style::default();
             style.visuals = egui::Visuals::dark();
             
-            // Vibrant cyan accent color for a shiny look
-            let accent = egui::Color32::from_rgb(0, 220, 255);
+            // Light gray accent color for selection
+            let accent = egui::Color32::from_rgb(180, 180, 180);
             style.visuals.selection.bg_fill = accent;
-            
             // Opaque panel and window backgrounds
             style.visuals.panel_fill = egui::Color32::from_rgb(20, 20, 25);
             style.visuals.window_fill = egui::Color32::from_rgb(25, 25, 30);

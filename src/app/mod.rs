@@ -77,6 +77,14 @@ pub struct NixobdoPdfApp {
     pub is_rotating_document: bool,
     pub is_saving_rotation: bool,
     pub pending_rotation: i32,
+    
+    // Annotation feature
+    pub is_annotation_mode: bool,
+    pub active_annotation_tool: Option<crate::document::AnnotationTool>,
+    pub pending_annotations: Vec<crate::document::AnnotationAction>,
+    pub redo_annotations: Vec<crate::document::AnnotationAction>,
+    pub annotation_color: egui::Color32,
+    pub is_saving_annotations: bool,
 }
 
 impl Default for NixobdoPdfApp {
@@ -146,6 +154,12 @@ impl Default for NixobdoPdfApp {
             is_rotating_document: false,
             is_saving_rotation: false,
             pending_rotation: 0,
+            is_annotation_mode: false,
+            active_annotation_tool: None,
+            pending_annotations: Vec::new(),
+            redo_annotations: Vec::new(),
+            annotation_color: egui::Color32::from_rgb(255, 255, 0),
+            is_saving_annotations: false,
         }
     }
 }

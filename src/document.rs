@@ -194,6 +194,30 @@ pub enum PdfWorkerMessage {
     RotationSaved {
         path: PathBuf,
     },
+    AnnotationsSaved {
+        path: PathBuf,
+    },
+}
+
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub enum AnnotationTool {
+
+    Highlight,
+    Underline,
+    Strikethrough,
+    Redact,
+}
+
+#[derive(Clone, Debug)]
+pub struct AnnotationAction {
+    pub tool: AnnotationTool,
+    pub page_index: usize,
+    // Used for Highlight/Underline/Strikethrough/Redact
+    pub rects: Vec<egui::Rect>, 
+
+    pub position: Option<egui::Pos2>,
+    pub text: Option<String>,
+    pub color: egui::Color32,
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]

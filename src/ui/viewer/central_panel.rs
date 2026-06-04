@@ -305,6 +305,14 @@ impl NixobdoPdfApp {
                                                 };
                                                 
                                                 if let Some(texture) = texture_opt {
+                                                    if self.is_annotation_mode {
+                                                        if let Some(_tool) = self.active_annotation_tool {
+                                                            if response.hovered() {
+                                                                ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
+                                                            }
+                                                        }
+                                                    }
+                                                    
                                                     // Handle drag/selection input on the page
                                                     if index < tab.page_chars.len() {
                                                         if response.drag_started_by(egui::PointerButton::Primary) {
@@ -329,6 +337,53 @@ impl NixobdoPdfApp {
                                                         
                                                         if self.is_selecting && response.drag_stopped_by(egui::PointerButton::Primary) {
                                                             self.is_selecting = false;
+                                                            if self.is_annotation_mode {
+                                                                if let Some(tool) = self.active_annotation_tool {
+                                                                        if let (Some(start), Some(end)) = (self.selection_start, self.selection_end) {
+                                                                            if start.0 == index && end.0 == index {
+                                                                                let mut merged_rects: Vec<egui::Rect> = Vec::new();
+                                                                                for char_idx in 0..tab.page_chars[index].len() {
+                                                                                    if is_char_selected(index, char_idx, start, end) {
+                                                                                        let char_info = &tab.page_chars[index][char_idx];
+                                                                                        if !char_info.c.is_whitespace() {
+                                                                                            let char_rect = egui::Rect::from_min_max(
+                                                                                                egui::pos2(char_info.left, char_info.top),
+                                                                                                egui::pos2(char_info.right, char_info.bottom),
+                                                                                            );
+                                                                                            if let Some(last) = merged_rects.last_mut() {
+                                                                                                let y_overlap = last.min.y.max(char_rect.min.y) < last.max.y.min(char_rect.max.y);
+                                                                                                let same_line = y_overlap || (last.center().y - char_rect.center().y).abs() < 0.01;
+                                                                                                if same_line {
+                                                                                                    *last = last.union(char_rect);
+                                                                                                } else {
+                                                                                                    merged_rects.push(char_rect);
+                                                                                                }
+                                                                                            } else {
+                                                                                                merged_rects.push(char_rect);
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                                if !merged_rects.is_empty() {
+                                                                                    let color = match tool {
+                                                                                        crate::document::AnnotationTool::Underline | crate::document::AnnotationTool::Strikethrough => egui::Color32::BLACK,
+                                                                                        _ => self.annotation_color,
+                                                                                    };
+                                                                                    self.pending_annotations.push(crate::document::AnnotationAction {
+                                                                                        tool,
+                                                                                        page_index: index,
+                                                                                        rects: merged_rects,
+                                                                                        position: None,
+                                                                                        text: None,
+                                                                                        color,
+                                                                                    });
+                                                                                    self.selection_start = None;
+                                                                                    self.selection_end = None;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                }
+                                                            }
                                                         }
                                                         
                                                         if response.clicked() && !response.dragged_by(egui::PointerButton::Primary) {
@@ -377,6 +432,40 @@ impl NixobdoPdfApp {
                                                         }
                                                         if zoom_out_clicked {
                                                             tab.zoom = (tab.zoom - 0.1).max(0.0);
+                                                        }
+                                                    }
+
+
+
+                                                    // Draw pending annotations
+                                                    for action in &self.pending_annotations {
+                                                        if action.page_index == index {
+                                                            match action.tool {
+                                                                crate::document::AnnotationTool::Highlight => {
+                                                                    for rect in &action.rects {
+                                                                        let draw_rect = transform_rect_to_rot(rect.min.x, rect.min.y, rect.max.x, rect.max.y, response.rect, rot);
+                                                                        ui.painter().rect_filled(draw_rect, 0.0, egui::Color32::from_rgba_unmultiplied(action.color.r(), action.color.g(), action.color.b(), 100));
+                                                                    }
+                                                                }
+                                                                crate::document::AnnotationTool::Underline => {
+                                                                    for rect in &action.rects {
+                                                                        let draw_rect = transform_rect_to_rot(rect.min.x, rect.min.y, rect.max.x, rect.max.y, response.rect, rot);
+                                                                        ui.painter().line_segment([draw_rect.left_bottom(), draw_rect.right_bottom()], (2.0, action.color));
+                                                                    }
+                                                                }
+                                                                crate::document::AnnotationTool::Strikethrough => {
+                                                                    for rect in &action.rects {
+                                                                        let draw_rect = transform_rect_to_rot(rect.min.x, rect.min.y, rect.max.x, rect.max.y, response.rect, rot);
+                                                                        ui.painter().line_segment([draw_rect.left_center(), draw_rect.right_center()], (2.0, action.color));
+                                                                    }
+                                                                }
+                                                                crate::document::AnnotationTool::Redact => {
+                                                                    for rect in &action.rects {
+                                                                        let draw_rect = transform_rect_to_rot(rect.min.x, rect.min.y, rect.max.x, rect.max.y, response.rect, rot);
+                                                                        ui.painter().rect_filled(draw_rect, 0.0, egui::Color32::BLACK);
+                                                                    }
+                                                                }
+                                                            }
                                                         }
                                                     }
 
@@ -655,6 +744,7 @@ impl NixobdoPdfApp {
                 if response.clicked() {
                     ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(!is_fullscreen));
                 }
+
             });
     }
 }
