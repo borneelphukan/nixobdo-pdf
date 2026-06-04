@@ -22,6 +22,7 @@ interface GitHubRelease {
 
 export function DocsDownload() {
   const [latestStable, setLatestStable] = useState<GitHubRelease | null>(null);
+  const [nightlies, setNightlies] = useState<GitHubRelease[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,6 +34,9 @@ export function DocsDownload() {
         
         const stable = data.find(r => !r.prerelease);
         if (stable) setLatestStable(stable);
+        
+        const prereleases = data.filter(r => r.prerelease).slice(0, 3);
+        setNightlies(prereleases);
       } catch (error) {
         console.error('Error fetching releases:', error);
       } finally {
@@ -139,6 +143,46 @@ export function DocsDownload() {
             </div>
           </div>
         </a>
+      )}
+
+      {nightlies.length > 0 && (
+        <div className="mb-12">
+          <h2 className="text-2xl font-bold text-white mb-4">Nightly Updates</h2>
+          <p className="text-slate-400 mb-6">Unstable preview builds for testing new features.</p>
+          <div className="grid gap-4">
+            {nightlies.map(nightly => {
+              const nAsset = getPrimaryAsset(nightly);
+              if (!nAsset) return null;
+              return (
+                <a 
+                  key={nightly.id}
+                  href={nAsset.browser_download_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/50 border border-slate-800 rounded-xl p-4 transition-all hover:bg-slate-800/60"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="bg-orange-500/10 p-2.5 rounded-lg text-orange-400">
+                      <Download className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-white font-medium flex items-center gap-2">
+                        {nightly.tag_name}
+                        <span className="text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full border border-orange-500/20">Nightly</span>
+                      </h3>
+                      <p className="text-slate-500 text-sm mt-0.5">
+                        {formatDate(nightly.published_at)} • {formatSize(nAsset.size)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-slate-400 group-hover:text-white transition-colors text-sm font-medium">
+                    Download
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       <h2 className="text-2xl font-bold text-white mb-4 mt-8">Recent Changes</h2>
