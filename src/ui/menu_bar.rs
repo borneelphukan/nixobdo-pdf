@@ -81,6 +81,39 @@ impl NixobdoPdfApp {
                     }
                 });
                 
+                ui.menu_button("Edit", |ui| {
+                    ui.horizontal(|ui| {
+                        let has_pdf = self.active_tab_index.is_some();
+                        if ui.add_enabled(has_pdf, egui::Button::new("Add Signature")).clicked() {
+                            if let Some(path) = rfd::FileDialog::new()
+                                .add_filter("Images", &["png", "jpg", "jpeg"])
+                                .pick_file()
+                            {
+                                if let Ok(img) = image::open(&path) {
+                                    let rgba = img.to_rgba8();
+                                    let size = [rgba.width() as usize, rgba.height() as usize];
+                                    let pixels = rgba.as_flat_samples();
+                                    let color_image = egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice());
+                                    
+                                    self.signature_texture = Some(ctx.load_texture(
+                                        "signature",
+                                        color_image,
+                                        egui::TextureOptions::LINEAR,
+                                    ));
+                                    self.signature_image_path = Some(path.clone());
+                                    
+                                    // Start placing immediately
+                                    self.is_placing_signature = true;
+                                    self.signature_position = Some((0.5, 0.5));
+                                    self.signature_scale = 1.0;
+                                    self.signature_active_page = self.active_tab_index.and_then(|idx| self.tabs.get(idx).map(|t| t.selected_page));
+                                }
+                            }
+                            ui.close_menu();
+                        }
+                    });
+                });
+                
                 ui.menu_button("View", |ui| {
                     ui.set_min_width(220.0);
                     let sidebar_text = if self.sidebar_open { "✔ Show Sidebar" } else { "    Show Sidebar" };

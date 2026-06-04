@@ -11,6 +11,51 @@ impl NixobdoPdfApp {
             let mut copy_triggered = false;
             let mut exit_triggered = false;
             
+            if self.is_placing_signature {
+                if self.active_tab_index.is_none() {
+                    self.is_placing_signature = false;
+                } else {
+                    egui::Window::new("Signature Actions")
+                        .anchor(egui::Align2::CENTER_TOP, [0.0, 20.0])
+                        .title_bar(false)
+                        .resizable(false)
+                        .order(egui::Order::Foreground)
+                        .show(ctx, |ui| {
+                        ui.horizontal(|ui| {
+                            if self.is_saving_signature {
+                                ui.label("Saving signature to PDF...");
+                            } else {
+                                ui.label("Drag the signature to position it. Then click Save.");
+                                ui.add_space(10.0);
+                                let save_clicked = ui.button("Save (Ctrl+S)").clicked() || ui.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::S));
+                                if save_clicked {
+                                    if let Some(active_page) = self.signature_active_page {
+                                        if let (Some(active_idx), Some(img_path)) = (self.active_tab_index, &self.signature_image_path) {
+                                            if let Some(tab) = self.tabs.get(active_idx) {
+                                                self.is_saving_signature = true;
+                                                
+                                                let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::SaveSignature {
+                                                    path: tab.path.clone(),
+                                                    page_index: active_page,
+                                                    image_path: img_path.clone(),
+                                                    position: self.signature_position.unwrap_or((0.5, 0.5)),
+                                                    scale: self.signature_scale,
+                                                    ctx: ctx.clone(),
+                                                });
+                                            }
+                                        }
+                                    }
+                                }
+                                if ui.button("Cancel").clicked() {
+                                    self.is_placing_signature = false;
+                                    self.is_saving_signature = false;
+                                }
+                            }
+                        });
+                    });
+                }
+            }
+            
             if let Some(active_idx) = self.active_tab_index {
                 if let Some(tab) = self.tabs.get_mut(active_idx) {
                     show_placeholder = false;
@@ -393,6 +438,57 @@ impl NixobdoPdfApp {
                                                         mesh.indices.push(idx + 3);
                                                         
                                                         ui.painter().add(egui::Shape::mesh(mesh));
+                                                    }
+                                                    
+                                                    // Render signature if active
+                                                    if self.is_placing_signature && self.signature_active_page == Some(index) {
+                                                        if let Some(texture) = &self.signature_texture {
+                                                            let sig_aspect = texture.size_vec2().y / texture.size_vec2().x;
+                                                            let sig_w = 200.0 * (tab.zoom / 50.0).max(1.0) * self.signature_scale; // scale with zoom and user scale
+                                                            let sig_h = sig_w * sig_aspect;
+                                                            let sig_size = egui::vec2(sig_w, sig_h);
+
+                                                            let mut n_pos = self.signature_position.unwrap_or((0.5, 0.5));
+                                                            let screen_x = response.rect.min.x + n_pos.0 * response.rect.width() - sig_w / 2.0;
+                                                            let screen_y = response.rect.min.y + n_pos.1 * response.rect.height() - sig_h / 2.0;
+                                                            
+                                                            let sig_rect = egui::Rect::from_min_size(egui::pos2(screen_x, screen_y), sig_size);
+                                                            let sig_response = ui.interact(sig_rect, ui.id().with("sig_drag").with(index), egui::Sense::drag());
+                                                            
+                                                            let resize_rect = egui::Rect::from_center_size(sig_rect.max, egui::vec2(20.0, 20.0));
+                                                            let resize_response = ui.interact(resize_rect, ui.id().with("sig_resize").with(index), egui::Sense::drag());
+                                                            
+                                                            if !self.is_saving_signature {
+                                                                if resize_response.dragged() {
+                                                                    let drag_delta = resize_response.drag_delta();
+                                                                    let current_w = 200.0 * (tab.zoom / 50.0).max(1.0) * self.signature_scale;
+                                                                    let new_w = current_w + drag_delta.x;
+                                                                    self.signature_scale = (new_w / (200.0 * (tab.zoom / 50.0).max(1.0))).clamp(0.2, 3.0);
+                                                                    ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeNwSe);
+                                                                } else if sig_response.dragged() {
+                                                                    let drag_delta = sig_response.drag_delta();
+                                                                    n_pos.0 += drag_delta.x / response.rect.width();
+                                                                    n_pos.1 += drag_delta.y / response.rect.height();
+                                                                    self.signature_position = Some(n_pos);
+                                                                    ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+                                                                } else if resize_response.hovered() {
+                                                                    ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeNwSe);
+                                                                } else if sig_response.hovered() {
+                                                                    ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
+                                                                }
+                                                                
+                                                                // Highlight border when dragging or hovering
+                                                                if sig_response.dragged() || sig_response.hovered() || resize_response.dragged() || resize_response.hovered() {
+                                                                    ui.painter().rect_stroke(sig_rect.expand(2.0), 0.0, (2.0, egui::Color32::from_rgb(100, 150, 250)), egui::StrokeKind::Middle);
+                                                                    
+                                                                    // Draw resize handle
+                                                                    ui.painter().circle_filled(resize_rect.center(), 6.0, egui::Color32::from_rgb(100, 150, 250));
+                                                                    ui.painter().circle_stroke(resize_rect.center(), 6.0, (1.0, egui::Color32::WHITE));
+                                                                }
+                                                            }
+                                                            
+                                                            ui.painter().image(texture.id(), sig_rect, egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)), egui::Color32::WHITE);
+                                                        }
                                                     }
                                                     
                                                     // Handle PDF links interaction

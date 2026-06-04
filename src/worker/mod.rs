@@ -16,6 +16,7 @@ pub enum PdfWorkerTask {
     Export { path: PathBuf, out_path: PathBuf, format: ExportFormat, retain_layout: bool, include_images: bool, ctx: egui::Context, cancel_flag: Arc<AtomicBool> },
     CheckUpdate { is_manual: bool, ctx: egui::Context },
     DownloadUpdate { version: String, ctx: egui::Context },
+    SaveSignature { path: PathBuf, page_index: usize, image_path: PathBuf, position: (f32, f32), scale: f32, ctx: egui::Context },
 }
 
 pub fn spawn_worker_thread(
@@ -146,6 +147,59 @@ pub fn spawn_worker_thread(
                                 }
                             }
                         });
+                    }
+                    PdfWorkerTask::SaveSignature { path, page_index, image_path, position, scale, ctx } => {
+                        let tx = msg_tx_clone.clone();
+                        // Open the image to get its dimensions
+                        if let Ok(img) = image::open(&image_path) {
+                            let img_w = img.width() as f32;
+                            let img_h = img.height() as f32;
+                            let aspect = img_h / img_w;
+                            
+                            // Let's assume signature is 200px wide for layout, but we need PDF points
+                            // Standard PDF points: 72 per inch
+                            let target_w = 150.0_f32 * scale; // 150 points width * scale
+                            let target_h = target_w * aspect;
+
+                            match pdf.load_pdf_from_file(path.to_str().unwrap_or_default(), None) {
+                                Ok(doc) => {
+                                    if let Ok(mut page) = doc.pages().get(page_index as u16) {
+                                        let page_w = page.width().value;
+                                        let page_h = page.height().value;
+                                        
+                                        // Calculate the position in PDF coordinates
+                                        let x = position.0 * page_w - target_w / 2.0;
+                                        let y = page_h - (position.1 * page_h) - target_h / 2.0;
+
+                                        if let Ok(mut object) = pdfium_render::prelude::PdfPageImageObject::new_with_width(
+                                            &doc,
+                                            &img,
+                                            pdfium_render::prelude::PdfPoints::new(target_w)
+                                        ) {
+                                            let _ = object.translate(
+                                                pdfium_render::prelude::PdfPoints::new(x as f32),
+                                                pdfium_render::prelude::PdfPoints::new(y as f32)
+                                            );
+                                            
+                                            let _ = page.objects_mut().add_image_object(object);
+                                            
+                                            // Save the document back
+                                            if let Ok(_) = doc.save_to_file(path.to_str().unwrap_or_default()) {
+                                                let _ = tx.send(PdfWorkerMessage::SignatureSaved { path: path.clone() });
+                                            } else {
+                                                let _ = tx.send(PdfWorkerMessage::ExportComplete { success: false, message: "Failed to save PDF".into() });
+                                            }
+                                        } else {
+                                            let _ = tx.send(PdfWorkerMessage::ExportComplete { success: false, message: "Failed to create image object".into() });
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    let _ = tx.send(PdfWorkerMessage::ExportComplete { success: false, message: "Failed to load PDF for saving".into() });
+                                }
+                            }
+                        }
+                        ctx.request_repaint();
                     }
                 }
             } else {

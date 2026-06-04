@@ -188,6 +188,9 @@ pub enum PdfWorkerMessage {
     UpdateCheckResult(bool, Option<String>, bool),
     UpdateDownloadProgress(f32),
     UpdateDownloadComplete(Result<String, String>),
+    SignatureSaved {
+        path: PathBuf,
+    },
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]

@@ -65,6 +65,16 @@ impl NixobdoPdfApp {
         });
     }
 
+    pub(crate) fn reload_pdf(&mut self, ctx: &egui::Context, path: PathBuf) {
+        if let Some(idx) = self.tabs.iter().position(|t| t.path == path.clone()) {
+            self.tabs[idx].is_loading = true;
+            let _ = self.pdf_task_tx.send(PdfWorkerTask::Load {
+                path,
+                ctx: ctx.clone(),
+            });
+        }
+    }
+
     pub(crate) fn close_tab(&mut self, index: usize) {
         if index >= self.tabs.len() {
             return;
@@ -84,6 +94,6 @@ impl NixobdoPdfApp {
 
     // Recent Files persistence
     pub(crate) fn load_recent_files() -> Vec<PathBuf> {
-        Vec::new()
+        Vec::new() // Not implemented in this snippet
     }
 }

@@ -104,6 +104,14 @@ impl eframe::App for NixobdoPdfApp {
                     self.toast_success = success;
                     self.toast_timer = ctx.input(|i| i.time) + 4.0; // show for 4 seconds
                 }
+                PdfWorkerMessage::SignatureSaved { path } => {
+                    self.toast_message = Some("Signature added successfully".to_string());
+                    self.toast_success = true;
+                    self.toast_timer = ctx.input(|i| i.time) + 4.0;
+                    self.is_placing_signature = false;
+                    self.is_saving_signature = false;
+                    self.reload_pdf(ctx, path);
+                }
 
                 PdfWorkerMessage::UpdateCheckResult(is_available, version, is_manual) => {
                     if is_available {

@@ -66,6 +66,15 @@ pub struct NixobdoPdfApp {
     
     // Auto update
     pub has_checked_for_updates: bool,
+    
+    // Signature feature
+    pub signature_image_path: Option<PathBuf>,
+    pub signature_texture: Option<egui::TextureHandle>,
+    pub is_placing_signature: bool,
+    pub signature_position: Option<(f32, f32)>, // Normalized (x, y) relative to page top-left
+    pub signature_active_page: Option<usize>,
+    pub signature_scale: f32,
+    pub is_saving_signature: bool,
 }
 
 impl Default for NixobdoPdfApp {
@@ -128,6 +137,13 @@ impl Default for NixobdoPdfApp {
             about_window_open: false,
             startup_time: std::time::Instant::now(),
             has_checked_for_updates: false,
+            signature_image_path: None,
+            signature_texture: None,
+            is_placing_signature: false,
+            signature_position: None,
+            signature_active_page: None,
+            signature_scale: 1.0,
+            is_saving_signature: false,
         }
     }
 }
