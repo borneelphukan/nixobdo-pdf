@@ -1,4 +1,5 @@
 pub mod eframe_app;
+pub mod messages;
 pub mod state;
 
 use std::path::PathBuf;

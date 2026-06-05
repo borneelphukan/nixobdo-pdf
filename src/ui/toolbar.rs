@@ -61,7 +61,7 @@ impl NixobdoPdfApp {
                         "0/0".to_string()
                     };
 
-                    if ui.button("➖ Zoom Out").clicked() { zoom_out = true; }
+                    if ui.button("🔍-").on_hover_text("Zoom Out").clicked() { zoom_out = true; }
                     
                     let mut current_zoom = if let Some(active_idx) = self.active_tab_index {
                         if let Some(tab) = self.tabs.get(active_idx) {
@@ -77,7 +77,7 @@ impl NixobdoPdfApp {
                             .range(0.0..=1000.0)
                     );
                     
-                    if ui.button("➕ Zoom In").clicked() { zoom_in = true; }
+                    if ui.button("🔍+").on_hover_text("Zoom In").clicked() { zoom_in = true; }
                     if ui.button("Reset").clicked() { zoom_reset = true; }
                     
                     ui.separator();
@@ -292,14 +292,23 @@ impl NixobdoPdfApp {
                         
                         let can_save = !self.pending_annotations.is_empty() && self.active_tab_index.is_some() && !self.is_saving_annotations;
                         if ui.add_enabled(can_save, egui::Button::new(if self.is_saving_annotations { "Saving..." } else { "Save" })).clicked() {
-                            if let Some(active_idx) = self.active_tab_index {
-                                if let Some(tab) = self.tabs.get(active_idx) {
-                                    self.is_saving_annotations = true;
-                                    let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::SaveAnnotations {
-                                        path: tab.path.clone(),
-                                        annotations: self.pending_annotations.clone(),
-                                        ctx: ctx.clone(),
-                                    });
+                            let confirm = rfd::MessageDialog::new()
+                                .set_title("Nixobdo PDF Reader")
+                                .set_description("Annotation in a document is permanent. Are you sure you want to annotate the document ?")
+                                .set_buttons(rfd::MessageButtons::YesNo)
+                                .set_level(rfd::MessageLevel::Warning)
+                                .show();
+
+                            if confirm == rfd::MessageDialogResult::Yes {
+                                if let Some(active_idx) = self.active_tab_index {
+                                    if let Some(tab) = self.tabs.get(active_idx) {
+                                        self.is_saving_annotations = true;
+                                        let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::SaveAnnotations {
+                                            path: tab.path.clone(),
+                                            annotations: self.pending_annotations.clone(),
+                                            ctx: ctx.clone(),
+                                        });
+                                    }
                                 }
                             }
                         }
