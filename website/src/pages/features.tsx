@@ -1,4 +1,4 @@
-import { Layout, PenTool, FileOutput } from 'lucide-react';
+import { Layout, PenTool, FileOutput, FileSignature } from 'lucide-react';
 
 export function DocsFeatures() {
   return (
@@ -89,6 +89,19 @@ export function DocsFeatures() {
             </tr>
           </tbody>
         </table>
+      </div>
+
+      {/* Signatures */}
+      <h2 className="text-2xl font-bold text-white mt-12 mb-4 border-b border-white/10 pb-2 flex items-center gap-2">
+        <FileSignature className="w-6 h-6 text-indigo-400" />
+        Signatures
+      </h2>
+      <p className="text-slate-300 mb-6">
+        Securely add your digital signatures to any document to authenticate and finalize them without needing to print or use external tools.
+      </p>
+
+      <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 mb-8 text-sm text-slate-300">
+        <strong className="text-white">How to access:</strong> You can add a signature by navigating to <strong>Tools &gt; Signatures</strong>.
       </div>
 
       {/* Export */}
