@@ -129,10 +129,15 @@ pub fn export_docx(pdf: &Pdfium, path: &PathBuf, out_path: &PathBuf, retain_layo
                 } else {
                     let raw_text = text.all();
                     for line in raw_text.lines() {
+                        let sanitized_line: String = line.chars().filter(|&c| {
+                            let u = c as u32;
+                            u == 0x09 || u == 0x0A || u == 0x0D || (u >= 0x20 && u <= 0xD7FF) || (u >= 0xE000 && u <= 0xFFFD) || (u >= 0x10000 && u <= 0x10FFFF)
+                        }).collect();
+                        
                         let paragraph = docx_rs::Paragraph::new().add_run(
                             docx_rs::Run::new()
                                 .size(24) // 12pt
-                                .add_text(line.to_string())
+                                .add_text(sanitized_line)
                         );
                         docx = docx.add_paragraph(paragraph);
                     }
@@ -169,6 +174,10 @@ fn export_docx_layout_text<'a>(mut docx: docx_rs::Docx, text: &PdfPageText<'a>) 
             .as_deref()
             .and_then(|s| s.chars().next())
             .unwrap_or(' ');
+            
+        let u = char_text as u32;
+        let is_valid = u == 0x09 || u == 0x0A || u == 0x0D || (u >= 0x20 && u <= 0xD7FF) || (u >= 0xE000 && u <= 0xFFFD) || (u >= 0x10000 && u <= 0x10FFFF);
+        let char_text = if is_valid { char_text } else { ' ' };
         
         let char_size = if let Ok(text_obj) = c.text_object() {
             text_obj.scaled_font_size().value
@@ -315,14 +324,26 @@ pub fn export_doc_rtf(pdf: &Pdfium, path: &PathBuf, out_path: &PathBuf, retain_l
                                 content.push(' ');
                             }
                         }
-                        content.push(char_text);
+                        
+                        let u = char_text as u32;
+                        if u == 0x09 || u == 0x0A || u == 0x0D || (u >= 0x20 && u <= 0xD7FF) || (u >= 0xE000 && u <= 0xFFFD) || (u >= 0x10000 && u <= 0x10FFFF) {
+                            content.push(char_text);
+                        } else {
+                            content.push(' ');
+                        }
+                        
                         last_y = Some(char_y);
                         if let Ok(bounds) = c.loose_bounds() {
                             last_x = Some(bounds.right().value);
                         }
                     }
                 } else {
-                    content.push_str(&text.all());
+                    let raw_text = text.all();
+                    let sanitized_text: String = raw_text.chars().filter(|&c| {
+                        let u = c as u32;
+                        u == 0x09 || u == 0x0A || u == 0x0D || (u >= 0x20 && u <= 0xD7FF) || (u >= 0xE000 && u <= 0xFFFD) || (u >= 0x10000 && u <= 0x10FFFF)
+                    }).collect();
+                    content.push_str(&sanitized_text);
                 }
                 content.push_str("\n\n");
             }
