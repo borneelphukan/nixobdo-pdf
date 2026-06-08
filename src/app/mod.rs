@@ -166,7 +166,7 @@ impl Default for NixobdoPdfApp {
             active_annotation_tool: None,
             pending_annotations: Vec::new(),
             redo_annotations: Vec::new(),
-            annotation_color: egui::Color32::from_rgb(0, 0, 0), // Black by default
+            annotation_color: egui::Color32::from_rgb(255, 255, 0), // Yellow by default
             is_saving_annotations: false,
             text_annotation_size: 12.0,
             text_annotation_bold: false,

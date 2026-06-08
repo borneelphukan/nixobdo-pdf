@@ -4,7 +4,7 @@ import GitHubIcon from '@mui/icons-material/GitHub';
 
 export function Footer() {
   return (
-    <footer className="bg-[#111115] text-slate-400 py-12 border-t border-white/5">
+    <footer className="bg-slate-950 text-slate-400 py-12 border-t border-slate-700/50">
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16">
           <div className="flex flex-col gap-4">
@@ -18,11 +18,11 @@ export function Footer() {
           <div className="flex flex-col gap-4">
             <h3 className="text-white font-bold tracking-wider text-sm mb-2 uppercase">Links</h3>
             <a href="https://github.com/borneelphukan/nixobdo-pdf" target="_blank" rel="noopener noreferrer" className="hover:text-white transition text-sm">GitHub</a>
-            <Link to="/docs" className="hover:text-white transition text-sm">Documentation</Link>
+            <Link to="/docs/guides/getting-started" className="hover:text-white transition text-sm">Documentation</Link>
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6 pt-8 border-t border-white/5">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6 pt-8 border-t border-slate-700/50">
           <div className="flex flex-col items-center md:items-start gap-1">
             <div className="flex items-center gap-2 text-red-500 mb-1">
               <Scale className="w-8 h-8" />

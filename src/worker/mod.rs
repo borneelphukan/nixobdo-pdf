@@ -243,129 +243,144 @@ pub fn spawn_worker_thread(
                     }
                     PdfWorkerTask::SaveAnnotations { path, annotations, ctx } => {
                         let tx = msg_tx_clone.clone();
-                        match pdf.load_pdf_from_file(path.to_str().unwrap_or_default(), None) {
-                            Ok(mut doc) => {
-                                  for action in annotations {
-                                      if let Ok(mut page) = doc.pages().get(action.page_index as u16) {
-                                          let page_w = page.width().value;
-                                          let page_h = page.height().value;
-                                          
-                                          let pdf_color = pdfium_render::prelude::PdfColor::new(action.color.r(), action.color.g(), action.color.b(), 255);
+                        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                            match pdf.load_pdf_from_file(path.to_str().unwrap_or_default(), None) {
+                                Ok(mut doc) => {
+                                      for action in annotations {
+                                          if let Ok(mut page) = doc.pages().get(action.page_index as u16) {
+                                              let page_w = page.width().value;
+                                              let page_h = page.height().value;
+                                              
+                                              let pdf_color = pdfium_render::prelude::PdfColor::new(action.color.r(), action.color.g(), action.color.b(), 255);
+      
+                                              match action.tool {
+                                                  crate::document::AnnotationTool::Highlight => {
+                                                      if action.rects.is_empty() { continue; }
+                                                      for r in &action.rects {
+                                                          let x1 = pdfium_render::prelude::PdfPoints::new(r.min.x * page_w);
+                                                          let y1 = pdfium_render::prelude::PdfPoints::new((1.0 - r.max.y) * page_h);
+                                                          let x2 = pdfium_render::prelude::PdfPoints::new(r.max.x * page_w);
+                                                          let y2 = pdfium_render::prelude::PdfPoints::new((1.0 - r.min.y) * page_h);
   
-                                          match action.tool {
-                                              crate::document::AnnotationTool::Highlight => {
-                                                  if action.rects.is_empty() { continue; }
-                                                  for r in &action.rects {
-                                                      let x1 = pdfium_render::prelude::PdfPoints::new(r.min.x * page_w);
-                                                      let y1 = pdfium_render::prelude::PdfPoints::new((1.0 - r.max.y) * page_h);
-                                                      let x2 = pdfium_render::prelude::PdfPoints::new(r.max.x * page_w);
-                                                      let y2 = pdfium_render::prelude::PdfPoints::new((1.0 - r.min.y) * page_h);
-
-                                                      if let Ok(mut path) = pdfium_render::prelude::PdfPagePathObject::new(&doc, x1, y1, None, None, Some(pdf_color)) {
-                                                          let _ = path.line_to(x2, y1);
-                                                          let _ = path.line_to(x2, y2);
-                                                          let _ = path.line_to(x1, y2);
-                                                          let _ = path.close_path();
-                                                          let _ = path.set_fill_and_stroke_mode(pdfium_render::prelude::PdfPathFillMode::Winding, false);
-                                                          let _ = path.set_blend_mode(pdfium_render::prelude::PdfPageObjectBlendMode::Multiply);
-                                                          let _ = page.objects_mut().add_path_object(path);
+                                                          let highlight_color = pdfium_render::prelude::PdfColor::new(action.color.r(), action.color.g(), action.color.b(), 100);
+                                                          if let Ok(mut path) = pdfium_render::prelude::PdfPagePathObject::new(&doc, x1, y1, None, None, Some(highlight_color)) {
+                                                              let _ = path.line_to(x2, y1);
+                                                              let _ = path.line_to(x2, y2);
+                                                              let _ = path.line_to(x1, y2);
+                                                              let _ = path.close_path();
+                                                              let _ = path.set_fill_and_stroke_mode(pdfium_render::prelude::PdfPathFillMode::Winding, false);
+                                                              let _ = path.set_blend_mode(pdfium_render::prelude::PdfPageObjectBlendMode::Multiply);
+                                                              let _ = page.objects_mut().add_path_object(path);
+                                                          }
                                                       }
                                                   }
-                                              }
-                                              crate::document::AnnotationTool::Underline => {
-                                                  if action.rects.is_empty() { continue; }
-                                                  for r in &action.rects {
-                                                      let x1 = pdfium_render::prelude::PdfPoints::new(r.min.x * page_w);
-                                                      let x2 = pdfium_render::prelude::PdfPoints::new(r.max.x * page_w);
-                                                      let y = pdfium_render::prelude::PdfPoints::new((1.0 - r.max.y) * page_h);
-                                                      if let Ok(path) = pdfium_render::prelude::PdfPagePathObject::new_line(&doc, x1, y, x2, y, pdf_color, pdfium_render::prelude::PdfPoints::new(2.0)) {
-                                                          let _ = page.objects_mut().add_path_object(path);
-                                                      }
-                                                  }
-                                              }
-                                              crate::document::AnnotationTool::Strikethrough => {
-                                                  if action.rects.is_empty() { continue; }
-                                                  for r in &action.rects {
-                                                      let x1 = pdfium_render::prelude::PdfPoints::new(r.min.x * page_w);
-                                                      let x2 = pdfium_render::prelude::PdfPoints::new(r.max.x * page_w);
-                                                      let y = pdfium_render::prelude::PdfPoints::new((1.0 - (r.min.y + r.max.y) / 2.0) * page_h);
-                                                      if let Ok(path) = pdfium_render::prelude::PdfPagePathObject::new_line(&doc, x1, y, x2, y, pdf_color, pdfium_render::prelude::PdfPoints::new(2.0)) {
-                                                          let _ = page.objects_mut().add_path_object(path);
-                                                      }
-                                                  }
-                                              }
-                                              crate::document::AnnotationTool::Redact => {
-                                                  if action.rects.is_empty() { continue; }
-                                                  for r in &action.rects {
-                                                      let x1 = pdfium_render::prelude::PdfPoints::new(r.min.x * page_w);
-                                                      let y1 = pdfium_render::prelude::PdfPoints::new((1.0 - r.max.y) * page_h);
-                                                      let x2 = pdfium_render::prelude::PdfPoints::new(r.max.x * page_w);
-                                                      let y2 = pdfium_render::prelude::PdfPoints::new((1.0 - r.min.y) * page_h);
-
-                                                      if let Ok(mut path) = pdfium_render::prelude::PdfPagePathObject::new(&doc, x1, y1, None, None, Some(pdfium_render::prelude::PdfColor::new(0, 0, 0, 255))) {
-                                                          let _ = path.line_to(x2, y1);
-                                                          let _ = path.line_to(x2, y2);
-                                                          let _ = path.line_to(x1, y2);
-                                                          let _ = path.close_path();
-                                                          let _ = path.set_fill_and_stroke_mode(pdfium_render::prelude::PdfPathFillMode::Winding, false);
-                                                          let _ = page.objects_mut().add_path_object(path);
-                                                      }
-                                                  }
-                                              }
-                                              crate::document::AnnotationTool::Text => {
-                                                  if let Some(text) = &action.text {
-                                                      if !text.is_empty() {
-                                                          let pos = action.position.unwrap_or(egui::pos2(0.5, 0.5));
-                                                          let scale = action.scale.unwrap_or(12.0);
+                                                  crate::document::AnnotationTool::Underline => {
+                                                      if action.rects.is_empty() { continue; }
+                                                      for r in &action.rects {
+                                                          let x1 = pdfium_render::prelude::PdfPoints::new(r.min.x * page_w);
+                                                          let x2 = pdfium_render::prelude::PdfPoints::new(r.max.x * page_w);
+                                                          let y = pdfium_render::prelude::PdfPoints::new((1.0 - r.max.y) * page_h);
                                                           
-                                                          let font_size = scale;
-                                                          let doc_fonts = doc.fonts_mut();
-                                                          let font = doc_fonts.helvetica();
-                                                          
-                                                          if let Ok(mut text_obj) = pdfium_render::prelude::PdfPageTextObject::new(
-                                                              &doc,
-                                                              text,
-                                                              font,
-                                                              pdfium_render::prelude::PdfPoints::new(font_size)
-                                                          ) {
-                                                              let _text_width = text_obj.width().unwrap_or(pdfium_render::prelude::PdfPoints::new(0.0)).value;
-                                                              let text_height = text_obj.height().unwrap_or(pdfium_render::prelude::PdfPoints::new(font_size)).value;
+                                                          if let Ok(path) = pdfium_render::prelude::PdfPagePathObject::new_line(&doc, x1, y, x2, y, pdf_color, pdfium_render::prelude::PdfPoints::new(2.0)) {
+                                                              let _ = page.objects_mut().add_path_object(path);
+                                                          }
+                                                      }
+                                                  }
+                                                  crate::document::AnnotationTool::Strikethrough => {
+                                                      if action.rects.is_empty() { continue; }
+                                                      for r in &action.rects {
+                                                          let x1 = pdfium_render::prelude::PdfPoints::new(r.min.x * page_w);
+                                                          let x2 = pdfium_render::prelude::PdfPoints::new(r.max.x * page_w);
+                                                          let y = pdfium_render::prelude::PdfPoints::new((1.0 - (r.min.y + r.max.y) / 2.0) * page_h);
+                                                          if let Ok(path) = pdfium_render::prelude::PdfPagePathObject::new_line(&doc, x1, y, x2, y, pdf_color, pdfium_render::prelude::PdfPoints::new(2.0)) {
+                                                              let _ = page.objects_mut().add_path_object(path);
+                                                          }
+                                                      }
+                                                  }
+                                                  crate::document::AnnotationTool::Redact => {
+                                                      if action.rects.is_empty() { continue; }
+                                                      for r in &action.rects {
+                                                          let x1 = pdfium_render::prelude::PdfPoints::new(r.min.x * page_w);
+                                                          let y1 = pdfium_render::prelude::PdfPoints::new((1.0 - r.max.y) * page_h);
+                                                          let x2 = pdfium_render::prelude::PdfPoints::new(r.max.x * page_w);
+                                                          let y2 = pdfium_render::prelude::PdfPoints::new((1.0 - r.min.y) * page_h);
+  
+                                                          if let Ok(mut path) = pdfium_render::prelude::PdfPagePathObject::new(&doc, x1, y1, None, None, Some(pdfium_render::prelude::PdfColor::new(0, 0, 0, 255))) {
+                                                              let _ = path.line_to(x2, y1);
+                                                              let _ = path.line_to(x2, y2);
+                                                              let _ = path.line_to(x1, y2);
+                                                              let _ = path.close_path();
+                                                              let _ = path.set_fill_and_stroke_mode(pdfium_render::prelude::PdfPathFillMode::Winding, false);
+                                                              let _ = page.objects_mut().add_path_object(path);
+                                                          }
+                                                      }
+                                                  }
+                                                  crate::document::AnnotationTool::Text => {
+                                                      if let Some(text) = &action.text {
+                                                          if !text.is_empty() {
+                                                              let pos = action.position.unwrap_or(egui::pos2(0.5, 0.5));
+                                                              let scale = action.scale.unwrap_or(12.0);
                                                               
-                                                              let x = pos.x * page_w;
-                                                              let y = page_h - (pos.y * page_h) - text_height;
+                                                              let font_size = scale;
+                                                              let doc_fonts = doc.fonts_mut();
+                                                              let font = doc_fonts.helvetica();
                                                               
-                                                              let _ = text_obj.translate(
-                                                                  pdfium_render::prelude::PdfPoints::new(x),
-                                                                  pdfium_render::prelude::PdfPoints::new(y)
-                                                              );
-                                                              let _ = text_obj.set_fill_color(pdf_color);
-                                                              let _ = page.objects_mut().add_text_object(text_obj);
+                                                              if let Ok(mut text_obj) = pdfium_render::prelude::PdfPageTextObject::new(&doc, text, font, pdfium_render::prelude::PdfPoints::new(font_size)) {
+                                                                  let _ = text_obj.set_fill_color(pdf_color);
+                                                                  
+                                                                  let text_w = text_obj.width().unwrap_or(pdfium_render::prelude::PdfPoints::new(0.0)).value;
+                                                                  let text_h = font_size; // approximate height
+                                                                  
+                                                                  let _ = text_obj.translate(
+                                                                      pdfium_render::prelude::PdfPoints::new(pos.x * page_w - text_w / 2.0),
+                                                                      pdfium_render::prelude::PdfPoints::new((1.0 - pos.y) * page_h - text_h / 2.0)
+                                                                  );
+                                                                  
+                                                                  let _ = page.objects_mut().add_text_object(text_obj);
+                                                              }
                                                           }
                                                       }
                                                   }
                                               }
                                           }
                                       }
-                                  }
-                                
-                                // Ensure we save via a temporary file to avoid file lock issues on Windows
-                                  let mut tmp_path = std::env::temp_dir();
-                                  tmp_path.push(format!("tmp_pdf_export_{}_{}.pdf", std::process::id(), std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis()));
-                                  if let Ok(_) = doc.save_to_file(&tmp_path) {
-                                      if let Ok(_) = std::fs::copy(&tmp_path, &path) {
-                                          let _ = std::fs::remove_file(&tmp_path);
-                                          let _ = tx.send(PdfWorkerMessage::AnnotationsSaved { path: path.clone() });
+                                    
+                                    // Ensure we save via a temporary file to avoid file lock issues on Windows
+                                      let mut tmp_path = std::env::temp_dir();
+                                      tmp_path.push(format!("tmp_pdf_export_{}_{}.pdf", std::process::id(), std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis()));
+                                      if let Ok(_) = doc.save_to_file(&tmp_path) {
+                                          drop(doc); // Release file lock on Windows before copy!
+                                          
+                                          // Retry copying up to 10 times in case of transient locks from antivirus, etc.
+                                          let mut copy_success = false;
+                                          for _ in 0..10 {
+                                              if std::fs::copy(&tmp_path, &path).is_ok() {
+                                                  copy_success = true;
+                                                  break;
+                                              }
+                                              std::thread::sleep(std::time::Duration::from_millis(300));
+                                          }
+                                          
+                                          if copy_success {
+                                              let _ = std::fs::remove_file(&tmp_path);
+                                              let _ = tx.send(PdfWorkerMessage::AnnotationsSaved { path: path.clone() });
+                                          } else {
+                                              let _ = tx.send(PdfWorkerMessage::ExportComplete { success: false, message: "Failed to copy saved annotations PDF. Is it open in another program?".into() });
+                                          }
                                       } else {
-                                          let _ = tx.send(PdfWorkerMessage::ExportComplete { success: false, message: "Failed to copy saved annotations PDF".into() });
+                                          let _ = tx.send(PdfWorkerMessage::ExportComplete { success: false, message: "Failed to save PDF annotations".into() });
                                       }
-                                  } else {
-                                      let _ = tx.send(PdfWorkerMessage::ExportComplete { success: false, message: "Failed to save PDF annotations".into() });
-                                  }
+                                }
+                                Err(_) => {
+                                    let _ = tx.send(PdfWorkerMessage::ExportComplete { success: false, message: "Failed to load PDF for saving".into() });
+                                }
                             }
-                            Err(_) => {
-                                let _ = tx.send(PdfWorkerMessage::ExportComplete { success: false, message: "Failed to load PDF for saving".into() });
-                            }
+                        }));
+                        
+                        if result.is_err() {
+                            let _ = msg_tx_clone.send(PdfWorkerMessage::ExportComplete { success: false, message: "A fatal error occurred while saving annotations.".into() });
                         }
+                        
                         ctx.request_repaint();
                     }
                 }

@@ -54,7 +54,7 @@ export function DocsFAQGeneral() {
 
       <h2 className="text-2xl font-bold text-white mt-12 mb-4 border-b border-white/10 pb-2">How can I report bugs, contribute, or request features?</h2>
       <p className="text-slate-300 mb-8 leading-relaxed">
-        We welcome community feedback and contributions! You can submit issues, report bugs, or request new features on our <a href="https://github.com/borneelphukan/nixobdo-pdf/issues" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 font-medium">GitHub Repository</a>. If you'd like to get your hands dirty, be sure to check out our <Link to="/docs/community" className="text-indigo-400 hover:text-indigo-300 font-medium">Community section</Link>.
+        Community contributions and feedbacks are always welcome! You can submit issues, report bugs, or request new features on the <a href="https://github.com/borneelphukan/nixobdo-pdf/issues" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 font-medium">GitHub Repository</a>. If you'd like to get your hands dirty, be sure to check out the <Link to="/docs/community" className="text-indigo-400 hover:text-indigo-300 font-medium">Community section</Link>.
       </p>
     </div>
   );

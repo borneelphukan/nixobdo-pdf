@@ -87,19 +87,19 @@ export function DocsChangelog() {
               <div key={release.id} id={release.tag_name} className="scroll-mt-24 group mb-12">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-6">
                   <h3 className="text-2xl font-bold text-white m-0 flex items-center gap-2">
-                    <a href={`#${release.tag_name}`} className="hover:text-orange-400 transition-colors flex items-center gap-2">
+                    <a href={`#${release.tag_name}`} className="hover:text-indigo-400 transition-colors flex items-center gap-2">
                       {release.name || release.tag_name}
                       <span className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-600 text-2xl">#</span>
                     </a>
                   </h3>
                   <div className="flex items-center gap-3">
-                    <span className="text-orange-300 font-mono text-sm bg-orange-500/10 px-3 py-1 rounded-full border border-orange-500/20 w-fit">
+                    <span className="text-indigo-300 font-mono text-sm bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20 w-fit">
                       {formatDate(release.published_at)}
                     </span>
-                    <span className="text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full border border-orange-500/20">Nightly</span>
+                    <span className="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/20">Nightly</span>
                   </div>
                 </div>
-                <div className="prose prose-invert prose-slate prose-a:text-orange-400 hover:prose-a:text-orange-300 max-w-none prose-headings:text-slate-200 prose-headings:font-semibold prose-li:text-slate-300 prose-p:text-slate-300 prose-strong:text-white prose-code:text-orange-300 prose-code:bg-orange-500/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-pre:bg-slate-900/80 prose-pre:border prose-pre:border-slate-800">
+                <div className="prose prose-invert prose-slate prose-a:text-indigo-400 hover:prose-a:text-indigo-300 max-w-none prose-headings:text-slate-200 prose-headings:font-semibold prose-li:text-slate-300 prose-p:text-slate-300 prose-strong:text-white prose-code:text-indigo-300 prose-code:bg-indigo-500/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-pre:bg-slate-900/80 prose-pre:border prose-pre:border-slate-800">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {release.body}
                   </ReactMarkdown>

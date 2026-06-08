@@ -279,45 +279,49 @@ impl NixobdoPdfApp {
                     
                     let is_text_tool_active = self.active_annotation_tool == Some(crate::document::AnnotationTool::Text);
                     let has_pending_text = self.pending_annotations.iter().any(|a| a.tool == crate::document::AnnotationTool::Text);
+                    let is_highlight_tool_active = self.active_annotation_tool == Some(crate::document::AnnotationTool::Highlight);
+                    let has_pending_highlight = self.pending_annotations.iter().any(|a| a.tool == crate::document::AnnotationTool::Highlight);
                     
-                    if is_text_tool_active || has_pending_text {
+                    if is_text_tool_active || has_pending_text || is_highlight_tool_active || has_pending_highlight {
                         ui.separator();
                         
                         let mut size_changed = false;
-                        
-
-                        let allowed_sizes = [
-                            6.0, 7.0, 8.0, 9.0, 10.0, 10.5, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 
-                            18.0, 20.0, 21.0, 22.0, 24.0, 26.0, 28.0, 32.0, 36.0, 40.0, 42.0, 
-                            44.0, 48.0, 54.0, 60.0, 66.0, 72.0, 80.0, 88.0, 96.0
-                        ];
-                        
-                        egui::ComboBox::new("text_size_dropdown", "")
-                            .selected_text(format!("{} px", self.text_annotation_size))
-                            .show_ui(ui, |ui| {
-                                for &size in &allowed_sizes {
-                                    if ui.selectable_value(&mut self.text_annotation_size, size, format!("{} px", size)).changed() {
-                                        size_changed = true;
-                                    }
-                                }
-                            });
-                        
                         let mut style_changed = false;
-                        
-                        if ui.toggle_value(&mut self.text_annotation_bold, egui::RichText::new("B").strong()).on_hover_text("Bold").changed() {
-                            style_changed = true;
-                        }
-                        if ui.toggle_value(&mut self.text_annotation_italic, egui::RichText::new("I").italics()).on_hover_text("Italic").changed() {
-                            style_changed = true;
-                        }
-                        if ui.toggle_value(&mut self.text_annotation_underline, egui::RichText::new("U").underline()).on_hover_text("Underline").changed() {
-                            style_changed = true;
-                        }
-                        
                         let mut color_changed = false;
                         
-                        ui.menu_button(egui::RichText::new("A").color(self.text_annotation_color).strong(), |ui| {
-                            let predefined_colors = [
+                        if is_text_tool_active || has_pending_text {
+                            let allowed_sizes = [
+                                6.0, 7.0, 8.0, 9.0, 10.0, 10.5, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 
+                                18.0, 20.0, 21.0, 22.0, 24.0, 26.0, 28.0, 32.0, 36.0, 40.0, 42.0, 
+                                44.0, 48.0, 54.0, 60.0, 66.0, 72.0, 80.0, 88.0, 96.0
+                            ];
+                            
+                            egui::ComboBox::new("text_size_dropdown", "")
+                                .selected_text(format!("{} px", self.text_annotation_size))
+                                .show_ui(ui, |ui| {
+                                    for &size in &allowed_sizes {
+                                        if ui.selectable_value(&mut self.text_annotation_size, size, format!("{} px", size)).changed() {
+                                            size_changed = true;
+                                        }
+                                    }
+                                });
+                            
+                            if ui.toggle_value(&mut self.text_annotation_bold, egui::RichText::new("B").strong()).on_hover_text("Bold").changed() {
+                                style_changed = true;
+                            }
+                            if ui.toggle_value(&mut self.text_annotation_italic, egui::RichText::new("I").italics()).on_hover_text("Italic").changed() {
+                                style_changed = true;
+                            }
+                            if ui.toggle_value(&mut self.text_annotation_underline, egui::RichText::new("U").underline()).on_hover_text("Underline").changed() {
+                                style_changed = true;
+                            }
+                        }
+                        
+                        let mut current_color = if is_text_tool_active || has_pending_text { self.text_annotation_color } else { self.annotation_color };
+                        let icon_text = if is_text_tool_active || has_pending_text { "A" } else { "■" };
+                        
+                        ui.menu_button(egui::RichText::new(icon_text).color(current_color).strong(), |ui| {
+                            let mut predefined_colors = vec![
                                 egui::Color32::BLACK,
                                 egui::Color32::WHITE,
                                 egui::Color32::LIGHT_GRAY,
@@ -329,6 +333,10 @@ impl NixobdoPdfApp {
                                 egui::Color32::GREEN,
                             ];
                             
+                            if is_highlight_tool_active || has_pending_highlight {
+                                predefined_colors.retain(|&c| c != egui::Color32::BLACK);
+                            }
+                            
                             egui::Grid::new("text_color_grid").num_columns(4).spacing([8.0, 8.0]).show(ui, |ui| {
                                 for (i, &color) in predefined_colors.iter().enumerate() {
                                     let (rect, response) = ui.allocate_exact_size(egui::vec2(24.0, 24.0), egui::Sense::click());
@@ -339,7 +347,7 @@ impl NixobdoPdfApp {
                                     }
                                     
                                     if response.clicked() {
-                                        self.text_annotation_color = color;
+                                        current_color = color;
                                         color_changed = true;
                                         ui.close_menu();
                                     }
@@ -357,7 +365,7 @@ impl NixobdoPdfApp {
                                     ui.painter().line_segment([rect.left_bottom() + egui::vec2(4.0, -4.0), rect.right_top() + egui::vec2(-4.0, 4.0)], egui::Stroke::new(1.5, egui::Color32::RED));
                                 }
                                 if response.clicked() {
-                                    self.text_annotation_color = egui::Color32::TRANSPARENT;
+                                    current_color = egui::Color32::TRANSPARENT;
                                     color_changed = true;
                                     ui.close_menu();
                                 }
@@ -372,24 +380,34 @@ impl NixobdoPdfApp {
                                 }
                                 if response.clicked() {
                                     self.is_custom_text_color_open = true;
-                                    self.custom_text_color_temp = self.text_annotation_color;
+                                    self.custom_text_color_temp = current_color;
                                     ui.close_menu();
                                 }
                             });
                         });
                         
+                        if color_changed {
+                            if is_text_tool_active || has_pending_text {
+                                self.text_annotation_color = current_color;
+                            } else {
+                                self.annotation_color = current_color;
+                            }
+                        }
+                        
                         if size_changed || style_changed || color_changed {
-                            if let Some(last_text) = self.pending_annotations.iter_mut().rev().find(|a| a.tool == crate::document::AnnotationTool::Text) {
-                                if size_changed {
-                                    last_text.scale = Some(self.text_annotation_size);
-                                }
-                                if style_changed {
-                                    last_text.bold = self.text_annotation_bold;
-                                    last_text.italic = self.text_annotation_italic;
-                                    last_text.underline = self.text_annotation_underline;
-                                }
-                                if color_changed {
-                                    last_text.color = self.text_annotation_color;
+                            if is_text_tool_active || has_pending_text {
+                                if let Some(last_action) = self.pending_annotations.iter_mut().rev().find(|a| a.tool == crate::document::AnnotationTool::Text) {
+                                    if size_changed {
+                                        last_action.scale = Some(self.text_annotation_size);
+                                    }
+                                    if style_changed {
+                                        last_action.bold = self.text_annotation_bold;
+                                        last_action.italic = self.text_annotation_italic;
+                                        last_action.underline = self.text_annotation_underline;
+                                    }
+                                    if color_changed {
+                                        last_action.color = current_color;
+                                    }
                                 }
                             }
                         }

@@ -154,12 +154,16 @@ impl NixobdoPdfApp {
                     ui.horizontal(|ui| {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             if ui.button("Add").clicked() {
-                                self.text_annotation_color = self.custom_text_color_temp;
-                                self.is_custom_text_color_open = false;
-                                
-                                if let Some(last_text) = self.pending_annotations.iter_mut().rev().find(|a| a.tool == crate::document::AnnotationTool::Text) {
-                                    last_text.color = self.text_annotation_color;
+                                if self.active_annotation_tool == Some(crate::document::AnnotationTool::Highlight) {
+                                    self.annotation_color = self.custom_text_color_temp;
+                                    // Highlight colors shouldn't update retroactively
+                                } else {
+                                    self.text_annotation_color = self.custom_text_color_temp;
+                                    if let Some(last_text) = self.pending_annotations.iter_mut().rev().find(|a| a.tool == crate::document::AnnotationTool::Text) {
+                                        last_text.color = self.text_annotation_color;
+                                    }
                                 }
+                                self.is_custom_text_color_open = false;
                             }
                             
                             if ui.button("Cancel").clicked() {

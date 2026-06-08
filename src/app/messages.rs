@@ -73,6 +73,7 @@ impl NixobdoPdfApp {
                     self.toast_message = Some(message);
                     self.toast_success = success;
                     self.toast_timer = ctx.input(|i| i.time) + 4.0; // show for 4 seconds
+                    self.is_saving_annotations = false;
                 }
                 PdfWorkerMessage::SignatureSaved { path } => {
                     self.toast_message = Some("Signature added successfully".to_string());

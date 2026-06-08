@@ -100,7 +100,6 @@ impl NixobdoPdfApp {
                                 ui.visuals().text_color(),
                             );
                             ui.add_space(16.0);
-                            // We don't support cancellation of the actual HTTP req yet, so we just close the dialog visually.
                             if ui.button("Cancel").clicked() {
                                 self.update_state = UpdateState::None;
                             }

@@ -472,8 +472,6 @@ impl NixobdoPdfApp {
                                                         }
                                                     }
 
-
-
                                                     // Draw Highlight annotations BEFORE the PDF image
                                                     for (_i, action) in self.pending_annotations.iter_mut().enumerate() {
                                                         if action.page_index == index && action.tool == crate::document::AnnotationTool::Highlight {
@@ -483,7 +481,6 @@ impl NixobdoPdfApp {
                                                             }
                                                         }
                                                     }
-
 
                                                     // Draw blue text selection overlays
                                                     if let (Some(start), Some(end)) = (self.selection_start, self.selection_end) {

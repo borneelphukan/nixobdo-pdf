@@ -35,7 +35,7 @@ export function DocsCommunity() {
         <li className="flex items-start gap-3">
           <Code className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
           <span className="text-slate-300 leading-relaxed">
-            <strong className="text-white">Contribute code</strong> by submitting a pull request. We love community contributions!
+            <strong className="text-white">Contribute code</strong> by submitting a pull request.
           </span>
         </li>
       </ul>
