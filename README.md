@@ -36,10 +36,10 @@
 
 <div align="center">
 
-<img src="./assets/snapshot1.png" alt="Application Snapshot 1" width="80%" />
+<img src="./assets/Screenshot-1.png" alt="Application Snapshot 1" width="80%" />
 <br />
 <br />
-<img src="./assets/snapshot2.png" alt="Application Snapshot 2" width="80%" />
+<img src="./assets/Screenshot-2.png" alt="Application Snapshot 2" width="80%" />
 
 </div>
 
