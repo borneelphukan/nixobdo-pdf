@@ -25,32 +25,36 @@
 
 ## Features
 
-- **View PDF files**: Open and view any standard PDF document.
-- **Scroll**: Scroll up and down pages smoothly using the mouse wheel.
-- **Zoom**: Zoom in and out effortlessly with `Cmd/Ctrl + Mouse Wheel` or by using the built-in Zoom slider.
+- **Distraction-Free Viewing**: Open and view any standard PDF document in a clean, minimalistic interface.
+- **Smooth Navigation**: Scroll up and down pages smoothly using the mouse wheel.
+- **Dynamic Zoom**: Zoom in and out effortlessly with `Ctrl + Mouse Wheel` or by using the built-in Zoom slider.
+- **Secure Signatures**: Add your digital signatures to documents securely.
+
+---
+
+## Snapshots
+
+<div align="center">
+
+<img src="./assets/snapshot1.png" alt="Application Snapshot 1" width="80%" />
+<br />
+<br />
+<img src="./assets/snapshot2.png" alt="Application Snapshot 2" width="80%" />
+
+</div>
 
 ---
 
 ## Setup & Build
 
-### macOS
-
-1. Ensure Rust is installed on your system.
-2. The project requires `libpdfium.dylib`. Ensure it has been downloaded into the `lib/` directory.
-3. Run the application:
-   ```bash
-   cargo run
-   ```
-
-### Windows
-
 To build for Windows, you will need the Windows version of `pdfium.dll`.
 
-1. Download `pdfium-win-x64.tgz` (or x86) from [bblanchon/pdfium-binaries](https://github.com/bblanchon/pdfium-binaries/releases).
-2. Extract `pdfium.dll` and place it in the `lib/` directory or next to the executable.
-3. If cross-compiling from Mac, use `cargo-xwin`:
+1. Ensure Rust is installed on your system.
+2. Download `pdfium-win-x64.tgz` (or x86) from [bblanchon/pdfium-binaries](https://github.com/bblanchon/pdfium-binaries/releases).
+3. Extract `pdfium.dll` and place it in the `lib/` directory or next to the executable.
+4. Run the application:
    ```bash
-   cargo xwin build --target x86_64-pc-windows-msvc
+   cargo run
    ```
 
 ---
@@ -63,12 +67,3 @@ This project leverages the following technologies:
 - **`pdfium-render`**: For robust PDF processing and rendering.
 - **`rfd`**: For native file dialogs.
 
----
-
-## License
-
-<div align="center">
-
-See the [LICENSE](./LICENSE) file for details.
-
-</div>

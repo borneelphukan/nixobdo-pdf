@@ -743,10 +743,6 @@ impl NixobdoPdfApp {
                                                                         ui.push_id(&id_source, |ui| {
                                                                             let text_edit_id = ui.id().with("text_edit_core");
                                                                             
-                                                                            if ui.ctx().memory(|mem| mem.focused().is_none()) && action.rects[0].width() == 150.0 && text.is_empty() {
-                                                                                 ui.ctx().memory_mut(|mem| mem.request_focus(text_edit_id));
-                                                                            }
-                                                                            
                                                                             let is_focused = ui.ctx().memory(|mem| mem.has_focus(text_edit_id));
                                                                             let is_empty = text.is_empty();
                                                                             
@@ -766,6 +762,11 @@ impl NixobdoPdfApp {
                                                                                 .desired_rows(1)
                                                                                 .layouter(&mut layouter);
                                                                             let edit_response = ui.add(text_edit);
+                                                                            
+                                                                            if action.rects[0].width() == 150.0 && text.is_empty() {
+                                                                                edit_response.request_focus();
+                                                                                action.rects[0].max.x = action.rects[0].min.x + 150.001;
+                                                                            }
                                                                             
                                                                             if action.bold {
                                                                                 if let Some(galley) = galley_arc {
