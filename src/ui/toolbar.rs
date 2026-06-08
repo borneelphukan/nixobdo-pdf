@@ -211,7 +211,15 @@ impl NixobdoPdfApp {
                     
                     let tool_selected = self.active_annotation_tool;
                     
-
+                    if ui.add(egui::Button::new("T").selected(tool_selected == Some(crate::document::AnnotationTool::Text))).on_hover_text("Edit Text").clicked() {
+                        self.is_annotation_mode = true;
+                        self.active_annotation_tool = if tool_selected == Some(crate::document::AnnotationTool::Text) { None } else { Some(crate::document::AnnotationTool::Text) };
+                        if self.active_annotation_tool.is_none() {
+                            self.is_annotation_mode = false;
+                        }
+                    }
+                    ui.add_space(4.0);
+                    
                     let highlight_selected = tool_selected == Some(crate::document::AnnotationTool::Highlight);
                     if ui.add(
                         egui::Button::image(
@@ -267,6 +275,124 @@ impl NixobdoPdfApp {
                     // Unselect if clicked again
                     if self.active_annotation_tool == tool_selected && ui.input(|i| i.pointer.any_click()) {
                         // Handled by standard selectable_value logic above but we can also add escape logic in central_panel
+                    }
+                    
+                    let is_text_tool_active = self.active_annotation_tool == Some(crate::document::AnnotationTool::Text);
+                    let has_pending_text = self.pending_annotations.iter().any(|a| a.tool == crate::document::AnnotationTool::Text);
+                    
+                    if is_text_tool_active || has_pending_text {
+                        ui.separator();
+                        
+                        let mut size_changed = false;
+                        
+
+                        let allowed_sizes = [
+                            6.0, 7.0, 8.0, 9.0, 10.0, 10.5, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 
+                            18.0, 20.0, 21.0, 22.0, 24.0, 26.0, 28.0, 32.0, 36.0, 40.0, 42.0, 
+                            44.0, 48.0, 54.0, 60.0, 66.0, 72.0, 80.0, 88.0, 96.0
+                        ];
+                        
+                        egui::ComboBox::new("text_size_dropdown", "")
+                            .selected_text(format!("{} px", self.text_annotation_size))
+                            .show_ui(ui, |ui| {
+                                for &size in &allowed_sizes {
+                                    if ui.selectable_value(&mut self.text_annotation_size, size, format!("{} px", size)).changed() {
+                                        size_changed = true;
+                                    }
+                                }
+                            });
+                        
+                        let mut style_changed = false;
+                        
+                        if ui.toggle_value(&mut self.text_annotation_bold, egui::RichText::new("B").strong()).on_hover_text("Bold").changed() {
+                            style_changed = true;
+                        }
+                        if ui.toggle_value(&mut self.text_annotation_italic, egui::RichText::new("I").italics()).on_hover_text("Italic").changed() {
+                            style_changed = true;
+                        }
+                        if ui.toggle_value(&mut self.text_annotation_underline, egui::RichText::new("U").underline()).on_hover_text("Underline").changed() {
+                            style_changed = true;
+                        }
+                        
+                        let mut color_changed = false;
+                        
+                        ui.menu_button(egui::RichText::new("A").color(self.text_annotation_color).strong(), |ui| {
+                            let predefined_colors = [
+                                egui::Color32::BLACK,
+                                egui::Color32::WHITE,
+                                egui::Color32::LIGHT_GRAY,
+                                egui::Color32::RED,
+                                egui::Color32::from_rgb(255, 165, 0), // Orange
+                                egui::Color32::from_rgb(255, 215, 0), // Yellow
+                                egui::Color32::BLUE,
+                                egui::Color32::from_rgb(128, 0, 128), // Purple
+                                egui::Color32::GREEN,
+                            ];
+                            
+                            egui::Grid::new("text_color_grid").num_columns(4).spacing([8.0, 8.0]).show(ui, |ui| {
+                                for (i, &color) in predefined_colors.iter().enumerate() {
+                                    let (rect, response) = ui.allocate_exact_size(egui::vec2(24.0, 24.0), egui::Sense::click());
+                                    
+                                    if ui.is_rect_visible(rect) {
+                                        ui.painter().circle_filled(rect.center(), 10.0, color);
+                                        ui.painter().circle_stroke(rect.center(), 10.0, egui::Stroke::new(1.0, egui::Color32::GRAY));
+                                    }
+                                    
+                                    if response.clicked() {
+                                        self.text_annotation_color = color;
+                                        color_changed = true;
+                                        ui.close_menu();
+                                    }
+                                    
+                                    if (i + 1) % 4 == 0 {
+                                        ui.end_row();
+                                    }
+                                }
+                                
+                                // Transparent
+                                let (rect, response) = ui.allocate_exact_size(egui::vec2(24.0, 24.0), egui::Sense::click());
+                                if ui.is_rect_visible(rect) {
+                                    ui.painter().circle_filled(rect.center(), 10.0, egui::Color32::WHITE);
+                                    ui.painter().circle_stroke(rect.center(), 10.0, egui::Stroke::new(1.0, egui::Color32::GRAY));
+                                    ui.painter().line_segment([rect.left_bottom() + egui::vec2(4.0, -4.0), rect.right_top() + egui::vec2(-4.0, 4.0)], egui::Stroke::new(1.5, egui::Color32::RED));
+                                }
+                                if response.clicked() {
+                                    self.text_annotation_color = egui::Color32::TRANSPARENT;
+                                    color_changed = true;
+                                    ui.close_menu();
+                                }
+                                
+                                // Custom color button
+                                let (rect, response) = ui.allocate_exact_size(egui::vec2(24.0, 24.0), egui::Sense::click());
+                                if ui.is_rect_visible(rect) {
+                                    let stroke_color = ui.visuals().text_color();
+                                    ui.painter().circle_stroke(rect.center(), 10.0, egui::Stroke::new(1.0, stroke_color));
+                                    ui.painter().line_segment([rect.center() + egui::vec2(-5.0, 0.0), rect.center() + egui::vec2(5.0, 0.0)], egui::Stroke::new(1.5, stroke_color));
+                                    ui.painter().line_segment([rect.center() + egui::vec2(0.0, -5.0), rect.center() + egui::vec2(0.0, 5.0)], egui::Stroke::new(1.5, stroke_color));
+                                }
+                                if response.clicked() {
+                                    self.is_custom_text_color_open = true;
+                                    self.custom_text_color_temp = self.text_annotation_color;
+                                    ui.close_menu();
+                                }
+                            });
+                        });
+                        
+                        if size_changed || style_changed || color_changed {
+                            if let Some(last_text) = self.pending_annotations.iter_mut().rev().find(|a| a.tool == crate::document::AnnotationTool::Text) {
+                                if size_changed {
+                                    last_text.scale = Some(self.text_annotation_size);
+                                }
+                                if style_changed {
+                                    last_text.bold = self.text_annotation_bold;
+                                    last_text.italic = self.text_annotation_italic;
+                                    last_text.underline = self.text_annotation_underline;
+                                }
+                                if color_changed {
+                                    last_text.color = self.text_annotation_color;
+                                }
+                            }
+                        }
                     }
                     
                     ui.separator();

@@ -44,7 +44,7 @@ impl NixobdoPdfApp {
                         ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                     }
                     
-                    if ui.add_enabled(self.active_tab_index.is_some(), egui::Button::new("Close Selected PDF Document")).clicked() {
+                    if ui.add_enabled(self.active_tab_index.is_some(), egui::Button::new("Close PDF")).clicked() {
                         if let Some(active_idx) = self.active_tab_index {
                             self.close_tab(active_idx);
                         }
@@ -127,39 +127,43 @@ impl NixobdoPdfApp {
                     
                     ui.separator();
                     
-                    if ui.add_enabled(has_pdf, egui::Button::image_and_text(
-                        egui::Image::new(egui::include_image!("../../assets/rotate_left.svg")).max_height(14.0).tint(ui.visuals().text_color()),
-                        "Rotate Left"
-                    )).clicked()
-                    {
-                        if let Some(active_idx) = self.active_tab_index {
-                            if let Some(tab) = self.tabs.get_mut(active_idx) {
-                                self.pending_rotation -= 90;
-                                for rot in &mut tab.page_rotations {
-                                    *rot -= 90;
+                    ui.add_enabled_ui(has_pdf, |ui| {
+                        ui.menu_button("Rotate PDF", |ui| {
+                            if ui.add(egui::Button::image_and_text(
+                                egui::Image::new(egui::include_image!("../../assets/rotate_left.svg")).max_height(14.0),
+                                "Rotate Left"
+                            )).clicked()
+                            {
+                                if let Some(active_idx) = self.active_tab_index {
+                                    if let Some(tab) = self.tabs.get_mut(active_idx) {
+                                        self.pending_rotation -= 90;
+                                        for rot in &mut tab.page_rotations {
+                                            *rot -= 90;
+                                        }
+                                        self.is_rotating_document = true;
+                                    }
                                 }
-                                self.is_rotating_document = true;
+                                ui.close_menu();
                             }
-                        }
-                        ui.close_menu();
-                    }
-                    
-                    if ui.add_enabled(has_pdf, egui::Button::image_and_text(
-                        egui::Image::new(egui::include_image!("../../assets/rotate_right.svg")).max_height(14.0).tint(ui.visuals().text_color()),
-                        "Rotate Right"
-                    )).clicked()
-                    {
-                        if let Some(active_idx) = self.active_tab_index {
-                            if let Some(tab) = self.tabs.get_mut(active_idx) {
-                                self.pending_rotation += 90;
-                                for rot in &mut tab.page_rotations {
-                                    *rot += 90;
+                            
+                            if ui.add(egui::Button::image_and_text(
+                                egui::Image::new(egui::include_image!("../../assets/rotate_right.svg")).max_height(14.0),
+                                "Rotate Right"
+                            )).clicked()
+                            {
+                                if let Some(active_idx) = self.active_tab_index {
+                                    if let Some(tab) = self.tabs.get_mut(active_idx) {
+                                        self.pending_rotation += 90;
+                                        for rot in &mut tab.page_rotations {
+                                            *rot += 90;
+                                        }
+                                        self.is_rotating_document = true;
+                                    }
                                 }
-                                self.is_rotating_document = true;
+                                ui.close_menu();
                             }
-                        }
-                        ui.close_menu();
-                    }
+                        });
+                    });
                 });
                 
                 ui.menu_button("View", |ui| {

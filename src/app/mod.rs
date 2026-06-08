@@ -86,6 +86,13 @@ pub struct NixobdoPdfApp {
     pub redo_annotations: Vec<crate::document::AnnotationAction>,
     pub annotation_color: egui::Color32,
     pub is_saving_annotations: bool,
+    pub text_annotation_size: f32,
+    pub text_annotation_bold: bool,
+    pub text_annotation_italic: bool,
+    pub text_annotation_underline: bool,
+    pub text_annotation_color: egui::Color32,
+    pub is_custom_text_color_open: bool,
+    pub custom_text_color_temp: egui::Color32,
 }
 
 impl Default for NixobdoPdfApp {
@@ -159,8 +166,15 @@ impl Default for NixobdoPdfApp {
             active_annotation_tool: None,
             pending_annotations: Vec::new(),
             redo_annotations: Vec::new(),
-            annotation_color: egui::Color32::from_rgb(255, 255, 0),
+            annotation_color: egui::Color32::from_rgb(0, 0, 0), // Black by default
             is_saving_annotations: false,
+            text_annotation_size: 12.0,
+            text_annotation_bold: false,
+            text_annotation_italic: false,
+            text_annotation_underline: false,
+            text_annotation_color: egui::Color32::BLACK,
+            is_custom_text_color_open: false,
+            custom_text_color_temp: egui::Color32::BLACK,
         }
     }
 }

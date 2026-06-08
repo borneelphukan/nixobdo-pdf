@@ -173,6 +173,7 @@ pub enum PdfWorkerMessage {
         text: String,
         chars: Vec<PdfCharInfo>,
         links: Vec<PdfLinkInfo>,
+        page_size: egui::Vec2,
     },
     Finished {
         #[allow(dead_code)]
@@ -206,6 +207,7 @@ pub enum AnnotationTool {
     Underline,
     Strikethrough,
     Redact,
+    Text,
 }
 
 #[derive(Clone, Debug)]
@@ -218,6 +220,10 @@ pub struct AnnotationAction {
     pub position: Option<egui::Pos2>,
     pub text: Option<String>,
     pub color: egui::Color32,
+    pub scale: Option<f32>,
+    pub bold: bool,
+    pub italic: bool,
+    pub underline: bool,
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -242,6 +248,7 @@ pub struct PdfDocumentState {
     pub page_texts: Vec<String>,
     pub page_chars: Vec<Vec<PdfCharInfo>>,
     pub page_links: Vec<Vec<PdfLinkInfo>>,
+    pub page_sizes: Vec<egui::Vec2>,
     pub page_rotations: Vec<i32>,
     pub zoom: f32,
     pub selected_page: usize,
@@ -263,6 +270,7 @@ impl PdfDocumentState {
             page_texts: Vec::new(),
             page_chars: Vec::new(),
             page_links: Vec::new(),
+            page_sizes: Vec::new(),
             page_rotations: Vec::new(),
             zoom: 0.0,
             selected_page: 0,
@@ -296,7 +304,7 @@ impl PdfDocumentState {
             
         if cache_dir.exists() {
             if let Ok(meta_bytes) = std::fs::read(cache_dir.join("metadata.bin")) {
-                if let Ok((page_count, page_texts, page_chars, page_links)) = bincode::deserialize::<(usize, Vec<String>, Vec<Vec<PdfCharInfo>>, Vec<Vec<PdfLinkInfo>>)>(&meta_bytes) {
+                if let Ok((page_count, page_texts, page_chars, page_links, page_sizes)) = bincode::deserialize::<(usize, Vec<String>, Vec<Vec<PdfCharInfo>>, Vec<Vec<PdfLinkInfo>>, Vec<(f32, f32)>)>(&meta_bytes) {
                     let _ = tx.send(PdfWorkerMessage::DocumentInfo {
                         path: path.clone(), file_name: file_name.clone(), page_count, error: None,
                     });
@@ -320,6 +328,7 @@ impl PdfDocumentState {
                             );
                             let _ = tx.send(PdfWorkerMessage::PageData {
                                 path: path.clone(), index, image, thumbnail_image, text: page_texts[index].clone(), chars: page_chars[index].clone(), links: page_links[index].clone(),
+                                page_size: egui::vec2(page_sizes[index].0, page_sizes[index].1),
                             });
                             ctx.request_repaint();
                         } else { success = false; break; }
@@ -354,6 +363,7 @@ impl PdfDocumentState {
                 let mut all_texts = Vec::new();
                 let mut all_chars = Vec::new();
                 let mut all_links = Vec::new();
+                let mut all_sizes = Vec::new();
                 
                 let _ = std::fs::create_dir_all(&cache_dir);
                 let _ = std::fs::File::create(cache_dir.join("accessed.txt"));
@@ -364,6 +374,7 @@ impl PdfDocumentState {
                     
                     let page_w = page.width().value;
                     let page_h = page.height().value;
+                    all_sizes.push((page_w, page_h));
                     let mut chars = Vec::new();
                     if let Ok(text) = page.text() {
                         for c in text.chars().iter() {
@@ -475,11 +486,12 @@ impl PdfDocumentState {
                         text: page_text,
                         chars,
                         links,
+                        page_size: egui::vec2(page_w, page_h),
                     });
                     ctx.request_repaint();
                 }
 
-                if let Ok(meta_bytes) = bincode::serialize(&(page_count, all_texts, all_chars, all_links)) {
+                if let Ok(meta_bytes) = bincode::serialize(&(page_count, all_texts, all_chars, all_links, all_sizes)) {
                     let _ = std::fs::write(cache_dir.join("metadata.bin"), meta_bytes);
                 }
 

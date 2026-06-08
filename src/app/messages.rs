@@ -32,6 +32,7 @@ impl NixobdoPdfApp {
                                 tab.page_texts = vec![String::new(); page_count];
                                 tab.page_chars = vec![Vec::new(); page_count];
                                 tab.page_links = vec![Vec::new(); page_count];
+                                tab.page_sizes = vec![egui::Vec2::ZERO; page_count];
                                 tab.page_rotations = vec![0; page_count];
                                 tab.is_loading = false; // Turn off main loading, pages will pop in
                             }
@@ -42,27 +43,24 @@ impl NixobdoPdfApp {
                         self.close_tab(idx);
                     }
                 }
-                PdfWorkerMessage::PageData { path, index, image, thumbnail_image, text, chars, links } => {
-                    for tab in self.tabs.iter_mut() {
-                        if tab.path == path {
-                            if index < tab.pages.len() {
-                                let texture = ctx.load_texture(
-                                    format!("doc_{}_page_{}", tab.file_name, index),
-                                    image,
-                                    egui::TextureOptions::LINEAR,
-                                );
-                                let thumb_texture = ctx.load_texture(
-                                    format!("doc_{}_thumb_{}", tab.file_name, index),
-                                    thumbnail_image,
-                                    egui::TextureOptions::LINEAR,
-                                );
-                                tab.pages[index] = Some(texture);
-                                tab.thumbnails[index] = Some(thumb_texture);
-                                tab.page_texts[index] = text;
-                                tab.page_chars[index] = chars;
-                                tab.page_links[index] = links;
-                            }
-                            break;
+                PdfWorkerMessage::PageData { path, index, image, thumbnail_image, text, chars, links, page_size } => {
+                    if let Some(tab_index) = self.tabs.iter().position(|t| t.path == path) {
+                        let tab = &mut self.tabs[tab_index];
+                        if index < tab.pages.len() {
+                            tab.pages[index] = Some(ctx.load_texture(
+                                format!("page_{}_{}", path.display(), index),
+                                image,
+                                egui::TextureOptions::LINEAR,
+                            ));
+                            tab.thumbnails[index] = Some(ctx.load_texture(
+                                format!("thumb_{}_{}", path.display(), index),
+                                thumbnail_image,
+                                egui::TextureOptions::LINEAR,
+                            ));
+                            tab.page_texts[index] = text;
+                            tab.page_chars[index] = chars;
+                            tab.page_links[index] = links;
+                            tab.page_sizes[index] = page_size;
                         }
                     }
                 }

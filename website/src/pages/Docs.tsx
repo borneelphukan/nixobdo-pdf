@@ -30,7 +30,9 @@ export function Docs() {
             <h4 className="text-white font-bold mb-4 text-[15px]">Guides</h4>
             <ul className="space-y-3 text-[14px] text-slate-400">
               <li><Link to="/docs/guides/getting-started" className="hover:text-white transition">Getting Started</Link></li>
-              <li><Link to="/docs/guides/uninstalling" className="hover:text-white transition">Uninstalling</Link></li>
+              <li><Link to="/docs/guides/viewing" className="hover:text-white transition">Viewing PDFs</Link></li>
+              <li><Link to="/docs/guides/shortcuts" className="hover:text-white transition">Keyboard Shortcuts</Link></li>
+              <li><Link to="/docs/guides/uninstall" className="hover:text-white transition">Uninstalling</Link></li>
             </ul>
           </div>
 

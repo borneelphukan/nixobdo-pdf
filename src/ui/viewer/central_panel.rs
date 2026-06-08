@@ -56,6 +56,8 @@ impl NixobdoPdfApp {
                 }
             }
             
+
+            
             if self.is_rotating_document {
                 if self.active_tab_index.is_none() {
                     self.is_rotating_document = false;
@@ -136,7 +138,7 @@ impl NixobdoPdfApp {
                         let scroll_delta = ui.input(|i| i.raw_scroll_delta.y);
                         let current_time = ui.input(|i| i.time);
                         
-                        if ui.input(|i| (i.modifiers.ctrl || i.modifiers.command) && i.key_pressed(egui::Key::A)) {
+                        if !ui.ctx().wants_keyboard_input() && ui.input(|i| (i.modifiers.ctrl || i.modifiers.command) && i.key_pressed(egui::Key::A)) {
                             select_all_triggered = true;
                         }
                         
@@ -376,6 +378,10 @@ impl NixobdoPdfApp {
                                                                                         position: None,
                                                                                         text: None,
                                                                                         color,
+                                                                                        scale: None,
+                                                                                        bold: false,
+                                                                                        italic: false,
+                                                                                        underline: false,
                                                                                     });
                                                                                     self.selection_start = None;
                                                                                     self.selection_end = None;
@@ -387,8 +393,39 @@ impl NixobdoPdfApp {
                                                         }
                                                         
                                                         if response.clicked() && !response.dragged_by(egui::PointerButton::Primary) {
-                                                            self.selection_start = None;
-                                                            self.selection_end = None;
+                                                            self.pending_annotations.retain(|a| {
+                                                                if a.tool == crate::document::AnnotationTool::Text {
+                                                                    if let Some(t) = &a.text {
+                                                                        if t.is_empty() {
+                                                                            return false;
+                                                                        }
+                                                                    }
+                                                                }
+                                                                true
+                                                            });
+                                                            
+                                                            if self.is_annotation_mode && self.active_annotation_tool == Some(crate::document::AnnotationTool::Text) {
+                                                                if let Some(pos) = response.interact_pointer_pos() {
+                                                                    let rel_x = (pos.x - response.rect.min.x) / response.rect.width();
+                                                                    let rel_y = (pos.y - response.rect.min.y) / response.rect.height();
+                                                                    self.pending_annotations.push(crate::document::AnnotationAction {
+                                                                        tool: crate::document::AnnotationTool::Text,
+                                                                        page_index: index,
+                                                                        rects: vec![],
+                                                                        position: Some(egui::pos2(rel_x, rel_y)),
+                                                                        text: Some("".to_string()),
+                                                                        color: self.text_annotation_color,
+                                                                        scale: Some(self.text_annotation_size),
+                                                                        bold: self.text_annotation_bold,
+                                                                        italic: self.text_annotation_italic,
+                                                                        underline: self.text_annotation_underline,
+                                                                    });
+                                                                    self.active_annotation_tool = None;
+                                                                }
+                                                            } else {
+                                                                self.selection_start = None;
+                                                                self.selection_end = None;
+                                                            }
                                                         }
                                                         
                                                         // Copy content on right-click
@@ -437,37 +474,16 @@ impl NixobdoPdfApp {
 
 
 
-                                                    // Draw pending annotations
-                                                    for action in &self.pending_annotations {
-                                                        if action.page_index == index {
-                                                            match action.tool {
-                                                                crate::document::AnnotationTool::Highlight => {
-                                                                    for rect in &action.rects {
-                                                                        let draw_rect = transform_rect_to_rot(rect.min.x, rect.min.y, rect.max.x, rect.max.y, response.rect, rot);
-                                                                        ui.painter().rect_filled(draw_rect, 0.0, egui::Color32::from_rgba_unmultiplied(action.color.r(), action.color.g(), action.color.b(), 100));
-                                                                    }
-                                                                }
-                                                                crate::document::AnnotationTool::Underline => {
-                                                                    for rect in &action.rects {
-                                                                        let draw_rect = transform_rect_to_rot(rect.min.x, rect.min.y, rect.max.x, rect.max.y, response.rect, rot);
-                                                                        ui.painter().line_segment([draw_rect.left_bottom(), draw_rect.right_bottom()], (2.0, action.color));
-                                                                    }
-                                                                }
-                                                                crate::document::AnnotationTool::Strikethrough => {
-                                                                    for rect in &action.rects {
-                                                                        let draw_rect = transform_rect_to_rot(rect.min.x, rect.min.y, rect.max.x, rect.max.y, response.rect, rot);
-                                                                        ui.painter().line_segment([draw_rect.left_center(), draw_rect.right_center()], (2.0, action.color));
-                                                                    }
-                                                                }
-                                                                crate::document::AnnotationTool::Redact => {
-                                                                    for rect in &action.rects {
-                                                                        let draw_rect = transform_rect_to_rot(rect.min.x, rect.min.y, rect.max.x, rect.max.y, response.rect, rot);
-                                                                        ui.painter().rect_filled(draw_rect, 0.0, egui::Color32::BLACK);
-                                                                    }
-                                                                }
+                                                    // Draw Highlight annotations BEFORE the PDF image
+                                                    for (_i, action) in self.pending_annotations.iter_mut().enumerate() {
+                                                        if action.page_index == index && action.tool == crate::document::AnnotationTool::Highlight {
+                                                            for rect in &action.rects {
+                                                                let draw_rect = transform_rect_to_rot(rect.min.x, rect.min.y, rect.max.x, rect.max.y, response.rect, rot);
+                                                                ui.painter().rect_filled(draw_rect, 0.0, egui::Color32::from_rgba_unmultiplied(action.color.r(), action.color.g(), action.color.b(), 100));
                                                             }
                                                         }
                                                     }
+
 
                                                     // Draw blue text selection overlays
                                                     if let (Some(start), Some(end)) = (self.selection_start, self.selection_end) {
@@ -629,6 +645,8 @@ impl NixobdoPdfApp {
                                                         }
                                                     }
                                                     
+
+                                                    
                                                     // Handle PDF links interaction
                                                     if index < tab.page_links.len() {
                                                         for (link_idx, link_info) in tab.page_links[index].iter().enumerate() {
@@ -649,6 +667,175 @@ impl NixobdoPdfApp {
                                                                         tab.scroll_to_page = Some(*page_idx);
                                                                     }
                                                                 }
+                                                            }
+                                                        }
+                                                    }
+                                                    // Draw remaining annotations ON TOP of the PDF image
+                                                    for (_i, action) in self.pending_annotations.iter_mut().enumerate() {
+                                                        if action.page_index == index {
+                                                            match action.tool {
+                                                                crate::document::AnnotationTool::Underline => {
+                                                                    for rect in &action.rects {
+                                                                        let draw_rect = transform_rect_to_rot(rect.min.x, rect.min.y, rect.max.x, rect.max.y, response.rect, rot);
+                                                                        ui.painter().line_segment([draw_rect.left_bottom(), draw_rect.right_bottom()], (2.0, action.color));
+                                                                    }
+                                                                }
+                                                                crate::document::AnnotationTool::Strikethrough => {
+                                                                    for rect in &action.rects {
+                                                                        let draw_rect = transform_rect_to_rot(rect.min.x, rect.min.y, rect.max.x, rect.max.y, response.rect, rot);
+                                                                        ui.painter().line_segment([draw_rect.left_center(), draw_rect.right_center()], (2.0, action.color));
+                                                                    }
+                                                                }
+                                                                crate::document::AnnotationTool::Redact => {
+                                                                    for rect in &action.rects {
+                                                                        let draw_rect = transform_rect_to_rot(rect.min.x, rect.min.y, rect.max.x, rect.max.y, response.rect, rot);
+                                                                        ui.painter().rect_filled(draw_rect, 0.0, egui::Color32::BLACK);
+                                                                    }
+                                                                }
+                                                                crate::document::AnnotationTool::Text => {
+                                                                    let scale_changed = action.scale;
+                                                                    let mut new_pos = action.position.unwrap_or(egui::pos2(0.5, 0.5));
+                                                                    
+                                                                    let pdf_point_size = action.scale.unwrap_or(12.0);
+                                                                    let page_w = tab.page_sizes[index].x;
+                                                                    let font_size = if page_w > 0.0 {
+                                                                        pdf_point_size * (response.rect.width() / page_w)
+                                                                    } else {
+                                                                        pdf_point_size * (tab.zoom / 50.0).max(1.0)
+                                                                    };
+                                                                    
+                                                                    let mut text = action.text.take().unwrap_or_default();
+                                                                    let font_id = egui::FontId::proportional(font_size);
+                                                                    
+                                                                    if action.rects.is_empty() || action.rects[0] == egui::Rect::EVERYTHING {
+                                                                        if action.rects.is_empty() {
+                                                                            action.rects.push(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(150.0, 0.0)));
+                                                                        } else {
+                                                                            action.rects[0] = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(150.0, 0.0));
+                                                                        }
+                                                                    }
+                                                                    
+                                                                    let box_size = action.rects[0].size();
+                                                                    
+                                                                    let create_layout_job = |text: &str| {
+                                                                        let mut job = egui::text::LayoutJob::default();
+                                                                        let format = egui::text::TextFormat {
+                                                                            font_id: font_id.clone(),
+                                                                            color: action.color,
+                                                                            italics: action.italic,
+                                                                            underline: if action.underline { egui::Stroke::new(1.0, action.color) } else { egui::Stroke::NONE },
+                                                                            ..Default::default()
+                                                                        };
+                                                                        job.append(text, 0.0, format);
+                                                                        job.wrap.max_width = box_size.x;
+                                                                        job
+                                                                    };
+                                                                    
+                                                                    let job = create_layout_job(if text.is_empty() { " " } else { &text });
+                                                                    let galley = ui.fonts(|f| f.layout_job(job));
+                                                                    
+                                                                    let text_size = galley.size().max(box_size);
+                                                                    
+                                                                    let screen_x = response.rect.min.x + new_pos.x * response.rect.width();
+                                                                    let screen_y = response.rect.min.y + new_pos.y * response.rect.height();
+                                                                    let text_rect = egui::Rect::from_min_size(egui::pos2(screen_x, screen_y), text_size);
+                                                                    
+                                                                    let id_source = format!("text_edit_{}_{}", index, _i);
+                                                                    
+                                                                    ui.allocate_new_ui(egui::UiBuilder::new().max_rect(text_rect), |ui| {
+                                                                        ui.push_id(&id_source, |ui| {
+                                                                            let text_edit_id = ui.id().with("text_edit_core");
+                                                                            
+                                                                            if ui.ctx().memory(|mem| mem.focused().is_none()) && action.rects[0].width() == 150.0 && text.is_empty() {
+                                                                                 ui.ctx().memory_mut(|mem| mem.request_focus(text_edit_id));
+                                                                            }
+                                                                            
+                                                                            let is_focused = ui.ctx().memory(|mem| mem.has_focus(text_edit_id));
+                                                                            let is_empty = text.is_empty();
+                                                                            
+                                                                            let mut galley_arc = None;
+                                                                            let mut layouter = |ui: &egui::Ui, text: &str, wrap_width: f32| {
+                                                                                let mut job = create_layout_job(text);
+                                                                                job.wrap.max_width = wrap_width;
+                                                                                let galley = ui.fonts(|f| f.layout_job(job));
+                                                                                galley_arc = Some(galley.clone());
+                                                                                galley
+                                                                            };
+                                                                            
+                                                                            let text_edit = egui::TextEdit::multiline(&mut text)
+                                                                                .frame(false)
+                                                                                .id_source("text_edit_core")
+                                                                                .desired_width(f32::INFINITY)
+                                                                                .desired_rows(1)
+                                                                                .layouter(&mut layouter);
+                                                                            let edit_response = ui.add(text_edit);
+                                                                            
+                                                                            if action.bold {
+                                                                                if let Some(galley) = galley_arc {
+                                                                                    let text_pos = edit_response.rect.min;
+                                                                                    ui.painter().galley(text_pos + egui::vec2(0.5, 0.0), galley.clone(), action.color);
+                                                                                    ui.painter().galley(text_pos + egui::vec2(0.0, 0.5), galley.clone(), action.color);
+                                                                                    ui.painter().galley(text_pos + egui::vec2(0.5, 0.5), galley, action.color);
+                                                                                }
+                                                                            }
+                                                                            
+                                                                            let text_drag_id = ui.id().with("text_drag");
+                                                                            let resize_id = ui.id().with("text_resize");
+                                                                            
+                                                                            let sense = if is_focused { egui::Sense::hover() } else { egui::Sense::click_and_drag() };
+                                                                            let text_response = ui.interact(ui.max_rect(), text_drag_id, sense);
+                                                                            
+                                                                            if text_response.clicked() {
+                                                                                edit_response.request_focus();
+                                                                            }
+                                                                            
+                                                                            let resize_rect = egui::Rect::from_center_size(ui.max_rect().right_bottom(), egui::vec2(14.0, 14.0));
+                                                                            let resize_response = ui.interact(resize_rect, resize_id, egui::Sense::drag());
+                                                                            
+                                                                            if resize_response.dragged() {
+                                                                                let drag_delta = resize_response.drag_delta();
+                                                                                action.rects[0].max += drag_delta;
+                                                                                action.rects[0].max.x = action.rects[0].max.x.max(action.rects[0].min.x + 50.0);
+                                                                                action.rects[0].max.y = action.rects[0].max.y.max(action.rects[0].min.y + font_size);
+                                                                                ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeNwSe);
+                                                                            } else if text_response.dragged() {
+                                                                                let drag_delta = text_response.drag_delta();
+                                                                                new_pos.x += drag_delta.x / response.rect.width();
+                                                                                new_pos.y += drag_delta.y / response.rect.height();
+                                                                                ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+                                                                            } else if resize_response.hovered() {
+                                                                                ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeNwSe);
+                                                                            } else if text_response.hovered() && !is_focused {
+                                                                                ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
+                                                                            }
+                                                                            
+                                                                            if is_focused || text_response.dragged() || text_response.hovered() || resize_response.hovered() || resize_response.dragged() || is_empty {
+                                                                                let rect = ui.max_rect().expand(2.0);
+                                                                                let points = vec![
+                                                                                    rect.left_top(),
+                                                                                    rect.right_top(),
+                                                                                    rect.right_bottom(),
+                                                                                    rect.left_bottom(),
+                                                                                    rect.left_top(),
+                                                                                ];
+                                                                                ui.painter().add(egui::Shape::dashed_line(
+                                                                                    &points,
+                                                                                    egui::Stroke::new(1.0, egui::Color32::from_rgb(100, 150, 250)),
+                                                                                    3.0,
+                                                                                    3.0,
+                                                                                ));
+                                                                                
+                                                                                ui.painter().circle_filled(resize_rect.center(), 5.0, egui::Color32::from_rgb(100, 150, 250));
+                                                                                ui.painter().circle_stroke(resize_rect.center(), 5.0, (1.0, egui::Color32::WHITE));
+                                                                            }
+                                                                        });
+                                                                    });
+                                                                    
+                                                                    action.position = Some(new_pos);
+                                                                    action.scale = scale_changed;
+                                                                    action.text = Some(text);
+                                                                }
+                                                                _ => {}
                                                             }
                                                         }
                                                     }
@@ -725,19 +912,19 @@ impl NixobdoPdfApp {
                 
                 let image = if is_fullscreen {
                     egui::Image::new(egui::include_image!("../../../assets/exit_fullscreen.svg"))
-                        .tint(egui::Color32::WHITE)
+                        .tint(ui.visuals().text_color())
                         .max_height(20.0)
                         .max_width(20.0)
                 } else {
                     egui::Image::new(egui::include_image!("../../../assets/fullscreen.svg"))
-                        .tint(egui::Color32::WHITE)
+                        .tint(ui.visuals().text_color())
                         .max_height(20.0)
                         .max_width(20.0)
                 };
                 
                 let response = ui.add(
                     egui::Button::image(image)
-                        .fill(egui::Color32::from_rgba_premultiplied(40, 40, 45, 200))
+                        .fill(ui.visuals().widgets.inactive.weak_bg_fill)
                         .frame(true)
                 ).on_hover_text(tooltip);
                 

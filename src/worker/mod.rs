@@ -203,6 +203,7 @@ pub fn spawn_worker_thread(
                         }
                         ctx.request_repaint();
                     }
+
                     PdfWorkerTask::SaveRotation { path, rotation, ctx } => {
                         let tx = msg_tx_clone.clone();
                         match pdf.load_pdf_from_file(path.to_str().unwrap_or_default(), None) {
@@ -243,7 +244,7 @@ pub fn spawn_worker_thread(
                     PdfWorkerTask::SaveAnnotations { path, annotations, ctx } => {
                         let tx = msg_tx_clone.clone();
                         match pdf.load_pdf_from_file(path.to_str().unwrap_or_default(), None) {
-                            Ok(doc) => {
+                            Ok(mut doc) => {
                                   for action in annotations {
                                       if let Ok(mut page) = doc.pages().get(action.page_index as u16) {
                                           let page_w = page.width().value;
@@ -311,7 +312,38 @@ pub fn spawn_worker_thread(
                                                       }
                                                   }
                                               }
-
+                                              crate::document::AnnotationTool::Text => {
+                                                  if let Some(text) = &action.text {
+                                                      if !text.is_empty() {
+                                                          let pos = action.position.unwrap_or(egui::pos2(0.5, 0.5));
+                                                          let scale = action.scale.unwrap_or(12.0);
+                                                          
+                                                          let font_size = scale;
+                                                          let doc_fonts = doc.fonts_mut();
+                                                          let font = doc_fonts.helvetica();
+                                                          
+                                                          if let Ok(mut text_obj) = pdfium_render::prelude::PdfPageTextObject::new(
+                                                              &doc,
+                                                              text,
+                                                              font,
+                                                              pdfium_render::prelude::PdfPoints::new(font_size)
+                                                          ) {
+                                                              let _text_width = text_obj.width().unwrap_or(pdfium_render::prelude::PdfPoints::new(0.0)).value;
+                                                              let text_height = text_obj.height().unwrap_or(pdfium_render::prelude::PdfPoints::new(font_size)).value;
+                                                              
+                                                              let x = pos.x * page_w;
+                                                              let y = page_h - (pos.y * page_h) - text_height;
+                                                              
+                                                              let _ = text_obj.translate(
+                                                                  pdfium_render::prelude::PdfPoints::new(x),
+                                                                  pdfium_render::prelude::PdfPoints::new(y)
+                                                              );
+                                                              let _ = text_obj.set_fill_color(pdf_color);
+                                                              let _ = page.objects_mut().add_text_object(text_obj);
+                                                          }
+                                                      }
+                                                  }
+                                              }
                                           }
                                       }
                                   }

@@ -9,6 +9,8 @@ import { DocsGettingStarted } from './pages/DocsGettingStarted';
 import { DocsUninstall } from './pages/DocsUninstall';
 import { DocsFAQGeneral } from './pages/DocsFAQGeneral';
 import { DocsChangelog } from './pages/DocsChangelog';
+import { DocsViewing } from './pages/DocsViewing';
+import { DocsShortcuts } from './pages/DocsShortcuts';
 
 export default function App() {
   return (
@@ -23,6 +25,8 @@ export default function App() {
               <Route path="changelog" element={<DocsChangelog />} />
               <Route path="community" element={<DocsCommunity />} />
               <Route path="guides/getting-started" element={<DocsGettingStarted />} />
+              <Route path="guides/viewing" element={<DocsViewing />} />
+              <Route path="guides/shortcuts" element={<DocsShortcuts />} />
               <Route path="guides/uninstall" element={<DocsUninstall />} />
               <Route path="faq/general" element={<DocsFAQGeneral />} />
               <Route path="*" element={
