@@ -396,17 +396,22 @@ impl NixobdoPdfApp {
                         
                         if size_changed || style_changed || color_changed {
                             if is_text_tool_active || has_pending_text {
-                                if let Some(last_action) = self.pending_annotations.iter_mut().rev().find(|a| a.tool == crate::document::AnnotationTool::Text) {
-                                    if size_changed {
-                                        last_action.scale = Some(self.text_annotation_size);
-                                    }
-                                    if style_changed {
-                                        last_action.bold = self.text_annotation_bold;
-                                        last_action.italic = self.text_annotation_italic;
-                                        last_action.underline = self.text_annotation_underline;
-                                    }
-                                    if color_changed {
-                                        last_action.color = current_color;
+                                let target_index = self.active_text_annotation_index
+                                    .or_else(|| self.pending_annotations.iter().enumerate().rev().find(|(_, a)| a.tool == crate::document::AnnotationTool::Text).map(|(i, _)| i));
+                                    
+                                if let Some(idx) = target_index {
+                                    if let Some(action) = self.pending_annotations.get_mut(idx) {
+                                        if size_changed {
+                                            action.scale = Some(self.text_annotation_size);
+                                        }
+                                        if style_changed {
+                                            action.bold = self.text_annotation_bold;
+                                            action.italic = self.text_annotation_italic;
+                                            action.underline = self.text_annotation_underline;
+                                        }
+                                        if color_changed {
+                                            action.color = current_color;
+                                        }
                                     }
                                 }
                             }

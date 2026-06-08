@@ -174,6 +174,8 @@ impl NixobdoPdfApp {
                         
                         let available_height_before_scroll = ui.available_height() - 20.0;
                         
+                        let mut currently_focused_annotation = None;
+                        
                         egui::ScrollArea::vertical()
                             .auto_shrink([false; 2])
                             .show(ui, |ui| {
@@ -739,11 +741,8 @@ impl NixobdoPdfApp {
                                                                     
                                                                     let id_source = format!("text_edit_{}_{}", index, _i);
                                                                     
-                                                                    ui.allocate_new_ui(egui::UiBuilder::new().max_rect(text_rect), |ui| {
+                                                                    ui.allocate_new_ui(egui::UiBuilder::new().max_rect(text_rect).id_salt(&id_source), |ui| {
                                                                         ui.push_id(&id_source, |ui| {
-                                                                            let text_edit_id = ui.id().with("text_edit_core");
-                                                                            
-                                                                            let is_focused = ui.ctx().memory(|mem| mem.has_focus(text_edit_id));
                                                                             let is_empty = text.is_empty();
                                                                             
                                                                             let mut galley_arc = None;
@@ -757,11 +756,16 @@ impl NixobdoPdfApp {
                                                                             
                                                                             let text_edit = egui::TextEdit::multiline(&mut text)
                                                                                 .frame(false)
-                                                                                .id_source("text_edit_core")
+                                                                                .id_source(&id_source)
                                                                                 .desired_width(f32::INFINITY)
                                                                                 .desired_rows(1)
                                                                                 .layouter(&mut layouter);
                                                                             let edit_response = ui.add(text_edit);
+                                                                            
+                                                                            let is_focused = edit_response.has_focus();
+                                                                            if is_focused {
+                                                                                currently_focused_annotation = Some(_i);
+                                                                            }
                                                                             
                                                                             if action.rects[0].width() == 150.0 && text.is_empty() {
                                                                                 edit_response.request_focus();
@@ -850,6 +854,17 @@ impl NixobdoPdfApp {
                                                     }
                                                 }
                                                 
+                                                if let Some(idx) = currently_focused_annotation {
+                                                    if let Some(action) = self.pending_annotations.get(idx) {
+                                                        self.text_annotation_size = action.scale.unwrap_or(12.0);
+                                                        self.text_annotation_bold = action.bold;
+                                                        self.text_annotation_italic = action.italic;
+                                                        self.text_annotation_underline = action.underline;
+                                                        self.text_annotation_color = action.color;
+                                                    }
+                                                    self.active_text_annotation_index = Some(idx);
+                                                }
+
                                                 if Some(index) == tab.scroll_to_page {
                                                     response.scroll_to_me(Some(egui::Align::Center));
                                                     scrolled = true;
