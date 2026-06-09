@@ -10,7 +10,7 @@ egui_extras = { version = "0.31.0", features = ["svg", "image"] }
 pdfium-render = { version = "0.8.37", features = ["image"] }
 image = "0.25.5"
 anyhow = "1.0.95"
-rfd = "0.15.2"
+rfd = "0.17.2"
 webbrowser = "1.2.1"
 docx-rs = "0.4.20"
 zip = "8.6.0"
