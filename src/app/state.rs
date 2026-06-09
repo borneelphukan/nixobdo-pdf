@@ -97,3 +97,4 @@ impl NixobdoPdfApp {
         Vec::new() // Not implemented in this snippet
     }
 }
+

@@ -3,7 +3,7 @@ use crate::document::PdfWorkerMessage;
 use eframe::egui;
 
 impl NixobdoPdfApp {
-    pub(crate) fn process_messages(&mut self, ctx: &egui::Context) {
+    pub(crate) fn process_messages(&mut self, ui: &mut egui::Ui) {
         while let Ok(msg) = self.pdf_receiver.try_recv() {
             match msg {
                 PdfWorkerMessage::DocumentInfo { path, file_name, page_count, error } => {
@@ -47,12 +47,12 @@ impl NixobdoPdfApp {
                     if let Some(tab_index) = self.tabs.iter().position(|t| t.path == path) {
                         let tab = &mut self.tabs[tab_index];
                         if index < tab.pages.len() {
-                            tab.pages[index] = Some(ctx.load_texture(
+                            tab.pages[index] = Some(ui.ctx().load_texture(
                                 format!("page_{}_{}", path.display(), index),
                                 image,
                                 egui::TextureOptions::LINEAR,
                             ));
-                            tab.thumbnails[index] = Some(ctx.load_texture(
+                            tab.thumbnails[index] = Some(ui.ctx().load_texture(
                                 format!("thumb_{}_{}", path.display(), index),
                                 thumbnail_image,
                                 egui::TextureOptions::LINEAR,
@@ -72,36 +72,36 @@ impl NixobdoPdfApp {
                     self.export_progress = None;
                     self.toast_message = Some(message);
                     self.toast_success = success;
-                    self.toast_timer = ctx.input(|i| i.time) + 4.0; // show for 4 seconds
+                    self.toast_timer = ui.ctx().input(|i| i.time) + 4.0; // show for 4 seconds
                     self.is_saving_annotations = false;
                 }
                 PdfWorkerMessage::SignatureSaved { path } => {
                     self.toast_message = Some("Signature added successfully".to_string());
                     self.toast_success = true;
-                    self.toast_timer = ctx.input(|i| i.time) + 4.0;
+                    self.toast_timer = ui.ctx().input(|i| i.time) + 4.0;
                     self.is_placing_signature = false;
                     self.is_saving_signature = false;
-                    self.reload_pdf(ctx, path);
+                    self.reload_pdf(ui.ctx(), path);
                 }
                 PdfWorkerMessage::RotationSaved { path } => {
                     self.toast_message = Some("Document rotated successfully".to_string());
                     self.toast_success = true;
-                    self.toast_timer = ctx.input(|i| i.time) + 4.0;
+                    self.toast_timer = ui.ctx().input(|i| i.time) + 4.0;
                     self.is_rotating_document = false;
                     self.is_saving_rotation = false;
                     self.pending_rotation = 0;
-                    self.reload_pdf(ctx, path);
+                    self.reload_pdf(ui.ctx(), path);
                 }
                 PdfWorkerMessage::AnnotationsSaved { path } => {
                     self.toast_message = Some("Annotations saved successfully".to_string());
                     self.toast_success = true;
-                    self.toast_timer = ctx.input(|i| i.time) + 4.0;
+                    self.toast_timer = ui.ctx().input(|i| i.time) + 4.0;
                     self.is_saving_annotations = false;
                     self.is_annotation_mode = false;
                     self.active_annotation_tool = None;
                     self.pending_annotations.clear();
                     self.redo_annotations.clear();
-                    self.reload_pdf(ctx, path);
+                    self.reload_pdf(ui.ctx(), path);
                 }
 
                 PdfWorkerMessage::UpdateCheckResult(is_available, version, is_manual) => {
@@ -131,16 +131,16 @@ impl NixobdoPdfApp {
                             if let Err(e) = std::process::Command::new(&path).spawn() {
                                 self.toast_message = Some(format!("Failed to start installer: {}", e));
                                 self.toast_success = false;
-                                self.toast_timer = ctx.input(|i| i.time) + 4.0;
+                                self.toast_timer = ui.ctx().input(|i| i.time) + 4.0;
                             } else {
-                                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                                ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
                                 std::process::exit(0);
                             }
                         }
                         Err(e) => {
                             self.toast_message = Some(format!("Download failed: {}", e));
                             self.toast_success = false;
-                            self.toast_timer = ctx.input(|i| i.time) + 4.0;
+                            self.toast_timer = ui.ctx().input(|i| i.time) + 4.0;
                         }
                     }
                 }
@@ -148,3 +148,4 @@ impl NixobdoPdfApp {
         }
     }
 }
+

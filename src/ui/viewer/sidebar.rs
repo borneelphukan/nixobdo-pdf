@@ -2,15 +2,15 @@ use crate::app::NixobdoPdfApp;
 use eframe::egui;
 
 impl NixobdoPdfApp {
-    pub(crate) fn ui_sidebar(&mut self, ctx: &egui::Context) {
-        let is_fullscreen = ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
+    pub(crate) fn ui_sidebar(&mut self, ui: &mut egui::Ui) {
+        let is_fullscreen = ui.ctx().input(|i| i.viewport().fullscreen.unwrap_or(false));
         if !self.sidebar_open || is_fullscreen {
             return;
         }
-        egui::SidePanel::left("preview_panel")
+        egui::Panel::left("preview_panel")
             .resizable(false)
-            .exact_width(180.0)
-            .show(ctx, |ui| {
+            .exact_size(180.0)
+            .show_inside(ui, |ui| {
                 let mut pages_empty = true;
                 if let Some(active_idx) = self.active_tab_index {
                     if let Some(tab) = self.tabs.get_mut(active_idx) {
@@ -97,3 +97,5 @@ impl NixobdoPdfApp {
             });
     }
 }
+
+

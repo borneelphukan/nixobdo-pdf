@@ -3,7 +3,7 @@ use eframe::egui;
 use std::fs;
 
 impl NixobdoPdfApp {
-    pub(crate) fn ui_rename_dialog(&mut self, ctx: &egui::Context) {
+    pub(crate) fn ui_rename_dialog(&mut self, ui: &mut egui::Ui) {
         if !self.rename_window_open {
             return;
         }
@@ -16,8 +16,8 @@ impl NixobdoPdfApp {
             .resizable(false)
             .title_bar(false)
             .anchor(egui::Align2::CENTER_TOP, [0.0, 30.0])
-            .frame(egui::Frame::popup(&ctx.style()).inner_margin(8.0))
-            .show(ctx, |ui| {
+            .frame(egui::Frame::popup(&ui.ctx().global_style()).inner_margin(8.0))
+            .show(ui.ctx(), |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Name:");
                     let response = ui.text_edit_singleline(&mut self.rename_buffer);
@@ -70,3 +70,5 @@ impl NixobdoPdfApp {
         }
     }
 }
+
+

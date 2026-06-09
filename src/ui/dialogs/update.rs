@@ -2,7 +2,7 @@ use crate::app::{NixobdoPdfApp, UpdateState};
 use eframe::egui;
 
 impl NixobdoPdfApp {
-    pub(crate) fn ui_update_dialog(&mut self, ctx: &egui::Context) {
+    pub(crate) fn ui_update_dialog(&mut self, ui: &mut egui::Ui) {
         match self.update_state.clone() {
             UpdateState::None => {}
             UpdateState::Checking => {
@@ -12,8 +12,8 @@ impl NixobdoPdfApp {
                     .resizable(false)
                     .open(&mut is_open)
                     .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-                    .frame(egui::Frame::window(&ctx.style()).inner_margin(16.0).corner_radius(8))
-                    .show(ctx, |ui| {
+                    .frame(egui::Frame::window(&ui.ctx().global_style()).inner_margin(16.0).corner_radius(8))
+                    .show(ui.ctx(), |ui| {
                         ui.vertical_centered(|ui| {
                             ui.label("Checking for newer version...");
                             ui.add_space(8.0);
@@ -26,7 +26,7 @@ impl NixobdoPdfApp {
                 }
             }
             UpdateState::Prompt(version) => {
-                let is_dark = ctx.system_theme().unwrap_or(egui::Theme::Dark) == egui::Theme::Dark;
+                let is_dark = ui.ctx().system_theme().unwrap_or(egui::Theme::Dark) == egui::Theme::Dark;
                 
                 let bg_color = if is_dark { egui::Color32::from_rgb(45, 45, 55) } else { egui::Color32::from_rgb(240, 240, 245) };
                 let text_color = if is_dark { egui::Color32::from_rgb(240, 240, 245) } else { egui::Color32::from_rgb(20, 20, 25) };
@@ -38,8 +38,8 @@ impl NixobdoPdfApp {
                 egui::Area::new(egui::Id::new("update_banner"))
                     .anchor(egui::Align2::CENTER_TOP, [0.0, 10.0])
                     .order(egui::Order::Foreground)
-                    .show(ctx, |ui| {
-                        egui::Frame::window(&ctx.style())
+                    .show(ui.ctx(), |ui| {
+                        egui::Frame::window(&ui.ctx().global_style())
                             .fill(bg_color)
                             .corner_radius(egui::CornerRadius::same(6))
                             .inner_margin(egui::Margin::symmetric(16, 10))
@@ -60,7 +60,7 @@ impl NixobdoPdfApp {
                                     
                                     if ui.button(egui::RichText::new("Download Now").color(text_color)).clicked() {
                                         self.update_state = UpdateState::Downloading(0.0);
-                                        let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::DownloadUpdate { version: version.clone(), ctx: ctx.clone() });
+                                        let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::DownloadUpdate { version: version.clone(), ctx: ui.ctx().clone() });
                                     }
                                     if ui.button(egui::RichText::new("Skip").color(text_color)).clicked() {
                                         self.update_state = UpdateState::None;
@@ -77,8 +77,8 @@ impl NixobdoPdfApp {
                     .resizable(false)
                     .open(&mut is_open)
                     .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-                    .frame(egui::Frame::window(&ctx.style()).inner_margin(16.0).corner_radius(8))
-                    .show(ctx, |ui| {
+                    .frame(egui::Frame::window(&ui.ctx().global_style()).inner_margin(16.0).corner_radius(8))
+                    .show(ui.ctx(), |ui| {
                         ui.vertical_centered(|ui| {
                             ui.label(egui::RichText::new("Downloading update...").size(14.0));
                             ui.add_space(12.0);
@@ -113,3 +113,5 @@ impl NixobdoPdfApp {
         }
     }
 }
+
+

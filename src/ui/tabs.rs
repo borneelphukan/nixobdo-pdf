@@ -2,8 +2,8 @@ use crate::app::NixobdoPdfApp;
 use eframe::egui;
 
 impl NixobdoPdfApp {
-    pub(crate) fn ui_tabs(&mut self, ctx: &egui::Context) {
-        egui::TopBottomPanel::top("tab_bar_panel").show(ctx, |ui| {
+    pub(crate) fn ui_tabs(&mut self, ui: &mut egui::Ui) {
+        egui::Panel::top("tab_bar_panel").show_inside(ui, |ui| {
             ui.scope(|ui| {
                 let is_dark_mode = ui.visuals().dark_mode;
                 
@@ -83,3 +83,5 @@ impl NixobdoPdfApp {
         });
     }
 }
+
+

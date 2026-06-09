@@ -4,7 +4,7 @@ use eframe::egui;
 use std::sync::atomic::Ordering;
 
 impl NixobdoPdfApp {
-    pub(crate) fn ui_export_dialog(&mut self, ctx: &egui::Context) {
+    pub(crate) fn ui_export_dialog(&mut self, ui: &mut egui::Ui) {
         if !self.export_window_open {
             return;
         }
@@ -14,7 +14,7 @@ impl NixobdoPdfApp {
         
         let window_title = "Export File";
         
-        let window_frame = egui::Frame::window(&ctx.style()).inner_margin(0.0);
+        let window_frame = egui::Frame::window(&ui.ctx().global_style()).inner_margin(0.0);
         
         egui::Window::new(window_title)
             .collapsible(false)
@@ -22,7 +22,7 @@ impl NixobdoPdfApp {
             .title_bar(false) // Hide default egui title bar
             .frame(window_frame)
             .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-            .show(ctx, |ui| {
+            .show(ui.ctx(), |ui| {
                 // Custom Header
                 egui::Frame::NONE
                     .inner_margin(egui::Margin::symmetric(12, 8))
@@ -52,7 +52,7 @@ impl NixobdoPdfApp {
                             // Main Export UI
                             ui.set_min_width(380.0);
 
-                            egui::Frame::group(&ctx.style()).show(ui, |ui| {
+                            egui::Frame::group(&ui.ctx().global_style()).show(ui, |ui| {
                                 ui.set_width(ui.available_width());
                                 ui.label("File Information");
                                 ui.add_space(4.0);
@@ -83,7 +83,7 @@ impl NixobdoPdfApp {
                             
                             ui.add_space(8.0);
                             
-                            egui::Frame::group(&ctx.style()).show(ui, |ui| {
+                            egui::Frame::group(&ui.ctx().global_style()).show(ui, |ui| {
                                 ui.set_width(ui.available_width());
                                 ui.horizontal(|ui| {
                                     ui.label("Format Settings");
@@ -141,7 +141,7 @@ impl NixobdoPdfApp {
                             format: self.export_format,
                             retain_layout: true,
                             include_images: true,
-                            ctx: ctx.clone(),
+                            ctx: ui.ctx().clone(),
                             cancel_flag: self.export_cancel_flag.clone(),
                         });
                     }
@@ -153,3 +153,5 @@ impl NixobdoPdfApp {
         }
     }
 }
+
+

@@ -3,8 +3,8 @@ use crate::document::{PageLayoutMode, PdfLinkTarget, find_closest_char, is_char_
 use eframe::egui;
 
 impl NixobdoPdfApp {
-    pub(crate) fn ui_central_panel(&mut self, ctx: &egui::Context) {
-        egui::CentralPanel::default().show(ctx, |ui| {
+    pub(crate) fn ui_central_panel(&mut self, ui: &mut egui::Ui) {
+        egui::CentralPanel::default().show_inside(ui, |ui| {
             let mut show_placeholder = true;
             
             let mut select_all_triggered = false;
@@ -20,7 +20,7 @@ impl NixobdoPdfApp {
                         .title_bar(false)
                         .resizable(false)
                         .order(egui::Order::Foreground)
-                        .show(ctx, |ui| {
+                        .show(ui.ctx(), |ui| {
                         ui.horizontal(|ui| {
                             if self.is_saving_signature {
                                 ui.label("Saving signature to PDF...");
@@ -40,7 +40,7 @@ impl NixobdoPdfApp {
                                                     image_path: img_path.clone(),
                                                     position: self.signature_position.unwrap_or((0.5, 0.5)),
                                                     scale: self.signature_scale,
-                                                    ctx: ctx.clone(),
+                                                    ctx: ui.ctx().clone(),
                                                 });
                                             }
                                         }
@@ -67,7 +67,7 @@ impl NixobdoPdfApp {
                         .title_bar(false)
                         .resizable(false)
                         .order(egui::Order::Foreground)
-                        .show(ctx, |ui| {
+                        .show(ui.ctx(), |ui| {
                         ui.horizontal(|ui| {
                             if self.is_saving_rotation {
                                 ui.label("Saving rotation to PDF...");
@@ -83,7 +83,7 @@ impl NixobdoPdfApp {
                                             let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::SaveRotation {
                                                 path: tab.path.clone(),
                                                 rotation: self.pending_rotation,
-                                                ctx: ctx.clone(),
+                                                ctx: ui.ctx().clone(),
                                             });
                                         }
                                     }
@@ -135,10 +135,10 @@ impl NixobdoPdfApp {
                         });
                     } else {
                         let ctrl_pressed = ui.input(|i| i.modifiers.ctrl);
-                        let scroll_delta = ui.input(|i| i.raw_scroll_delta.y);
+                        let scroll_delta = ui.input(|i| i.smooth_scroll_delta.y);
                         let current_time = ui.input(|i| i.time);
                         
-                        if !ui.ctx().wants_keyboard_input() && ui.input(|i| (i.modifiers.ctrl || i.modifiers.command) && i.key_pressed(egui::Key::A)) {
+                        if !ui.ctx().egui_wants_keyboard_input() && ui.input(|i| (i.modifiers.ctrl || i.modifiers.command) && i.key_pressed(egui::Key::A)) {
                             select_all_triggered = true;
                         }
                         
@@ -320,7 +320,7 @@ impl NixobdoPdfApp {
                                                     // Handle drag/selection input on the page
                                                     if index < tab.page_chars.len() {
                                                         if response.drag_started_by(egui::PointerButton::Primary) {
-                                                            if let Some(mouse_pos) = ctx.pointer_interact_pos() {
+                                                            if let Some(mouse_pos) = ui.ctx().pointer_interact_pos() {
                                                                 let unrot_pos = transform_pos_to_unrot(mouse_pos, response.rect, rot);
                                                                 if let Some(char_idx) = find_closest_char(response.rect, unrot_pos, &tab.page_chars[index]) {
                                                                     self.selection_start = Some((index, char_idx));
@@ -331,7 +331,7 @@ impl NixobdoPdfApp {
                                                         }
                                                         
                                                         if self.is_selecting && response.dragged_by(egui::PointerButton::Primary) {
-                                                            if let Some(mouse_pos) = ctx.pointer_interact_pos() {
+                                                            if let Some(mouse_pos) = ui.ctx().pointer_interact_pos() {
                                                                 let unrot_pos = transform_pos_to_unrot(mouse_pos, response.rect, rot);
                                                                 if let Some(char_idx) = find_closest_char(response.rect, unrot_pos, &tab.page_chars[index]) {
                                                                     self.selection_end = Some((index, char_idx));
@@ -444,25 +444,25 @@ impl NixobdoPdfApp {
                                                             if has_selection {
                                                                 if ui.button("📋 Copy").clicked() {
                                                                     copy_triggered = true;
-                                                                    ui.close_menu();
+                                                                    ui.close();
                                                                 }
                                                             }
                                                             if ui.button("📖 Select All").clicked() {
                                                                 select_all_triggered = true;
-                                                                ui.close_menu();
+                                                                ui.close();
                                                             }
                                                             if ui.button("🔍 Zoom In").clicked() {
                                                                 zoom_in_clicked = true;
-                                                                ui.close_menu();
+                                                                ui.close();
                                                             }
                                                             if ui.button("🔍 Zoom Out").clicked() {
                                                                 zoom_out_clicked = true;
-                                                                ui.close_menu();
+                                                                ui.close();
                                                             }
                                                             ui.separator();
                                                             if ui.button("🚪 Exit").clicked() {
                                                                 exit_triggered = true;
-                                                                ui.close_menu();
+                                                                ui.close();
                                                             }
                                                         });
                                                         
@@ -730,8 +730,8 @@ impl NixobdoPdfApp {
                                                                         job
                                                                     };
                                                                     
-                                                                    let job = create_layout_job(if text.is_empty() { " " } else { &text });
-                                                                    let galley = ui.fonts(|f| f.layout_job(job));
+                                                                    let job = create_layout_job(if text.is_empty() { " " } else { text.as_str() });
+                                                                    let galley = ui.ctx().fonts_mut(|f| f.layout_job(job));
                                                                     
                                                                     let text_size = galley.size().max(box_size);
                                                                     
@@ -741,21 +741,21 @@ impl NixobdoPdfApp {
                                                                     
                                                                     let id_source = format!("text_edit_{}_{}", index, _i);
                                                                     
-                                                                    ui.allocate_new_ui(egui::UiBuilder::new().max_rect(text_rect).id_salt(&id_source), |ui| {
+                                                                    ui.scope_builder(egui::UiBuilder::new().max_rect(text_rect).id_salt(&id_source), |ui| {
                                                                         ui.push_id(&id_source, |ui| {
                                                                             let is_empty = text.is_empty();
                                                                             
                                                                             let mut galley_arc = None;
-                                                                            let mut layouter = |ui: &egui::Ui, text: &str, wrap_width: f32| {
-                                                                                let mut job = create_layout_job(text);
+                                                                            let mut layouter = |ui: &egui::Ui, text: &dyn egui::TextBuffer, wrap_width: f32| {
+                                                                                let mut job = create_layout_job(text.as_str());
                                                                                 job.wrap.max_width = wrap_width;
-                                                                                let galley = ui.fonts(|f| f.layout_job(job));
+                                                                                let galley = ui.ctx().fonts_mut(|f| f.layout_job(job));
                                                                                 galley_arc = Some(galley.clone());
                                                                                 galley
                                                                             };
                                                                             
                                                                             let text_edit = egui::TextEdit::multiline(&mut text)
-                                                                                .frame(false)
+                                                                                .frame(egui::Frame::NONE)
                                                                                 .id_source(&id_source)
                                                                                 .desired_width(f32::INFINITY)
                                                                                 .desired_rows(1)
@@ -896,7 +896,7 @@ impl NixobdoPdfApp {
             }
 
             if copy_triggered {
-                self.copy_selection(ctx);
+                self.copy_selection(ui.ctx());
             }
             if select_all_triggered {
                 if let Some(active_idx) = self.active_tab_index {
@@ -911,7 +911,7 @@ impl NixobdoPdfApp {
                 }
             }
             if exit_triggered {
-                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
             }
         });
         
@@ -919,8 +919,8 @@ impl NixobdoPdfApp {
         egui::Area::new(egui::Id::new("fullscreen_button_area"))
             .anchor(egui::Align2::RIGHT_BOTTOM, [-24.0, -24.0])
             .order(egui::Order::Foreground)
-            .show(ctx, |ui| {
-                let is_fullscreen = ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
+            .show(ui.ctx(), |ui| {
+                let is_fullscreen = ui.ctx().input(|i| i.viewport().fullscreen.unwrap_or(false));
                 let tooltip = if is_fullscreen { "Exit Fullscreen" } else { "Fullscreen" };
                 
                 let image = if is_fullscreen {
@@ -942,9 +942,11 @@ impl NixobdoPdfApp {
                 ).on_hover_text(tooltip);
                 
                 if response.clicked() {
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(!is_fullscreen));
+                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::Fullscreen(!is_fullscreen));
                 }
 
             });
     }
 }
+
+

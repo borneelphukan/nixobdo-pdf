@@ -2,18 +2,18 @@ use crate::app::NixobdoPdfApp;
 use eframe::egui;
 
 impl NixobdoPdfApp {
-    pub(crate) fn ui_separator(&mut self, ctx: &egui::Context) {
-        let is_fullscreen = ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
+    pub(crate) fn ui_separator(&mut self, ui: &mut egui::Ui) {
+        let is_fullscreen = ui.ctx().input(|i| i.viewport().fullscreen.unwrap_or(false));
         if is_fullscreen {
             return;
         }
         
         // Draggable vertical separator panel
-        egui::SidePanel::left("separator_panel")
+        egui::Panel::left("separator_panel")
             .resizable(false)
-            .exact_width(1.0)
+            .exact_size(1.0)
             .frame(egui::Frame::NONE)
-            .show(ctx, |ui| {
+            .show_inside(ui, |ui| {
                 let rect = ui.max_rect();
                 let (response, painter) = ui.allocate_painter(rect.size(), egui::Sense::click_and_drag());
                 
@@ -48,3 +48,5 @@ impl NixobdoPdfApp {
             });
     }
 }
+
+

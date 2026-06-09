@@ -3,7 +3,7 @@ use eframe::egui;
 use std::sync::atomic::Ordering;
 
 impl NixobdoPdfApp {
-    pub(crate) fn ui_export_progress(&mut self, ctx: &egui::Context) {
+    pub(crate) fn ui_export_progress(&mut self, ui: &mut egui::Ui) {
         if let Some(progress) = self.export_progress {
             let mut is_open = true;
             egui::Window::new("Exporting...")
@@ -11,8 +11,8 @@ impl NixobdoPdfApp {
                 .resizable(false)
                 .open(&mut is_open)
                 .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-                .frame(egui::Frame::window(&ctx.style()).inner_margin(16.0).corner_radius(8))
-                .show(ctx, |ui| {
+                .frame(egui::Frame::window(&ui.ctx().global_style()).inner_margin(16.0).corner_radius(8))
+                .show(ui.ctx(), |ui| {
                     ui.vertical_centered(|ui| {
                         ui.label(egui::RichText::new("Exporting document...").size(14.0));
                         ui.add_space(12.0);
@@ -45,3 +45,5 @@ impl NixobdoPdfApp {
         }
     }
 }
+
+

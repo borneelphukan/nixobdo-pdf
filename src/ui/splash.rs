@@ -2,12 +2,12 @@ use crate::app::NixobdoPdfApp;
 use eframe::egui;
 
 impl NixobdoPdfApp {
-    pub(crate) fn ui_splash(&mut self, ctx: &egui::Context) -> bool {
+    pub(crate) fn ui_splash(&mut self, ui: &mut egui::Ui) -> bool {
         let elapsed = self.startup_time.elapsed().as_secs_f32();
         if elapsed < 2.5 {
             egui::CentralPanel::default()
-                .frame(egui::Frame::NONE.fill(ctx.style().visuals.window_fill()))
-                .show(ctx, |ui| {
+                .frame(egui::Frame::NONE.fill(ui.ctx().global_style().visuals.window_fill()))
+                .show_inside(ui, |ui| {
                     ui.vertical_centered(|ui| {
                         ui.add_space(ui.available_height() / 2.0 - 100.0);
                         
@@ -18,10 +18,12 @@ impl NixobdoPdfApp {
                     });
                 });
             
-            ctx.request_repaint();
+            ui.ctx().request_repaint();
             true
         } else {
             false
         }
     }
 }
+
+

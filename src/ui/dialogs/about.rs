@@ -2,13 +2,13 @@ use crate::app::NixobdoPdfApp;
 use eframe::egui;
 
 impl NixobdoPdfApp {
-    pub(crate) fn ui_about_dialog(&mut self, ctx: &egui::Context) {
+    pub(crate) fn ui_about_dialog(&mut self, ui: &mut egui::Ui) {
         let mut about_open = self.about_window_open;
         if about_open {
             let branch = option_env!("GIT_BRANCH").unwrap_or("unknown");
             let stability = if branch == "main" || branch == "master" { "Stable" } else { "Unstable" };
             
-            ctx.show_viewport_immediate(
+            ui.ctx().show_viewport_immediate(
                 egui::ViewportId::from_hash_of("about_viewport"),
                 egui::ViewportBuilder::default()
                     .with_title("About Nixobdo PDF Reader")
@@ -17,20 +17,20 @@ impl NixobdoPdfApp {
                     .with_maximize_button(false)
                     .with_minimize_button(false),
                 |ctx, _class| {
-                    if ctx.input(|i| i.viewport().close_requested()) {
+                    if ui.ctx().input(|i| i.viewport().close_requested()) {
                         about_open = false;
                     }
 
                     // Dynamically support light mode in the popup based on system preference
-                    let is_light = ctx.system_theme() == Some(egui::Theme::Light);
-                    let mut style = (*ctx.style()).clone();
+                    let is_light = ui.ctx().system_theme() == Some(egui::Theme::Light);
+                    let mut style = (*ui.ctx().global_style()).clone();
                     if is_light {
                         style.visuals = egui::Visuals::light();
                     }
                     
-                    let bg_fill = if is_light { egui::Color32::from_rgb(245, 245, 245) } else { ctx.style().visuals.window_fill };
+                    let bg_fill = if is_light { egui::Color32::from_rgb(245, 245, 245) } else { ui.ctx().global_style().visuals.window_fill };
                     
-                    egui::TopBottomPanel::bottom("about_bottom_panel")
+                    egui::Panel::bottom("about_bottom_panel")
                         .frame(egui::Frame::default().inner_margin(egui::Margin { left: 16, right: 16, top: 8, bottom: 16 }).fill(bg_fill))
                         .show(ctx, |ui| {
                             ui.set_style(style.clone());
@@ -87,7 +87,7 @@ impl NixobdoPdfApp {
                                                 "Version: {} ({})\nEnvironment: OS: {} ({}); Arch: {}", 
                                                 env!("CARGO_PKG_VERSION"), stability, std::env::consts::OS, std::env::consts::FAMILY, std::env::consts::ARCH
                                             );
-                                            ctx.copy_text(version_info);
+                                            ui.ctx().copy_text(version_info);
                                         }
                                     });
                                     
@@ -114,3 +114,5 @@ impl NixobdoPdfApp {
         }
     }
 }
+
+

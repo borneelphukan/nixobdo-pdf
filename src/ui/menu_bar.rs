@@ -3,9 +3,9 @@ use crate::document::PageLayoutMode;
 use eframe::egui;
 
 impl NixobdoPdfApp {
-    pub(crate) fn ui_menu_bar(&mut self, ctx: &egui::Context) {
-        egui::TopBottomPanel::top("menu_bar_panel").show(ctx, |ui| {
-            egui::menu::bar(ui, |ui| {
+    pub(crate) fn ui_menu_bar(&mut self, ui: &mut egui::Ui) {
+        egui::Panel::top("menu_bar_panel").show_inside(ui, |ui| {
+            egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("Open").clicked() {
                         if let Some(paths) = rfd::FileDialog::new()
@@ -13,10 +13,10 @@ impl NixobdoPdfApp {
                             .pick_files()
                         {
                             for path in paths {
-                                self.load_pdf(ctx, path);
+                                self.load_pdf(ui.ctx(), path);
                             }
                         }
-                        ui.close_menu();
+                        ui.close();
                     }
                     
                     // Open Recent nested menu
@@ -32,8 +32,8 @@ impl NixobdoPdfApp {
                                 }
                             }
                             if let Some(path) = to_open {
-                                self.load_pdf(ctx, path);
-                                ui.close_menu();
+                                self.load_pdf(ui.ctx(), path);
+                                ui.close();
                             }
                         }
                     });
@@ -41,14 +41,14 @@ impl NixobdoPdfApp {
                     ui.separator();
                     
                     if ui.button("Close Window").clicked() {
-                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
                     }
                     
                     if ui.add_enabled(self.active_tab_index.is_some(), egui::Button::new("Close PDF")).clicked() {
                         if let Some(active_idx) = self.active_tab_index {
                             self.close_tab(active_idx);
                         }
-                        ui.close_menu();
+                        ui.close();
                     }
                     
                     if ui.add_enabled(self.active_tab_index.is_some(), egui::Button::new("Rename")).clicked() {
@@ -59,7 +59,7 @@ impl NixobdoPdfApp {
                                 self.focus_rename_input = true;
                             }
                         }
-                        ui.close_menu();
+                        ui.close();
                     }
                     
 
@@ -77,7 +77,7 @@ impl NixobdoPdfApp {
                                 self.export_window_open = true;
                             }
                         }
-                        ui.close_menu();
+                        ui.close();
                     }
                 });
                 
@@ -95,7 +95,7 @@ impl NixobdoPdfApp {
                                     let pixels = rgba.as_flat_samples();
                                     let color_image = egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice());
                                     
-                                    self.signature_texture = Some(ctx.load_texture(
+                                    self.signature_texture = Some(ui.ctx().load_texture(
                                         "signature",
                                         color_image,
                                         egui::TextureOptions::LINEAR,
@@ -109,7 +109,7 @@ impl NixobdoPdfApp {
                                     self.signature_active_page = self.active_tab_index.and_then(|idx| self.tabs.get(idx).map(|t| t.selected_page));
                                 }
                             }
-                            ui.close_menu();
+                            ui.close();
                         }
                     });
                     
@@ -122,7 +122,7 @@ impl NixobdoPdfApp {
                             self.pending_annotations.clear();
                             self.redo_annotations.clear();
                         }
-                        ui.close_menu();
+                        ui.close();
                     }
                     
                     ui.separator();
@@ -143,7 +143,7 @@ impl NixobdoPdfApp {
                                         self.is_rotating_document = true;
                                     }
                                 }
-                                ui.close_menu();
+                                ui.close();
                             }
                             
                             if ui.add(egui::Button::image_and_text(
@@ -160,7 +160,7 @@ impl NixobdoPdfApp {
                                         self.is_rotating_document = true;
                                     }
                                 }
-                                ui.close_menu();
+                                ui.close();
                             }
                         });
                     });
@@ -171,14 +171,14 @@ impl NixobdoPdfApp {
                     let sidebar_text = if self.sidebar_open { "✔ Show Sidebar" } else { "    Show Sidebar" };
                     if ui.button(sidebar_text).clicked() {
                         self.sidebar_open = !self.sidebar_open;
-                        ui.close_menu();
+                        ui.close();
                     }
                     
-                    let is_fullscreen = ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
+                    let is_fullscreen = ui.ctx().input(|i| i.viewport().fullscreen.unwrap_or(false));
                     let fullscreen_text = if is_fullscreen { "✔ Fullscreen" } else { "    Fullscreen" };
                     if ui.button(fullscreen_text).clicked() {
-                        ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(!is_fullscreen));
-                        ui.close_menu();
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Fullscreen(!is_fullscreen));
+                        ui.close();
                     }
                     
                     ui.separator();
@@ -188,19 +188,19 @@ impl NixobdoPdfApp {
                             let cont_text = if tab.layout_mode == PageLayoutMode::ContinuousScroll { "✔ Scroll Mode" } else { "   Scroll Mode" };
                             if ui.button(cont_text).clicked() {
                                 tab.layout_mode = PageLayoutMode::ContinuousScroll;
-                                ui.close_menu();
+                                ui.close();
                             }
                             
                             let single_text = if tab.layout_mode == PageLayoutMode::SinglePage { "✔ Single Page" } else { "    Single Page" };
                             if ui.button(single_text).clicked() {
                                 tab.layout_mode = PageLayoutMode::SinglePage;
-                                ui.close_menu();
+                                ui.close();
                             }
                             
                             let two_text = if tab.layout_mode == PageLayoutMode::TwoPage { "✔ Two Page" } else { "    Two Page" };
                             if ui.button(two_text).clicked() {
                                 tab.layout_mode = PageLayoutMode::TwoPage;
-                                ui.close_menu();
+                                ui.close();
                             }
                         }
                     } else {
@@ -213,15 +213,17 @@ impl NixobdoPdfApp {
                     ui.set_min_width(220.0);
                     if ui.button("Check for Updates").clicked() {
                         self.update_state = crate::app::UpdateState::Checking;
-                        let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::CheckUpdate { is_manual: true, ctx: ctx.clone() });
-                        ui.close_menu();
+                        let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::CheckUpdate { is_manual: true, ctx: ui.ctx().clone() });
+                        ui.close();
                     }
                     if ui.button("About").clicked() {
                         self.about_window_open = true;
-                        ui.close_menu();
+                        ui.close();
                     }
                 });
             });
         });
     }
 }
+
+

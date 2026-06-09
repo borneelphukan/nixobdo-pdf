@@ -111,7 +111,7 @@ fn color_slider_2d(
 }
 
 impl NixobdoPdfApp {
-    pub(crate) fn ui_custom_color_dialog(&mut self, ctx: &egui::Context) {
+    pub(crate) fn ui_custom_color_dialog(&mut self, ui: &mut egui::Ui) {
         if self.is_custom_text_color_open {
             let mut is_open = true;
             
@@ -121,7 +121,7 @@ impl NixobdoPdfApp {
                 .resizable(false)
                 .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
                 .min_width(280.0)
-                .show(ctx, |ui| {
+                .show(ui.ctx(), |ui| {
                     let mut hsva = egui::ecolor::Hsva::from(self.custom_text_color_temp);
                     
                     // 2D Gradient
@@ -179,3 +179,5 @@ impl NixobdoPdfApp {
         }
     }
 }
+
+

@@ -55,7 +55,7 @@ fn main() -> eframe::Result<()> {
             style.visuals.widgets.inactive.bg_fill = egui::Color32::from_rgb(45, 45, 55);
             style.visuals.widgets.hovered.bg_fill = egui::Color32::from_rgb(65, 65, 80);
             
-            cc.egui_ctx.set_style(style);
+            cc.egui_ctx.set_global_style(style);
             
             egui_extras::install_image_loaders(&cc.egui_ctx);
             
@@ -69,3 +69,4 @@ fn main() -> eframe::Result<()> {
         }),
     )
 }
+

@@ -411,3 +411,4 @@ pub fn export_doc_rtf(pdf: &Pdfium, path: &PathBuf, out_path: &PathBuf, retain_l
     
     Ok("Exported as DOC successfully.".to_string())
 }
+

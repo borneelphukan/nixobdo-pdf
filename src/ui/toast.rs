@@ -2,9 +2,9 @@ use crate::app::NixobdoPdfApp;
 use eframe::egui;
 
 impl NixobdoPdfApp {
-    pub(crate) fn ui_toast(&mut self, ctx: &egui::Context) {
+    pub(crate) fn ui_toast(&mut self, ui: &mut egui::Ui) {
         if let Some(msg) = &self.toast_message {
-            let now = ctx.input(|i| i.time);
+            let now = ui.ctx().input(|i| i.time);
             if now < self.toast_timer {
                 let remaining = self.toast_timer - now;
                 // Fade out in the last second
@@ -21,7 +21,7 @@ impl NixobdoPdfApp {
                 egui::Area::new(egui::Id::new("export_toast"))
                     .anchor(egui::Align2::RIGHT_BOTTOM, [-16.0, -16.0])
                     .order(egui::Order::Foreground)
-                    .show(ctx, |ui| {
+                    .show(ui.ctx(), |ui| {
                         egui::Frame::NONE
                             .fill(bg_color)
                             .corner_radius(egui::CornerRadius::same(6))
@@ -41,10 +41,12 @@ impl NixobdoPdfApp {
                             });
                     });
                 
-                ctx.request_repaint(); // Keep repainting for animation
+                ui.ctx().request_repaint(); // Keep repainting for animation
             } else {
                 self.toast_message = None;
             }
         }
     }
 }
+
+

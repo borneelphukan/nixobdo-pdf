@@ -2,8 +2,8 @@ use crate::app::NixobdoPdfApp;
 use eframe::egui;
 
 impl NixobdoPdfApp {
-    pub(crate) fn ui_toolbar(&mut self, ctx: &egui::Context) {
-        let has_search_modifier = ctx.input(|i| i.modifiers.command || i.modifiers.ctrl);
+    pub(crate) fn ui_toolbar(&mut self, ui: &mut egui::Ui) {
+        let has_search_modifier = ui.ctx().input(|i| i.modifiers.command || i.modifiers.ctrl);
 
         // Pre-calculate search matches
         let mut match_pages = Vec::new();
@@ -37,7 +37,7 @@ impl NixobdoPdfApp {
             }
         }
 
-        egui::TopBottomPanel::top("toolbar_panel").show(ctx, |ui| {
+        egui::Panel::top("toolbar_panel").show_inside(ui, |ui| {
             ui.add_space(4.0);
             ui.horizontal(|ui| {
                 let has_active_tab = self.active_tab_index.is_some();
@@ -177,7 +177,7 @@ impl NixobdoPdfApp {
                             }
                         }
                         
-                        if response.lost_focus() && ctx.input(|i| i.key_pressed(egui::Key::Enter)) {
+                        if response.lost_focus() && ui.ctx().input(|i| i.key_pressed(egui::Key::Enter)) {
                             if !match_pages.is_empty() {
                                 self.search_active_match = (self.search_active_match + 1) % match_pages.len();
                                 if let Some(active_idx) = self.active_tab_index {
@@ -191,7 +191,7 @@ impl NixobdoPdfApp {
                             }
                         }
                         
-                        if has_search_modifier && ctx.input(|i| i.key_pressed(egui::Key::F)) {
+                        if has_search_modifier && ui.ctx().input(|i| i.key_pressed(egui::Key::F)) {
                             response.request_focus();
                         }
                         
@@ -203,7 +203,7 @@ impl NixobdoPdfApp {
         });
 
         if self.is_annotation_mode {
-            egui::TopBottomPanel::top("annotation_toolbar_panel").show(ctx, |ui| {
+            egui::Panel::top("annotation_toolbar_panel").show_inside(ui, |ui| {
                 ui.add_space(4.0);
                 ui.horizontal(|ui| {
                     ui.label(egui::RichText::new("Annotation Tools:").strong());
@@ -349,7 +349,7 @@ impl NixobdoPdfApp {
                                     if response.clicked() {
                                         current_color = color;
                                         color_changed = true;
-                                        ui.close_menu();
+                                        ui.close();
                                     }
                                     
                                     if (i + 1) % 4 == 0 {
@@ -367,7 +367,7 @@ impl NixobdoPdfApp {
                                 if response.clicked() {
                                     current_color = egui::Color32::TRANSPARENT;
                                     color_changed = true;
-                                    ui.close_menu();
+                                    ui.close();
                                 }
                                 
                                 // Custom color button
@@ -381,7 +381,7 @@ impl NixobdoPdfApp {
                                 if response.clicked() {
                                     self.is_custom_text_color_open = true;
                                     self.custom_text_color_temp = current_color;
-                                    ui.close_menu();
+                                    ui.close();
                                 }
                             });
                         });
@@ -420,12 +420,12 @@ impl NixobdoPdfApp {
                     
                     ui.separator();
                     
-                    if ui.add_enabled(!self.pending_annotations.is_empty(), egui::Button::new("Undo")).clicked() || ctx.input(|i| i.modifiers.command && i.key_pressed(egui::Key::Z)) {
+                    if ui.add_enabled(!self.pending_annotations.is_empty(), egui::Button::new("Undo")).clicked() || ui.ctx().input(|i| i.modifiers.command && i.key_pressed(egui::Key::Z)) {
                         if let Some(action) = self.pending_annotations.pop() {
                             self.redo_annotations.push(action);
                         }
                     }
-                    if ui.add_enabled(!self.redo_annotations.is_empty(), egui::Button::new("Redo")).clicked() || ctx.input(|i| i.modifiers.command && i.key_pressed(egui::Key::Y)) {
+                    if ui.add_enabled(!self.redo_annotations.is_empty(), egui::Button::new("Redo")).clicked() || ui.ctx().input(|i| i.modifiers.command && i.key_pressed(egui::Key::Y)) {
                         if let Some(action) = self.redo_annotations.pop() {
                             self.pending_annotations.push(action);
                         }
@@ -455,7 +455,7 @@ impl NixobdoPdfApp {
                                         let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::SaveAnnotations {
                                             path: tab.path.clone(),
                                             annotations: self.pending_annotations.clone(),
-                                            ctx: ctx.clone(),
+                                            ctx: ui.ctx().clone(),
                                         });
                                     }
                                 }
@@ -468,3 +468,5 @@ impl NixobdoPdfApp {
         }
     }
 }
+
+
