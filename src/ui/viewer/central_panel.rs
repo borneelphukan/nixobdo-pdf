@@ -173,22 +173,32 @@ impl NixobdoPdfApp {
                         }
                         
                         let available_height_before_scroll = ui.available_height() - 20.0;
+                        let available_width_before_scroll = ui.available_width() - 24.0;
                         
                         let mut currently_focused_annotation = None;
                         
-                        egui::ScrollArea::vertical()
+                        egui::ScrollArea::both()
                             .auto_shrink([false; 2])
                             .show(ui, |ui| {
                                 if ui.input(|i| i.pointer.button_down(egui::PointerButton::Middle)) {
                                     if let Some(press_origin) = ui.input(|i| i.pointer.press_origin()) {
                                         if let Some(current_pos) = ui.input(|i| i.pointer.interact_pos()) {
+                                            let delta_x = current_pos.x - press_origin.x;
                                             let delta_y = current_pos.y - press_origin.y;
                                             
+                                            let mut speed_x = 0.0;
+                                            let mut speed_y = 0.0;
+                                            
                                             // Apply a small deadzone
+                                            if delta_x.abs() > 5.0 {
+                                                speed_x = (delta_x.abs() - 5.0).powf(1.15) * 0.08 * delta_x.signum();
+                                            }
                                             if delta_y.abs() > 5.0 {
-                                                // Exponential velocity scale for comfortable endless joystick scrolling
-                                                let speed = (delta_y.abs() - 5.0).powf(1.15) * 0.08 * delta_y.signum();
-                                                ui.scroll_with_delta(egui::vec2(0.0, -speed));
+                                                speed_y = (delta_y.abs() - 5.0).powf(1.15) * 0.08 * delta_y.signum();
+                                            }
+                                            
+                                            if speed_x != 0.0 || speed_y != 0.0 {
+                                                ui.scroll_with_delta(egui::vec2(-speed_x, -speed_y));
                                                 ui.ctx().request_repaint(); // Keep repainting to allow endless scroll
                                             }
                                         }
@@ -196,7 +206,7 @@ impl NixobdoPdfApp {
                                     ui.ctx().set_cursor_icon(egui::CursorIcon::AllScroll);
                                 }
                                 
-                                let available_width = ui.available_width() - 24.0;
+                                let available_width = available_width_before_scroll;
                                 let chunks = if tab.layout_mode == PageLayoutMode::TwoPage { 2 } else { 1 };
                                 
                                 let mut scrolled = false;
@@ -235,7 +245,7 @@ impl NixobdoPdfApp {
                                         total_row_width += (chunk.len().saturating_sub(1)) as f32 * 15.0;
                                         
                                         ui.horizontal_centered(|ui| {
-                                            let extra_space = (ui.available_width() - total_row_width).max(0.0) / 2.0;
+                                            let extra_space = (available_width_before_scroll - total_row_width).max(0.0) / 2.0;
                                             ui.add_space(extra_space);
                                             
                                             for &index in chunk {
