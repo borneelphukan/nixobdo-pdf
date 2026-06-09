@@ -13,7 +13,7 @@ jobs:
   release:
     runs-on: windows-latest
     # Prevent re-triggering from the version bump commit
-    if: "!startsWith(github.event.head_commit.message, 'chore: bump version')"
+    if: "!contains(github.event.head_commit.message, 'chore: bump version')"
 
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -91,3 +91,4 @@ jobs:
           draft: false
           prerelease: false
           make_latest: true
+
