@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use crate::app::NixobdoPdfApp;
 use eframe::egui;
 
