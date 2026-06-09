@@ -60,8 +60,12 @@ jobs:
           git checkout -b $branch
           git add Cargo.toml setup.iss
           git commit -m "chore: bump version to ${{ steps.version.outputs.VERSION }}"
-          git push -u origin $branch
+          git push -f -u origin $branch
           gh pr create --title "chore: bump version to ${{ steps.version.outputs.VERSION }}" --body "Automated version bump" --base main --head $branch
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Ignoring gh pr create error (PR likely already exists)"
+            exit 0
+          }
 
       - name: Convert Logo to ICO
         run: magick -background none -density 256 assets\logo.svg -define icon:auto-resize="256,128,64,48,32,16" assets\logo.ico
