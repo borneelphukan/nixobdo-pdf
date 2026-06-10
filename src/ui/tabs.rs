@@ -28,10 +28,14 @@ impl NixobdoPdfApp {
                 ui.style_mut().visuals.widgets.inactive.corner_radius = egui::CornerRadius::same(4);
                 ui.style_mut().visuals.widgets.noninteractive.corner_radius =
                     egui::CornerRadius::same(4);
-                
+
                 // Increase fonts and sizes for tabs
-                ui.style_mut().text_styles.insert(egui::TextStyle::Button, egui::FontId::proportional(13.0));
-                ui.style_mut().text_styles.insert(egui::TextStyle::Body, egui::FontId::proportional(13.0));
+                ui.style_mut()
+                    .text_styles
+                    .insert(egui::TextStyle::Button, egui::FontId::proportional(13.0));
+                ui.style_mut()
+                    .text_styles
+                    .insert(egui::TextStyle::Body, egui::FontId::proportional(13.0));
                 ui.style_mut().spacing.button_padding = egui::vec2(10.0, 6.0);
 
                 if !self.tabs.is_empty() {
@@ -53,7 +57,10 @@ impl NixobdoPdfApp {
                             }
 
                             let text_style = if is_active {
-                                egui::RichText::new(text).color(text_color).strong().size(13.0)
+                                egui::RichText::new(text)
+                                    .color(text_color)
+                                    .strong()
+                                    .size(13.0)
                             } else {
                                 egui::RichText::new(text).color(text_color).size(13.0)
                             };

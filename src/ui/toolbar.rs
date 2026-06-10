@@ -44,10 +44,14 @@ impl NixobdoPdfApp {
 
         egui::Panel::top("toolbar_panel").show_inside(ui, |ui| {
             // Increase fonts and padding for the toolbar
-            ui.style_mut().text_styles.insert(egui::TextStyle::Button, egui::FontId::proportional(13.0));
-            ui.style_mut().text_styles.insert(egui::TextStyle::Body, egui::FontId::proportional(13.0));
+            ui.style_mut()
+                .text_styles
+                .insert(egui::TextStyle::Button, egui::FontId::proportional(13.0));
+            ui.style_mut()
+                .text_styles
+                .insert(egui::TextStyle::Body, egui::FontId::proportional(13.0));
             ui.style_mut().spacing.button_padding = egui::vec2(8.0, 6.0);
-            
+
             ui.add_space(8.0);
             ui.horizontal(|ui| {
                 let has_active_tab = self.active_tab_index.is_some();

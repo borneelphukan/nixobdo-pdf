@@ -954,8 +954,12 @@ impl NixobdoPdfApp {
             .order(egui::Order::Foreground)
             .show(ui.ctx(), |ui| {
                 let is_fullscreen = ui.ctx().input(|i| i.viewport().fullscreen.unwrap_or(false));
-                let tooltip = if is_fullscreen { "Exit Fullscreen" } else { "Fullscreen" };
-                
+                let tooltip = if is_fullscreen {
+                    "Exit Fullscreen"
+                } else {
+                    "Fullscreen"
+                };
+
                 // Match the style of the utility bar
                 ui.style_mut().spacing.button_padding = egui::vec2(12.0, 12.0);
                 let corner_radius = egui::CornerRadius::same(100);
@@ -984,16 +988,17 @@ impl NixobdoPdfApp {
                         color: egui::Color32::from_black_alpha(80),
                     })
                     .show(ui, |ui| {
-                        let response = ui.add(
-                            egui::Button::image(image)
-                        ).on_hover_text(tooltip);
-                        
+                        let response = ui.add(egui::Button::image(image)).on_hover_text(tooltip);
+
                         if response.clicked() {
-                            ui.ctx().send_viewport_cmd(egui::ViewportCommand::Fullscreen(!is_fullscreen));
+                            ui.ctx()
+                                .send_viewport_cmd(egui::ViewportCommand::Fullscreen(
+                                    !is_fullscreen,
+                                ));
                         }
                     });
             });
-            
+
         // Floating Utility Bar at the bottom center
         if self.show_utility_bar && self.active_tab_index.is_some() {
             egui::Area::new(egui::Id::new("utility_bar_area"))
@@ -1011,27 +1016,45 @@ impl NixobdoPdfApp {
                         .show(ui, |ui| {
                             ui.horizontal(|ui| {
                                 // Consistent sizing with toolbars
-                                ui.style_mut().text_styles.insert(egui::TextStyle::Button, egui::FontId::proportional(16.0));
+                                ui.style_mut().text_styles.insert(
+                                    egui::TextStyle::Button,
+                                    egui::FontId::proportional(16.0),
+                                );
                                 ui.style_mut().spacing.button_padding = egui::vec2(12.0, 10.0);
                                 ui.style_mut().spacing.item_spacing = egui::vec2(6.0, 0.0);
-                                
+
                                 // Make buttons circular
                                 let corner_radius = egui::CornerRadius::same(100);
-                                ui.style_mut().visuals.widgets.inactive.corner_radius = corner_radius;
-                                ui.style_mut().visuals.widgets.hovered.corner_radius = corner_radius;
+                                ui.style_mut().visuals.widgets.inactive.corner_radius =
+                                    corner_radius;
+                                ui.style_mut().visuals.widgets.hovered.corner_radius =
+                                    corner_radius;
                                 ui.style_mut().visuals.widgets.active.corner_radius = corner_radius;
-                                ui.style_mut().visuals.widgets.noninteractive.corner_radius = corner_radius;
-                                
+                                ui.style_mut().visuals.widgets.noninteractive.corner_radius =
+                                    corner_radius;
+
                                 // Pointer Mode
-                                if ui.add(egui::Button::new("  ⬉  ").selected(self.pointer_mode == crate::app::PointerMode::Select)).on_hover_text("Select Text (Pointer)").clicked() {
+                                if ui
+                                    .add(egui::Button::new("  ⬉  ").selected(
+                                        self.pointer_mode == crate::app::PointerMode::Select,
+                                    ))
+                                    .on_hover_text("Select Text (Pointer)")
+                                    .clicked()
+                                {
                                     self.pointer_mode = crate::app::PointerMode::Select;
                                 }
-                                if ui.add(egui::Button::new("  ✋  ").selected(self.pointer_mode == crate::app::PointerMode::Pan)).on_hover_text("Pan Tool (Hand)").clicked() {
+                                if ui
+                                    .add(egui::Button::new("  ✋  ").selected(
+                                        self.pointer_mode == crate::app::PointerMode::Pan,
+                                    ))
+                                    .on_hover_text("Pan Tool (Hand)")
+                                    .clicked()
+                                {
                                     self.pointer_mode = crate::app::PointerMode::Pan;
                                 }
-                                
+
                                 ui.separator();
-                                
+
                                 // Zoom
                                 if ui.button("  🔍-  ").on_hover_text("Zoom Out").clicked() {
                                     if let Some(active_idx) = self.active_tab_index {
@@ -1040,7 +1063,7 @@ impl NixobdoPdfApp {
                                         }
                                     }
                                 }
-                                
+
                                 // Zoom Percentage
                                 if let Some(active_idx) = self.active_tab_index {
                                     if let Some(tab) = self.tabs.get(active_idx) {
@@ -1056,9 +1079,9 @@ impl NixobdoPdfApp {
                                         }
                                     }
                                 }
-                                
+
                                 ui.separator();
-                                
+
                                 // Scrolling
                                 let scroll_speed = 100.0;
                                 if ui.button("  ⬅  ").on_hover_text("Scroll Left").clicked() {
