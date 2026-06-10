@@ -1,6 +1,6 @@
-pub mod sidebar;
-pub mod separator;
 pub mod central_panel;
+pub mod separator;
+pub mod sidebar;
 
 use crate::app::NixobdoPdfApp;
 use eframe::egui;
@@ -14,10 +14,14 @@ impl NixobdoPdfApp {
         // Handle zoom with Cmd/Ctrl + Mouse Wheel
         let scroll_delta = ui.ctx().input(|i| i.smooth_scroll_delta.y);
         let zoom_delta = ui.ctx().input(|i| i.smooth_scroll_delta.y);
-        let delta = if scroll_delta != 0.0 { scroll_delta } else { zoom_delta };
-        
+        let delta = if scroll_delta != 0.0 {
+            scroll_delta
+        } else {
+            zoom_delta
+        };
+
         let has_zoom_modifier = ui.ctx().input(|i| i.modifiers.command || i.modifiers.ctrl);
-        
+
         if has_zoom_modifier && delta != 0.0 {
             if let Some(active_idx) = self.active_tab_index {
                 if let Some(tab) = self.tabs.get_mut(active_idx) {
@@ -48,5 +52,3 @@ impl NixobdoPdfApp {
         }
     }
 }
-
-

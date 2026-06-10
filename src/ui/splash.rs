@@ -10,14 +10,22 @@ impl NixobdoPdfApp {
                 .show_inside(ui, |ui| {
                     ui.vertical_centered(|ui| {
                         ui.add_space(ui.available_height() / 2.0 - 100.0);
-                        
-                        ui.add(egui::Image::new(egui::include_image!("../../assets/logo.svg")).max_width(250.0).max_height(250.0));
-                        
+
+                        ui.add(
+                            egui::Image::new(egui::include_image!("../../assets/logo.svg"))
+                                .max_width(250.0)
+                                .max_height(250.0),
+                        );
+
                         ui.add_space(20.0);
-                        ui.heading(egui::RichText::new("Nixobdo PDF Reader").size(28.0).strong());
+                        ui.heading(
+                            egui::RichText::new("Nixobdo PDF Reader")
+                                .size(28.0)
+                                .strong(),
+                        );
                     });
                 });
-            
+
             ui.ctx().request_repaint();
             true
         } else {
@@ -25,5 +33,3 @@ impl NixobdoPdfApp {
         }
     }
 }
-
-
