@@ -26,9 +26,9 @@
 ## Features
 
 - **Distraction-Free Viewing**: Open and view any standard PDF document in a clean, minimalistic interface.
-- **Smooth Navigation**: Scroll up and down pages smoothly using the mouse wheel.
-- **Dynamic Zoom**: Zoom in and out effortlessly with `Ctrl + Mouse Wheel` or by using the built-in Zoom slider.
 - **Secure Signatures**: Add your digital signatures to documents securely.
+- **Annotation Tools**: Easily highlight, redact, underline content within your documents, including fill forms with the `Add Text` feature.
+- **File Conversion**: Convert your PDF to .doc, .docx, .png or .jpg
 
 ---
 
