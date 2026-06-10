@@ -38,7 +38,12 @@ impl NixobdoPdfApp {
         }
 
         egui::Panel::top("toolbar_panel").show_inside(ui, |ui| {
-            ui.add_space(4.0);
+            // Increase fonts and padding for the toolbar
+            ui.style_mut().text_styles.insert(egui::TextStyle::Button, egui::FontId::proportional(13.0));
+            ui.style_mut().text_styles.insert(egui::TextStyle::Body, egui::FontId::proportional(13.0));
+            ui.style_mut().spacing.button_padding = egui::vec2(8.0, 6.0);
+            
+            ui.add_space(8.0);
             ui.horizontal(|ui| {
                 let has_active_tab = self.active_tab_index.is_some();
                 
@@ -65,7 +70,7 @@ impl NixobdoPdfApp {
                     
                     let mut current_zoom = if let Some(active_idx) = self.active_tab_index {
                         if let Some(tab) = self.tabs.get(active_idx) {
-                            tab.zoom
+                            100.0 + tab.zoom
                         } else { 100.0 }
                     } else { 100.0 };
                     
@@ -73,6 +78,7 @@ impl NixobdoPdfApp {
                         has_active_tab,
                         egui::DragValue::new(&mut current_zoom)
                             .speed(1.0)
+                            .max_decimals(0)
                             .suffix("%")
                             .range(0.0..=1000.0)
                     );
@@ -102,7 +108,7 @@ impl NixobdoPdfApp {
                                 } else if zoom_reset { 
                                     tab.zoom = 0.0; 
                                 } else if zoom_response.changed() {
-                                    tab.zoom = current_zoom;
+                                    tab.zoom = (current_zoom - 100.0).max(0.0);
                                 }
                                 if page_up && tab.selected_page > 0 {
                                     tab.selected_page = tab.selected_page.saturating_sub(step);
@@ -199,12 +205,16 @@ impl NixobdoPdfApp {
                     }
                 });
             });
-            ui.add_space(4.0);
+            ui.add_space(8.0);
         });
 
         if self.is_annotation_mode {
             egui::Panel::top("annotation_toolbar_panel").show_inside(ui, |ui| {
-                ui.add_space(4.0);
+                ui.style_mut().text_styles.insert(egui::TextStyle::Button, egui::FontId::proportional(12.0));
+                ui.style_mut().text_styles.insert(egui::TextStyle::Body, egui::FontId::proportional(12.0));
+                ui.style_mut().spacing.button_padding = egui::vec2(8.0, 6.0);
+                
+                ui.add_space(8.0);
                 ui.horizontal(|ui| {
                     ui.label(egui::RichText::new("Annotation Tools:").strong());
                     ui.add_space(8.0);
@@ -463,7 +473,7 @@ impl NixobdoPdfApp {
                         }
                     });
                 });
-                ui.add_space(4.0);
+                ui.add_space(8.0);
             });
         }
     }

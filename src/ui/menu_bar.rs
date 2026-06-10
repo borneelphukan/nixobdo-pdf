@@ -5,6 +5,13 @@ use eframe::egui;
 impl NixobdoPdfApp {
     pub(crate) fn ui_menu_bar(&mut self, ui: &mut egui::Ui) {
         egui::Panel::top("menu_bar_panel").show_inside(ui, |ui| {
+            // Apply larger padding specifically for menu buttons to increase hover surface area
+            ui.style_mut().text_styles.insert(egui::TextStyle::Button, egui::FontId::proportional(13.0));
+            ui.style_mut().text_styles.insert(egui::TextStyle::Body, egui::FontId::proportional(13.0));
+            ui.style_mut().spacing.button_padding = egui::vec2(16.0, 10.0);
+            ui.style_mut().spacing.item_spacing = egui::vec2(4.0, 0.0);
+            
+            ui.add_space(4.0);
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("Open").clicked() {
@@ -174,6 +181,12 @@ impl NixobdoPdfApp {
                         ui.close();
                     }
                     
+                    let utility_bar_text = if self.show_utility_bar { "✔ Show Utility Bar" } else { "    Show Utility Bar" };
+                    if ui.button(utility_bar_text).clicked() {
+                        self.show_utility_bar = !self.show_utility_bar;
+                        ui.close();
+                    }
+                    
                     let is_fullscreen = ui.ctx().input(|i| i.viewport().fullscreen.unwrap_or(false));
                     let fullscreen_text = if is_fullscreen { "✔ Fullscreen" } else { "    Fullscreen" };
                     if ui.button(fullscreen_text).clicked() {
@@ -222,6 +235,7 @@ impl NixobdoPdfApp {
                     }
                 });
             });
+            ui.add_space(4.0);
         });
     }
 }

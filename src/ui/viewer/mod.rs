@@ -11,7 +11,7 @@ impl NixobdoPdfApp {
         self.ui_separator(ui);
         self.ui_central_panel(ui);
 
-        // Handle zoom with Cmd/Ctrl + Mouse Wheel
+        // Handle zoom with Ctrl + Mouse Wheel
         let scroll_delta = ui.ctx().input(|i| i.smooth_scroll_delta.y);
         let zoom_delta = ui.ctx().input(|i| i.smooth_scroll_delta.y);
         let delta = if scroll_delta != 0.0 { scroll_delta } else { zoom_delta };

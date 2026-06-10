@@ -27,7 +27,7 @@ export function DocsShortcuts() {
               <td className="px-6 py-4 font-medium text-white">Zoom In</td>
               <td className="px-6 py-4">
                 <div className="flex gap-2">
-                  <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">Cmd/Ctrl</kbd>
+                  <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">Ctrl</kbd>
                   <span className="text-slate-500 font-bold">+</span>
                   <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">Mouse Wheel Up</kbd>
                 </div>
@@ -37,7 +37,7 @@ export function DocsShortcuts() {
               <td className="px-6 py-4 font-medium text-white">Zoom Out</td>
               <td className="px-6 py-4">
                 <div className="flex gap-2">
-                  <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">Cmd/Ctrl</kbd>
+                  <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">Ctrl</kbd>
                   <span className="text-slate-500 font-bold">+</span>
                   <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">Mouse Wheel Down</kbd>
                 </div>
@@ -85,7 +85,7 @@ export function DocsShortcuts() {
               <td className="px-6 py-4 font-medium text-white">Save Document</td>
               <td className="px-6 py-4">
                 <div className="flex gap-2">
-                  <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">Cmd/Ctrl</kbd>
+                  <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">Ctrl</kbd>
                   <span className="text-slate-500 font-bold">+</span>
                   <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">S</kbd>
                 </div>
@@ -95,7 +95,7 @@ export function DocsShortcuts() {
               <td className="px-6 py-4 font-medium text-white">Find / Search</td>
               <td className="px-6 py-4">
                 <div className="flex gap-2">
-                  <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">Cmd/Ctrl</kbd>
+                  <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">Ctrl</kbd>
                   <span className="text-slate-500 font-bold">+</span>
                   <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">F</kbd>
                 </div>
@@ -105,7 +105,7 @@ export function DocsShortcuts() {
               <td className="px-6 py-4 font-medium text-white">Select All Text</td>
               <td className="px-6 py-4">
                 <div className="flex gap-2">
-                  <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">Cmd/Ctrl</kbd>
+                  <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">Ctrl</kbd>
                   <span className="text-slate-500 font-bold">+</span>
                   <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">A</kbd>
                 </div>
@@ -115,7 +115,7 @@ export function DocsShortcuts() {
               <td className="px-6 py-4 font-medium text-white">Copy Text</td>
               <td className="px-6 py-4">
                 <div className="flex gap-2">
-                  <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">Cmd/Ctrl</kbd>
+                  <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">Ctrl</kbd>
                   <span className="text-slate-500 font-bold">+</span>
                   <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">C</kbd>
                 </div>
@@ -127,7 +127,7 @@ export function DocsShortcuts() {
               <td className="px-6 py-4 font-medium text-white">Undo Annotation</td>
               <td className="px-6 py-4">
                 <div className="flex gap-2">
-                  <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">Cmd/Ctrl</kbd>
+                  <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">Ctrl</kbd>
                   <span className="text-slate-500 font-bold">+</span>
                   <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">Z</kbd>
                 </div>
@@ -137,7 +137,7 @@ export function DocsShortcuts() {
               <td className="px-6 py-4 font-medium text-white">Redo Annotation</td>
               <td className="px-6 py-4">
                 <div className="flex gap-2">
-                  <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">Cmd/Ctrl</kbd>
+                  <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">Ctrl</kbd>
                   <span className="text-slate-500 font-bold">+</span>
                   <kbd className="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-300 font-mono shadow-sm">Y</kbd>
                 </div>
