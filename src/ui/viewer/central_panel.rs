@@ -142,6 +142,10 @@ impl NixobdoPdfApp {
                             select_all_triggered = true;
                         }
                         
+                        if ui.input(|i| i.events.iter().any(|e| matches!(e, egui::Event::Copy))) || (!ui.ctx().egui_wants_keyboard_input() && ui.input(|i| (i.modifiers.ctrl || i.modifiers.command) && i.key_pressed(egui::Key::C))) {
+                            copy_triggered = true;
+                        }
+                        
                         if ui.rect_contains_pointer(ui.max_rect()) {
                             if ctrl_pressed && scroll_delta != 0.0 {
                                 if current_time - tab.last_page_change_time > 0.05 {
