@@ -3,6 +3,9 @@ name: Dev Build (Pre-release)
 on:
   push:
     branches: [ "dev" ]
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
