@@ -273,7 +273,7 @@ impl NixobdoPdfApp {
                 ui.style_mut().text_styles.insert(egui::TextStyle::Button, egui::FontId::proportional(12.0));
                 ui.style_mut().text_styles.insert(egui::TextStyle::Body, egui::FontId::proportional(12.0));
                 ui.style_mut().spacing.button_padding = egui::vec2(8.0, 6.0);
-                
+
                 ui.add_space(8.0);
                 ui.horizontal(|ui| {
                     ui.label(egui::RichText::new("Annotation Tools:").strong());

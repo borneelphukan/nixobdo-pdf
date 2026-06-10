@@ -193,15 +193,15 @@ impl NixobdoPdfApp {
                                     // Reset style inside the scroll area so PDF pages don't get the dark style
                                     let global_style = ui.ctx().global_style();
                                     ui.set_style(global_style);
-                                
+
                                 if self.pending_scroll_delta != egui::Vec2::ZERO {
                                     ui.scroll_with_delta(self.pending_scroll_delta);
                                     self.pending_scroll_delta = egui::Vec2::ZERO;
                                 }
-                                
+
                                 let is_middle_panning = ui.input(|i| i.pointer.button_down(egui::PointerButton::Middle));
                                 let is_hand_panning = self.pointer_mode == crate::app::PointerMode::Pan && ui.input(|i| i.pointer.button_down(egui::PointerButton::Primary));
-                                
+
                                 if is_middle_panning || is_hand_panning {
                                     if let Some(press_origin) = ui.input(|i| i.pointer.press_origin()) {
                                         if let Some(current_pos) = ui.input(|i| i.pointer.interact_pos()) {
