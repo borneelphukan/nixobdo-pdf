@@ -21,17 +21,19 @@ impl NixobdoPdfApp {
                 ui.horizontal(|ui| {
                     ui.label("Name:");
                     let response = ui.text_edit_singleline(&mut self.rename_buffer);
-                    
+
                     if self.focus_rename_input {
                         response.request_focus();
                         self.focus_rename_input = false;
                     }
-                    
+
                     // Save and close on Enter, or when clicking outside (losing focus)
                     if ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                         perform_rename = true;
                         close_window = true;
-                    } else if response.lost_focus() && !ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                    } else if response.lost_focus()
+                        && !ui.input(|i| i.key_pressed(egui::Key::Escape))
+                    {
                         // Only save if it lost focus and we didn't just press escape (though escape would also close)
                         perform_rename = true;
                         close_window = true;
@@ -47,11 +49,11 @@ impl NixobdoPdfApp {
                     let old_path = tab.path.clone();
                     let mut new_path = old_path.clone();
                     new_path.set_file_name(&self.rename_buffer);
-                    
+
                     if fs::rename(&old_path, &new_path).is_ok() {
                         tab.path = new_path.clone();
                         tab.file_name = self.rename_buffer.clone();
-                        
+
                         // Update recent files
                         self.recent_files.retain(|p| p != &old_path);
                         if !self.recent_files.contains(&new_path) {
@@ -70,5 +72,3 @@ impl NixobdoPdfApp {
         }
     }
 }
-
-

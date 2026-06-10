@@ -1,9 +1,8 @@
 use crate::app::NixobdoPdfApp;
-use crate::worker::PdfWorkerTask;
 use crate::document::PdfDocumentState;
+use crate::worker::PdfWorkerTask;
 use eframe::egui;
 use std::path::PathBuf;
-
 
 impl NixobdoPdfApp {
     pub(crate) fn copy_selection(&self, ctx: &egui::Context) {
@@ -16,14 +15,22 @@ impl NixobdoPdfApp {
                     } else if start.0 > end.0 {
                         (end.0, end.1, start.0, start.1)
                     } else {
-                        let (c_min, c_max) = if start.1 <= end.1 { (start.1, end.1) } else { (end.1, start.1) };
+                        let (c_min, c_max) = if start.1 <= end.1 {
+                            (start.1, end.1)
+                        } else {
+                            (end.1, start.1)
+                        };
                         (start.0, c_min, start.0, c_max)
                     };
-                    
+
                     for p_idx in p_start..=p_end {
                         if let Some(chars) = tab.page_chars.get(p_idx) {
                             let start_c = if p_idx == p_start { c_start } else { 0 };
-                            let end_c = if p_idx == p_end { c_end } else { chars.len().saturating_sub(1) };
+                            let end_c = if p_idx == p_end {
+                                c_end
+                            } else {
+                                chars.len().saturating_sub(1)
+                            };
                             for c_idx in start_c..=end_c {
                                 if let Some(char_info) = chars.get(c_idx) {
                                     selected_text.push(char_info.c);
@@ -34,7 +41,7 @@ impl NixobdoPdfApp {
                             selected_text.push('\n');
                         }
                     }
-                    
+
                     if !selected_text.is_empty() {
                         ctx.copy_text(selected_text);
                     }
@@ -54,11 +61,11 @@ impl NixobdoPdfApp {
             self.active_tab_index = Some(existing_idx);
             return;
         }
-        
+
         let new_tab = PdfDocumentState::empty(path.clone());
         self.tabs.push(new_tab);
         self.active_tab_index = Some(self.tabs.len() - 1);
-        
+
         let _ = self.pdf_task_tx.send(PdfWorkerTask::Load {
             path: path.clone(),
             ctx: ctx.clone(),
@@ -80,7 +87,7 @@ impl NixobdoPdfApp {
             return;
         }
         self.tabs.remove(index);
-        
+
         if self.tabs.is_empty() {
             self.active_tab_index = None;
         } else if let Some(active) = self.active_tab_index {
@@ -97,4 +104,3 @@ impl NixobdoPdfApp {
         Vec::new() // Not implemented in this snippet
     }
 }
-
