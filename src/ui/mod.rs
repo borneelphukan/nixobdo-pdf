@@ -1,7 +1,7 @@
-pub mod menu_bar;
-pub mod toolbar;
 pub mod dialogs;
-pub mod viewer;
+pub mod menu_bar;
 pub mod splash;
-pub mod toast;
 pub mod tabs;
+pub mod toast;
+pub mod toolbar;
+pub mod viewer;

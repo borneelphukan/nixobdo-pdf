@@ -25,7 +25,7 @@ impl NixobdoPdfApp {
                         }
                         ui.close();
                     }
-                    
+
                     // Open Recent nested menu
                     ui.menu_button("Open Recent", |ui| {
                         if self.recent_files.is_empty() {
@@ -33,7 +33,10 @@ impl NixobdoPdfApp {
                         } else {
                             let mut to_open = None;
                             for recent_path in &self.recent_files {
-                                let name = recent_path.file_name().map(|n| n.to_string_lossy()).unwrap_or_default();
+                                let name = recent_path
+                                    .file_name()
+                                    .map(|n| n.to_string_lossy())
+                                    .unwrap_or_default();
                                 if ui.button(name).clicked() {
                                     to_open = Some(recent_path.clone());
                                 }
@@ -44,21 +47,30 @@ impl NixobdoPdfApp {
                             }
                         }
                     });
-                    
+
                     ui.separator();
-                    
+
                     if ui.button("Close Window").clicked() {
                         ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
                     }
-                    
-                    if ui.add_enabled(self.active_tab_index.is_some(), egui::Button::new("Close PDF")).clicked() {
+
+                    if ui
+                        .add_enabled(
+                            self.active_tab_index.is_some(),
+                            egui::Button::new("Close PDF"),
+                        )
+                        .clicked()
+                    {
                         if let Some(active_idx) = self.active_tab_index {
                             self.close_tab(active_idx);
                         }
                         ui.close();
                     }
-                    
-                    if ui.add_enabled(self.active_tab_index.is_some(), egui::Button::new("Rename")).clicked() {
+
+                    if ui
+                        .add_enabled(self.active_tab_index.is_some(), egui::Button::new("Rename"))
+                        .clicked()
+                    {
                         if let Some(active_idx) = self.active_tab_index {
                             if let Some(tab) = self.tabs.get(active_idx) {
                                 self.rename_buffer = tab.file_name.clone();
@@ -68,10 +80,14 @@ impl NixobdoPdfApp {
                         }
                         ui.close();
                     }
-                    
 
-                    
-                    if ui.add_enabled(self.active_tab_index.is_some(), egui::Button::new("Export...")).clicked() {
+                    if ui
+                        .add_enabled(
+                            self.active_tab_index.is_some(),
+                            egui::Button::new("Export..."),
+                        )
+                        .clicked()
+                    {
                         if let Some(active_idx) = self.active_tab_index {
                             if let Some(tab) = self.tabs.get(active_idx) {
                                 let name = if tab.file_name.to_lowercase().ends_with(".pdf") {
@@ -87,11 +103,14 @@ impl NixobdoPdfApp {
                         ui.close();
                     }
                 });
-                
+
                 ui.menu_button("Edit", |ui| {
                     let has_pdf = self.active_tab_index.is_some();
                     ui.horizontal(|ui| {
-                        if ui.add_enabled(has_pdf, egui::Button::new("Add Signature")).clicked() {
+                        if ui
+                            .add_enabled(has_pdf, egui::Button::new("Add Signature"))
+                            .clicked()
+                        {
                             if let Some(path) = rfd::FileDialog::new()
                                 .add_filter("Images", &["png", "jpg", "jpeg"])
                                 .pick_file()
@@ -100,28 +119,41 @@ impl NixobdoPdfApp {
                                     let rgba = img.to_rgba8();
                                     let size = [rgba.width() as usize, rgba.height() as usize];
                                     let pixels = rgba.as_flat_samples();
-                                    let color_image = egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice());
-                                    
+                                    let color_image = egui::ColorImage::from_rgba_unmultiplied(
+                                        size,
+                                        pixels.as_slice(),
+                                    );
+
                                     self.signature_texture = Some(ui.ctx().load_texture(
                                         "signature",
                                         color_image,
                                         egui::TextureOptions::LINEAR,
                                     ));
                                     self.signature_image_path = Some(path.clone());
-                                    
+
                                     // Start placing immediately
                                     self.is_placing_signature = true;
                                     self.signature_position = Some((0.5, 0.5));
                                     self.signature_scale = 1.0;
-                                    self.signature_active_page = self.active_tab_index.and_then(|idx| self.tabs.get(idx).map(|t| t.selected_page));
+                                    self.signature_active_page =
+                                        self.active_tab_index.and_then(|idx| {
+                                            self.tabs.get(idx).map(|t| t.selected_page)
+                                        });
                                 }
                             }
                             ui.close();
                         }
                     });
-                    
-                    let annot_text = if self.is_annotation_mode { "✔ Annotation" } else { "    Annotation" };
-                    if ui.add_enabled(has_pdf, egui::Button::new(annot_text)).clicked() {
+
+                    let annot_text = if self.is_annotation_mode {
+                        "✔ Annotation"
+                    } else {
+                        "    Annotation"
+                    };
+                    if ui
+                        .add_enabled(has_pdf, egui::Button::new(annot_text))
+                        .clicked()
+                    {
                         self.is_annotation_mode = !self.is_annotation_mode;
                         if !self.is_annotation_mode {
                             // Reset state when turning off
@@ -131,15 +163,20 @@ impl NixobdoPdfApp {
                         }
                         ui.close();
                     }
-                    
+
                     ui.separator();
-                    
+
                     ui.add_enabled_ui(has_pdf, |ui| {
                         ui.menu_button("Rotate PDF", |ui| {
-                            if ui.add(egui::Button::image_and_text(
-                                egui::Image::new(egui::include_image!("../../assets/rotate_left.svg")).max_height(14.0),
-                                "Rotate Left"
-                            )).clicked()
+                            if ui
+                                .add(egui::Button::image_and_text(
+                                    egui::Image::new(egui::include_image!(
+                                        "../../assets/rotate_left.svg"
+                                    ))
+                                    .max_height(14.0),
+                                    "Rotate Left",
+                                ))
+                                .clicked()
                             {
                                 if let Some(active_idx) = self.active_tab_index {
                                     if let Some(tab) = self.tabs.get_mut(active_idx) {
@@ -152,11 +189,16 @@ impl NixobdoPdfApp {
                                 }
                                 ui.close();
                             }
-                            
-                            if ui.add(egui::Button::image_and_text(
-                                egui::Image::new(egui::include_image!("../../assets/rotate_right.svg")).max_height(14.0),
-                                "Rotate Right"
-                            )).clicked()
+
+                            if ui
+                                .add(egui::Button::image_and_text(
+                                    egui::Image::new(egui::include_image!(
+                                        "../../assets/rotate_right.svg"
+                                    ))
+                                    .max_height(14.0),
+                                    "Rotate Right",
+                                ))
+                                .clicked()
                             {
                                 if let Some(active_idx) = self.active_tab_index {
                                     if let Some(tab) = self.tabs.get_mut(active_idx) {
@@ -172,45 +214,66 @@ impl NixobdoPdfApp {
                         });
                     });
                 });
-                
+
                 ui.menu_button("View", |ui| {
                     ui.set_min_width(220.0);
-                    let sidebar_text = if self.sidebar_open { "✔ Show Sidebar" } else { "    Show Sidebar" };
+                    let sidebar_text = if self.sidebar_open {
+                        "✔ Show Sidebar"
+                    } else {
+                        "    Show Sidebar"
+                    };
                     if ui.button(sidebar_text).clicked() {
                         self.sidebar_open = !self.sidebar_open;
                         ui.close();
                     }
-                    
                     let utility_bar_text = if self.show_utility_bar { "✔ Show Utility Bar" } else { "    Show Utility Bar" };
                     if ui.button(utility_bar_text).clicked() {
                         self.show_utility_bar = !self.show_utility_bar;
                         ui.close();
                     }
                     
-                    let is_fullscreen = ui.ctx().input(|i| i.viewport().fullscreen.unwrap_or(false));
-                    let fullscreen_text = if is_fullscreen { "✔ Fullscreen" } else { "    Fullscreen" };
+                    let is_fullscreen =
+                        ui.ctx().input(|i| i.viewport().fullscreen.unwrap_or(false));
+                    let fullscreen_text = if is_fullscreen {
+                        "✔ Fullscreen"
+                    } else {
+                        "    Fullscreen"
+                    };
                     if ui.button(fullscreen_text).clicked() {
-                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Fullscreen(!is_fullscreen));
+                        ui.ctx()
+                            .send_viewport_cmd(egui::ViewportCommand::Fullscreen(!is_fullscreen));
                         ui.close();
                     }
-                    
+
                     ui.separator();
-                    
+
                     if let Some(active_idx) = self.active_tab_index {
                         if let Some(tab) = self.tabs.get_mut(active_idx) {
-                            let cont_text = if tab.layout_mode == PageLayoutMode::ContinuousScroll { "✔ Scroll Mode" } else { "   Scroll Mode" };
+                            let cont_text = if tab.layout_mode == PageLayoutMode::ContinuousScroll {
+                                "✔ Scroll Mode"
+                            } else {
+                                "   Scroll Mode"
+                            };
                             if ui.button(cont_text).clicked() {
                                 tab.layout_mode = PageLayoutMode::ContinuousScroll;
                                 ui.close();
                             }
-                            
-                            let single_text = if tab.layout_mode == PageLayoutMode::SinglePage { "✔ Single Page" } else { "    Single Page" };
+
+                            let single_text = if tab.layout_mode == PageLayoutMode::SinglePage {
+                                "✔ Single Page"
+                            } else {
+                                "    Single Page"
+                            };
                             if ui.button(single_text).clicked() {
                                 tab.layout_mode = PageLayoutMode::SinglePage;
                                 ui.close();
                             }
-                            
-                            let two_text = if tab.layout_mode == PageLayoutMode::TwoPage { "✔ Two Page" } else { "    Two Page" };
+
+                            let two_text = if tab.layout_mode == PageLayoutMode::TwoPage {
+                                "✔ Two Page"
+                            } else {
+                                "    Two Page"
+                            };
                             if ui.button(two_text).clicked() {
                                 tab.layout_mode = PageLayoutMode::TwoPage;
                                 ui.close();
@@ -226,7 +289,12 @@ impl NixobdoPdfApp {
                     ui.set_min_width(220.0);
                     if ui.button("Check for Updates").clicked() {
                         self.update_state = crate::app::UpdateState::Checking;
-                        let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::CheckUpdate { is_manual: true, ctx: ui.ctx().clone() });
+                        let _ = self
+                            .pdf_task_tx
+                            .send(crate::worker::PdfWorkerTask::CheckUpdate {
+                                is_manual: true,
+                                ctx: ui.ctx().clone(),
+                            });
                         ui.close();
                     }
                     if ui.button("About").clicked() {
@@ -239,5 +307,3 @@ impl NixobdoPdfApp {
         });
     }
 }
-
-

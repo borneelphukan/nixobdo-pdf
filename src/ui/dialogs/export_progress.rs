@@ -11,7 +11,11 @@ impl NixobdoPdfApp {
                 .resizable(false)
                 .open(&mut is_open)
                 .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-                .frame(egui::Frame::window(&ui.ctx().global_style()).inner_margin(16.0).corner_radius(8))
+                .frame(
+                    egui::Frame::window(&ui.ctx().global_style())
+                        .inner_margin(16.0)
+                        .corner_radius(8),
+                )
                 .show(ui.ctx(), |ui| {
                     ui.vertical_centered(|ui| {
                         ui.label(egui::RichText::new("Exporting document...").size(14.0));
@@ -20,11 +24,22 @@ impl NixobdoPdfApp {
                         let size = egui::vec2(rect.width(), 20.0);
                         let (rect, _response) = ui.allocate_exact_size(size, egui::Sense::hover());
                         let corner_radius = egui::CornerRadius::same(4);
-                        ui.painter().rect_filled(rect, corner_radius, ui.visuals().extreme_bg_color);
+                        ui.painter().rect_filled(
+                            rect,
+                            corner_radius,
+                            ui.visuals().extreme_bg_color,
+                        );
                         let fill_width = rect.width() * progress;
                         if fill_width > 0.0 {
-                            let fill_rect = egui::Rect::from_min_size(rect.min, egui::vec2(fill_width, rect.height()));
-                            ui.painter().rect_filled(fill_rect, corner_radius, ui.visuals().selection.bg_fill);
+                            let fill_rect = egui::Rect::from_min_size(
+                                rect.min,
+                                egui::vec2(fill_width, rect.height()),
+                            );
+                            ui.painter().rect_filled(
+                                fill_rect,
+                                corner_radius,
+                                ui.visuals().selection.bg_fill,
+                            );
                         }
                         ui.painter().text(
                             rect.center(),
@@ -45,5 +60,3 @@ impl NixobdoPdfApp {
         }
     }
 }
-
-

@@ -2,11 +2,11 @@ pub mod eframe_app;
 pub mod messages;
 pub mod state;
 
+use pdfium_render::prelude::Pdfium;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
-use pdfium_render::prelude::Pdfium;
 
 use crate::document::{PdfDocumentState, PdfWorkerMessage};
 use crate::worker::{ExportFormat, PdfWorkerTask};
@@ -35,16 +35,14 @@ pub struct NixobdoPdfApp {
     pub selection_start: Option<(usize, usize)>,
     pub selection_end: Option<(usize, usize)>,
     pub is_selecting: bool,
-    
     // Utility bar and interaction modes
     pub show_utility_bar: bool,
     pub pointer_mode: PointerMode,
     pub pending_scroll_delta: eframe::egui::Vec2,
-    
     // Background Loading
     pub pdf_task_tx: Sender<PdfWorkerTask>,
     pub pdf_receiver: Receiver<PdfWorkerMessage>,
-    
+
     // File Menu features
     pub recent_files: Vec<PathBuf>,
     pub rename_window_open: bool,
@@ -54,28 +52,28 @@ pub struct NixobdoPdfApp {
     pub export_name: String,
     pub export_format: ExportFormat,
     pub export_location: Option<PathBuf>,
-    
+
     // Toast notification
     pub toast_message: Option<String>,
     pub toast_success: bool,
     pub toast_timer: f64,
-    
+
     // Export Progress
     pub export_progress: Option<f32>,
     pub export_cancel_flag: Arc<AtomicBool>,
-    
+
     // Updates
     pub update_state: UpdateState,
-    
+
     // About Window
     pub about_window_open: bool,
-    
+
     // Splash screen
     pub startup_time: std::time::Instant,
-    
+
     // Auto update
     pub has_checked_for_updates: bool,
-    
+
     // Signature feature
     pub signature_image_path: Option<PathBuf>,
     pub signature_texture: Option<egui::TextureHandle>,
@@ -84,12 +82,12 @@ pub struct NixobdoPdfApp {
     pub signature_active_page: Option<usize>,
     pub signature_scale: f32,
     pub is_saving_signature: bool,
-    
+
     // Rotation feature
     pub is_rotating_document: bool,
     pub is_saving_rotation: bool,
     pub pending_rotation: i32,
-    
+
     // Annotation feature
     pub is_annotation_mode: bool,
     pub active_annotation_tool: Option<crate::document::AnnotationTool>,
@@ -111,23 +109,26 @@ impl Default for NixobdoPdfApp {
     fn default() -> Self {
         let exe_path = std::env::current_exe().ok().unwrap_or_default();
         let exe_dir = exe_path.parent().unwrap_or(std::path::Path::new(""));
-        
-        let has_pdfium_bindings = Pdfium::bind_to_library(exe_dir.join("libpdfium.dylib").to_str().unwrap_or_default())
-            .or_else(|_| Pdfium::bind_to_library(exe_dir.join("pdfium.dll").to_str().unwrap_or_default()))
-            .or_else(|_| Pdfium::bind_to_library("./lib/libpdfium.dylib"))
-            .or_else(|_| Pdfium::bind_to_library("libpdfium.dylib"))
-            .or_else(|_| Pdfium::bind_to_library("./lib/pdfium.dll"))
-            .or_else(|_| Pdfium::bind_to_library("pdfium.dll"))
-            .or_else(|_| Pdfium::bind_to_system_library())
-            .is_ok();
+
+        let has_pdfium_bindings =
+            Pdfium::bind_to_library(exe_dir.join("libpdfium.dylib").to_str().unwrap_or_default())
+                .or_else(|_| {
+                    Pdfium::bind_to_library(exe_dir.join("pdfium.dll").to_str().unwrap_or_default())
+                })
+                .or_else(|_| Pdfium::bind_to_library("./lib/libpdfium.dylib"))
+                .or_else(|_| Pdfium::bind_to_library("libpdfium.dylib"))
+                .or_else(|_| Pdfium::bind_to_library("./lib/pdfium.dll"))
+                .or_else(|_| Pdfium::bind_to_library("pdfium.dll"))
+                .or_else(|_| Pdfium::bind_to_system_library())
+                .is_ok();
 
         let (task_tx, task_rx) = channel::<PdfWorkerTask>();
         let (msg_tx, msg_rx) = channel::<PdfWorkerMessage>();
 
         let msg_tx_clone = msg_tx.clone();
-        
+
         crate::worker::spawn_worker_thread(task_rx, msg_tx_clone);
-        
+
         // Clean up old or oversized cache entries in the background
         std::thread::spawn(|| {
             crate::document::clean_cache();

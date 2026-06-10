@@ -11,7 +11,11 @@ fn contrast_color(color: impl Into<egui::Rgba>) -> egui::Color32 {
 
 const N: u32 = 6 * 6;
 
-fn color_slider_1d(ui: &mut egui::Ui, value: &mut f32, color_at: impl Fn(f32) -> egui::Color32) -> egui::Response {
+fn color_slider_1d(
+    ui: &mut egui::Ui,
+    value: &mut f32,
+    color_at: impl Fn(f32) -> egui::Color32,
+) -> egui::Response {
     let desired_size = egui::vec2(ui.available_width(), ui.spacing().interact_size.y);
     let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click_and_drag());
 
@@ -114,7 +118,7 @@ impl NixobdoPdfApp {
     pub(crate) fn ui_custom_color_dialog(&mut self, ui: &mut egui::Ui) {
         if self.is_custom_text_color_open {
             let mut is_open = true;
-            
+
             egui::Window::new("Custom Color")
                 .open(&mut is_open)
                 .collapsible(false)
@@ -123,61 +127,85 @@ impl NixobdoPdfApp {
                 .min_width(280.0)
                 .show(ui.ctx(), |ui| {
                     let mut hsva = egui::ecolor::Hsva::from(self.custom_text_color_temp);
-                    
+
                     // 2D Gradient
                     color_slider_2d(ui, &mut hsva.s, &mut hsva.v, |s, v| {
-                        egui::ecolor::Hsva { h: hsva.h, s, v, a: 1.0 }.into()
+                        egui::ecolor::Hsva {
+                            h: hsva.h,
+                            s,
+                            v,
+                            a: 1.0,
+                        }
+                        .into()
                     });
-                    
+
                     ui.add_space(4.0);
-                    
+
                     // 1D Hue Slider
                     color_slider_1d(ui, &mut hsva.h, |h| {
-                        egui::ecolor::Hsva { h, s: 1.0, v: 1.0, a: 1.0 }.into()
+                        egui::ecolor::Hsva {
+                            h,
+                            s: 1.0,
+                            v: 1.0,
+                            a: 1.0,
+                        }
+                        .into()
                     });
-                    
+
                     ui.add_space(8.0);
-                    
+
                     self.custom_text_color_temp = hsva.into();
-                    
+
                     // Hex code
-                    let mut hex = format!("#{:02X}{:02X}{:02X}", self.custom_text_color_temp.r(), self.custom_text_color_temp.g(), self.custom_text_color_temp.b());
-                    let response = ui.add_sized([ui.available_width(), 30.0], egui::TextEdit::singleline(&mut hex).hint_text("#000000"));
+                    let mut hex = format!(
+                        "#{:02X}{:02X}{:02X}",
+                        self.custom_text_color_temp.r(),
+                        self.custom_text_color_temp.g(),
+                        self.custom_text_color_temp.b()
+                    );
+                    let response = ui.add_sized(
+                        [ui.available_width(), 30.0],
+                        egui::TextEdit::singleline(&mut hex).hint_text("#000000"),
+                    );
                     if response.changed() {
                         if let Ok(color) = egui::Color32::from_hex(&hex) {
                             self.custom_text_color_temp = color;
                         }
                     }
-                    
+
                     ui.add_space(16.0);
-                    
+
                     ui.horizontal(|ui| {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             if ui.button("Add").clicked() {
-                                if self.active_annotation_tool == Some(crate::document::AnnotationTool::Highlight) {
+                                if self.active_annotation_tool
+                                    == Some(crate::document::AnnotationTool::Highlight)
+                                {
                                     self.annotation_color = self.custom_text_color_temp;
                                     // Highlight colors shouldn't update retroactively
                                 } else {
                                     self.text_annotation_color = self.custom_text_color_temp;
-                                    if let Some(last_text) = self.pending_annotations.iter_mut().rev().find(|a| a.tool == crate::document::AnnotationTool::Text) {
+                                    if let Some(last_text) =
+                                        self.pending_annotations.iter_mut().rev().find(|a| {
+                                            a.tool == crate::document::AnnotationTool::Text
+                                        })
+                                    {
                                         last_text.color = self.text_annotation_color;
                                     }
                                 }
                                 self.is_custom_text_color_open = false;
                             }
-                            
+
                             if ui.button("Cancel").clicked() {
                                 self.is_custom_text_color_open = false;
                             }
                         });
                     });
                 });
-                
+
             if !is_open {
                 self.is_custom_text_color_open = false;
             }
         }
     }
 }
-
-

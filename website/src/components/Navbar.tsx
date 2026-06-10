@@ -4,31 +4,28 @@ import GitHubIcon from '@mui/icons-material/GitHub';
 import { useState, useEffect } from 'react';
 
 export function Navbar() {
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window === 'undefined') {
+      return true;
+    }
+    return (
+      localStorage.getItem('theme') === 'dark' ||
+        (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    );
+  });
 
   useEffect(() => {
-    // Check initial preference
-    const isDarkMode = localStorage.getItem('theme') === 'dark' || 
-      (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    
-    setIsDark(isDarkMode);
-    if (isDarkMode) {
+    if (isDark) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
-  }, []);
+  });
 
   const toggleTheme = () => {
     const newTheme = !isDark;
     setIsDark(newTheme);
-    if (newTheme) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
+    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
   };
 
   return (
