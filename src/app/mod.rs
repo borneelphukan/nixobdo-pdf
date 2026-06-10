@@ -19,6 +19,12 @@ pub enum UpdateState {
     Downloading(f32),
 }
 
+#[derive(PartialEq, Clone, Copy)]
+pub enum PointerMode {
+    Select,
+    Pan,
+}
+
 pub struct NixobdoPdfApp {
     pub has_pdfium_bindings: bool,
     pub tabs: Vec<PdfDocumentState>,
@@ -29,7 +35,10 @@ pub struct NixobdoPdfApp {
     pub selection_start: Option<(usize, usize)>,
     pub selection_end: Option<(usize, usize)>,
     pub is_selecting: bool,
-
+    // Utility bar and interaction modes
+    pub show_utility_bar: bool,
+    pub pointer_mode: PointerMode,
+    pub pending_scroll_delta: eframe::egui::Vec2,
     // Background Loading
     pub pdf_task_tx: Sender<PdfWorkerTask>,
     pub pdf_receiver: Receiver<PdfWorkerMessage>,
@@ -137,6 +146,9 @@ impl Default for NixobdoPdfApp {
             selection_start: None,
             selection_end: None,
             is_selecting: false,
+            show_utility_bar: false,
+            pointer_mode: PointerMode::Select,
+            pending_scroll_delta: eframe::egui::Vec2::ZERO,
             pdf_task_tx: task_tx,
             pdf_receiver: msg_rx,
             recent_files,

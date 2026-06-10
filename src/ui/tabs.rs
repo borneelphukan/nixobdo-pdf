@@ -29,6 +29,15 @@ impl NixobdoPdfApp {
                 ui.style_mut().visuals.widgets.noninteractive.corner_radius =
                     egui::CornerRadius::same(4);
 
+                // Increase fonts and sizes for tabs
+                ui.style_mut()
+                    .text_styles
+                    .insert(egui::TextStyle::Button, egui::FontId::proportional(13.0));
+                ui.style_mut()
+                    .text_styles
+                    .insert(egui::TextStyle::Body, egui::FontId::proportional(13.0));
+                ui.style_mut().spacing.button_padding = egui::vec2(10.0, 6.0);
+
                 if !self.tabs.is_empty() {
                     ui.horizontal(|ui| {
                         let mut tab_to_close = None;
@@ -48,9 +57,12 @@ impl NixobdoPdfApp {
                             }
 
                             let text_style = if is_active {
-                                egui::RichText::new(text).color(text_color).strong()
+                                egui::RichText::new(text)
+                                    .color(text_color)
+                                    .strong()
+                                    .size(13.0)
                             } else {
-                                egui::RichText::new(text).color(text_color)
+                                egui::RichText::new(text).color(text_color).size(13.0)
                             };
 
                             let tab_resp = ui.selectable_label(is_active, text_style);
@@ -67,9 +79,8 @@ impl NixobdoPdfApp {
                                 ),
                                 egui::vec2(16.0, 16.0),
                             );
-
                             let close_btn =
-                                egui::Button::new(egui::RichText::new("×").size(14.0)).frame(false);
+                                egui::Button::new(egui::RichText::new("×").size(13.0)).frame(false);
                             if ui.put(close_rect, close_btn).clicked() {
                                 tab_to_close = Some(index);
                             }

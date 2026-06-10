@@ -180,11 +180,29 @@ impl NixobdoPdfApp {
                         let available_width_before_scroll = ui.available_width() - 24.0;
 
                         let mut currently_focused_annotation = None;
+                        ui.scope(|ui| {
+                            let dark_bg = egui::Color32::from_black_alpha(240);
+                            ui.style_mut().visuals.widgets.noninteractive.bg_fill = dark_bg;
+                            ui.style_mut().visuals.widgets.inactive.bg_fill = dark_bg;
+                            ui.style_mut().visuals.widgets.hovered.bg_fill = dark_bg;
+                            ui.style_mut().visuals.widgets.active.bg_fill = dark_bg;
 
-                        egui::ScrollArea::both()
-                            .auto_shrink([false; 2])
-                            .show(ui, |ui| {
-                                if ui.input(|i| i.pointer.button_down(egui::PointerButton::Middle)) {
+                            egui::ScrollArea::both()
+                                .auto_shrink([false; 2])
+                                .show(ui, |ui| {
+                                    // Reset style inside the scroll area so PDF pages don't get the dark style
+                                    let global_style = ui.ctx().global_style();
+                                    ui.set_style(global_style);
+
+                                if self.pending_scroll_delta != egui::Vec2::ZERO {
+                                    ui.scroll_with_delta(self.pending_scroll_delta);
+                                    self.pending_scroll_delta = egui::Vec2::ZERO;
+                                }
+
+                                let is_middle_panning = ui.input(|i| i.pointer.button_down(egui::PointerButton::Middle));
+                                let is_hand_panning = self.pointer_mode == crate::app::PointerMode::Pan && ui.input(|i| i.pointer.button_down(egui::PointerButton::Primary));
+
+                                if is_middle_panning || is_hand_panning {
                                     if let Some(press_origin) = ui.input(|i| i.pointer.press_origin()) {
                                         if let Some(current_pos) = ui.input(|i| i.pointer.interact_pos()) {
                                             let delta_x = current_pos.x - press_origin.x;
@@ -207,7 +225,9 @@ impl NixobdoPdfApp {
                                             }
                                         }
                                     }
-                                    ui.ctx().set_cursor_icon(egui::CursorIcon::AllScroll);
+                                    ui.ctx().set_cursor_icon(if is_middle_panning { egui::CursorIcon::AllScroll } else { egui::CursorIcon::PointingHand });
+                                } else if self.pointer_mode == crate::app::PointerMode::Pan {
+                                    ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
                                 }
 
                                 let available_width = available_width_before_scroll;
@@ -230,8 +250,7 @@ impl NixobdoPdfApp {
                                         if tab.selected_page + 1 < tab.pages.len() { page_indices.push(tab.selected_page + 1); }
                                     }
                                 }
-
-                                ui.vertical_centered(|ui| {
+                                ui.vertical(|ui| {
                                     for chunk in page_indices.chunks(chunks) {
                                         let mut total_row_width = 0.0;
                                         for &index in chunk {
@@ -247,8 +266,7 @@ impl NixobdoPdfApp {
                                             total_row_width += final_width;
                                         }
                                         total_row_width += (chunk.len().saturating_sub(1)) as f32 * 15.0;
-
-                                        ui.horizontal_centered(|ui| {
+                                        ui.horizontal(|ui| {
                                             let extra_space = (available_width_before_scroll - total_row_width).max(0.0) / 2.0;
                                             ui.add_space(extra_space);
 
@@ -333,7 +351,7 @@ impl NixobdoPdfApp {
 
                                                     // Handle drag/selection input on the page
                                                     if index < tab.page_chars.len() {
-                                                        if response.drag_started_by(egui::PointerButton::Primary) {
+                                                        if self.pointer_mode == crate::app::PointerMode::Select && response.drag_started_by(egui::PointerButton::Primary) {
                                                             if let Some(mouse_pos) = ui.ctx().pointer_interact_pos() {
                                                                 let unrot_pos = transform_pos_to_unrot(mouse_pos, response.rect, rot);
                                                                 if let Some(char_idx) = find_closest_char(response.rect, unrot_pos, &tab.page_chars[index]) {
@@ -899,6 +917,7 @@ impl NixobdoPdfApp {
                                     tab.scroll_to_page = None;
                                 }
                             });
+                        });
                     }
                 }
             }
@@ -941,30 +960,145 @@ impl NixobdoPdfApp {
                     "Fullscreen"
                 };
 
+                // Match the style of the utility bar
+                ui.style_mut().spacing.button_padding = egui::vec2(12.0, 12.0);
+                let corner_radius = egui::CornerRadius::same(100);
+                ui.style_mut().visuals.widgets.inactive.corner_radius = corner_radius;
+                ui.style_mut().visuals.widgets.hovered.corner_radius = corner_radius;
+                ui.style_mut().visuals.widgets.active.corner_radius = corner_radius;
+                ui.style_mut().visuals.widgets.noninteractive.corner_radius = corner_radius;
+
                 let image = if is_fullscreen {
                     egui::Image::new(egui::include_image!("../../../assets/exit_fullscreen.svg"))
                         .tint(ui.visuals().text_color())
-                        .max_height(20.0)
-                        .max_width(20.0)
+                        .max_height(24.0)
+                        .max_width(24.0)
                 } else {
                     egui::Image::new(egui::include_image!("../../../assets/fullscreen.svg"))
                         .tint(ui.visuals().text_color())
-                        .max_height(20.0)
-                        .max_width(20.0)
+                        .max_height(24.0)
+                        .max_width(24.0)
                 };
+                egui::Frame::window(ui.style())
+                    .corner_radius(100)
+                    .shadow(egui::epaint::Shadow {
+                        offset: [0, 4],
+                        blur: 8,
+                        spread: 0,
+                        color: egui::Color32::from_black_alpha(80),
+                    })
+                    .show(ui, |ui| {
+                        let response = ui.add(egui::Button::image(image)).on_hover_text(tooltip);
 
-                let response = ui
-                    .add(
-                        egui::Button::image(image)
-                            .fill(ui.visuals().widgets.inactive.weak_bg_fill)
-                            .frame(true),
-                    )
-                    .on_hover_text(tooltip);
-
-                if response.clicked() {
-                    ui.ctx()
-                        .send_viewport_cmd(egui::ViewportCommand::Fullscreen(!is_fullscreen));
-                }
+                        if response.clicked() {
+                            ui.ctx()
+                                .send_viewport_cmd(egui::ViewportCommand::Fullscreen(
+                                    !is_fullscreen,
+                                ));
+                        }
+                    });
             });
+
+        // Floating Utility Bar at the bottom center
+        if self.show_utility_bar && self.active_tab_index.is_some() {
+            egui::Area::new(egui::Id::new("utility_bar_area"))
+                .anchor(egui::Align2::CENTER_BOTTOM, [0.0, -24.0])
+                .order(egui::Order::Foreground)
+                .show(ui.ctx(), |ui| {
+                    egui::Frame::window(ui.style())
+                        .corner_radius(8)
+                        .shadow(egui::epaint::Shadow {
+                            offset: [0, 4],
+                            blur: 8,
+                            spread: 0,
+                            color: egui::Color32::from_black_alpha(80),
+                        })
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                // Consistent sizing with toolbars
+                                ui.style_mut().text_styles.insert(
+                                    egui::TextStyle::Button,
+                                    egui::FontId::proportional(16.0),
+                                );
+                                ui.style_mut().spacing.button_padding = egui::vec2(12.0, 10.0);
+                                ui.style_mut().spacing.item_spacing = egui::vec2(6.0, 0.0);
+
+                                // Make buttons circular
+                                let corner_radius = egui::CornerRadius::same(100);
+                                ui.style_mut().visuals.widgets.inactive.corner_radius =
+                                    corner_radius;
+                                ui.style_mut().visuals.widgets.hovered.corner_radius =
+                                    corner_radius;
+                                ui.style_mut().visuals.widgets.active.corner_radius = corner_radius;
+                                ui.style_mut().visuals.widgets.noninteractive.corner_radius =
+                                    corner_radius;
+
+                                // Pointer Mode
+                                if ui
+                                    .add(egui::Button::new("  ⬉  ").selected(
+                                        self.pointer_mode == crate::app::PointerMode::Select,
+                                    ))
+                                    .on_hover_text("Select Text (Pointer)")
+                                    .clicked()
+                                {
+                                    self.pointer_mode = crate::app::PointerMode::Select;
+                                }
+                                if ui
+                                    .add(egui::Button::new("  ✋  ").selected(
+                                        self.pointer_mode == crate::app::PointerMode::Pan,
+                                    ))
+                                    .on_hover_text("Pan Tool (Hand)")
+                                    .clicked()
+                                {
+                                    self.pointer_mode = crate::app::PointerMode::Pan;
+                                }
+
+                                ui.separator();
+
+                                // Zoom
+                                if ui.button("  🔍-  ").on_hover_text("Zoom Out").clicked() {
+                                    if let Some(active_idx) = self.active_tab_index {
+                                        if let Some(tab) = self.tabs.get_mut(active_idx) {
+                                            tab.zoom = (tab.zoom - 10.0).max(0.0);
+                                        }
+                                    }
+                                }
+
+                                // Zoom Percentage
+                                if let Some(active_idx) = self.active_tab_index {
+                                    if let Some(tab) = self.tabs.get(active_idx) {
+                                        let display_zoom = 100.0 + tab.zoom;
+                                        ui.label(format!("{:.0}%", display_zoom));
+                                    }
+                                }
+
+                                if ui.button("  🔍+  ").on_hover_text("Zoom In").clicked() {
+                                    if let Some(active_idx) = self.active_tab_index {
+                                        if let Some(tab) = self.tabs.get_mut(active_idx) {
+                                            tab.zoom += 10.0;
+                                        }
+                                    }
+                                }
+
+                                ui.separator();
+
+                                // Scrolling
+                                let scroll_speed = 100.0;
+                                if ui.button("  ⬅  ").on_hover_text("Scroll Left").clicked() {
+                                    self.pending_scroll_delta.x += scroll_speed;
+                                }
+                                if ui.button("  ⬆  ").on_hover_text("Scroll Up").clicked() {
+                                    self.pending_scroll_delta.y += scroll_speed;
+                                }
+                                if ui.button("  ⬇  ").on_hover_text("Scroll Down").clicked() {
+                                    self.pending_scroll_delta.y -= scroll_speed;
+                                }
+                                if ui.button("  ➡  ").on_hover_text("Scroll Right").clicked() {
+                                    self.pending_scroll_delta.x -= scroll_speed;
+                                }
+                            });
+                        });
+                });
+        }
     }
 }

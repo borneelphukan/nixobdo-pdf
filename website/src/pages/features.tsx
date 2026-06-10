@@ -1,4 +1,4 @@
-import { Layout, PenTool, FileOutput, FileSignature } from 'lucide-react';
+import { Layout, PenTool, FileOutput, FileSignature, MousePointer2 } from 'lucide-react';
 
 export function DocsFeatures() {
   return (
@@ -42,6 +42,35 @@ export function DocsFeatures() {
             <p><span className="text-emerald-400 font-semibold">Benefits:</span> Excellent for skimming and maintaining context across page boundaries.</p>
             <p><span className="text-rose-400 font-semibold">Limitations:</span> May consume more memory for very large documents compared to single-page rendering.</p>
           </div>
+        </div>
+      </div>
+
+      {/* Navigation & Utility */}
+      <h2 className="text-2xl font-bold text-white mt-12 mb-4 border-b border-white/10 pb-2 flex items-center gap-2">
+        <MousePointer2 className="w-6 h-6 text-indigo-400" />
+        Navigation & Utility Bar
+      </h2>
+      <p className="text-slate-300 mb-6">
+        Navigate your documents with ease using the built-in Navigation tools and the quick-access Floating Utility Bar.
+      </p>
+
+      <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 mb-8 text-sm text-slate-300">
+        <strong className="text-white">How to access:</strong> The Utility Bar can be toggled by navigating to <strong>View &gt; Show Utility Bar</strong>.
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2 mb-10">
+        <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-6">
+          <h3 className="text-lg font-bold text-white mb-2">Hand Pan & Pointer Tools</h3>
+          <p className="text-slate-400 text-sm mb-4">
+            Toggle between the standard Pointer tool for selecting text and the Hand tool for seamlessly clicking and dragging to pan around zoomed-in documents.
+          </p>
+        </div>
+
+        <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-6">
+          <h3 className="text-lg font-bold text-white mb-2">Zoom & Scroll Controls</h3>
+          <p className="text-slate-400 text-sm mb-4">
+            Precisely control your zoom percentage and navigate around the page using the integrated Zoom buttons and directional scroll arrows right from the utility bar.
+          </p>
         </div>
       </div>
 
