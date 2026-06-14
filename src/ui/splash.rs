@@ -12,7 +12,7 @@ impl NixobdoPdfApp {
                         ui.add_space(ui.available_height() / 2.0 - 100.0);
 
                         ui.add(
-                            egui::Image::new(egui::include_image!("../../assets/logo.svg"))
+                            egui::Image::new(egui::include_image!("../../assets/icons/logo.svg"))
                                 .max_width(250.0)
                                 .max_height(250.0),
                         );

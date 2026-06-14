@@ -293,7 +293,7 @@ impl NixobdoPdfApp {
                     let highlight_selected = tool_selected == Some(crate::document::AnnotationTool::Highlight);
                     if ui.add(
                         egui::Button::image(
-                            egui::Image::new(egui::include_image!("../../assets/highlight.svg"))
+                            egui::Image::new(egui::include_image!("../../assets/icons/highlight.svg"))
                                 .max_height(16.0)
                                 .max_width(16.0)
                                 .tint(ui.visuals().text_color())
@@ -306,7 +306,7 @@ impl NixobdoPdfApp {
                     let underline_selected = tool_selected == Some(crate::document::AnnotationTool::Underline);
                     if ui.add(
                         egui::Button::image(
-                            egui::Image::new(egui::include_image!("../../assets/underline.svg"))
+                            egui::Image::new(egui::include_image!("../../assets/icons/underline.svg"))
                                 .max_height(16.0)
                                 .max_width(16.0)
                                 .tint(ui.visuals().text_color())
@@ -319,7 +319,7 @@ impl NixobdoPdfApp {
                     let strike_selected = tool_selected == Some(crate::document::AnnotationTool::Strikethrough);
                     if ui.add(
                         egui::Button::image(
-                            egui::Image::new(egui::include_image!("../../assets/strikethrough.svg"))
+                            egui::Image::new(egui::include_image!("../../assets/icons/strikethrough.svg"))
                                 .max_height(16.0)
                                 .max_width(16.0)
                                 .tint(ui.visuals().text_color())
@@ -332,7 +332,7 @@ impl NixobdoPdfApp {
                     let redact_selected = tool_selected == Some(crate::document::AnnotationTool::Redact);
                     if ui.add(
                         egui::Button::image(
-                            egui::Image::new(egui::include_image!("../../assets/redact.svg"))
+                            egui::Image::new(egui::include_image!("../../assets/icons/redact.svg"))
                                 .max_height(16.0)
                                 .max_width(16.0)
                                 .tint(ui.visuals().text_color())

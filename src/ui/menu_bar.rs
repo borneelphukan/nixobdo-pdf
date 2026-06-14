@@ -175,7 +175,7 @@ impl NixobdoPdfApp {
                             if ui
                                 .add(egui::Button::image_and_text(
                                     egui::Image::new(egui::include_image!(
-                                        "../../assets/rotate_left.svg"
+                                        "../../assets/icons/rotate_left.svg"
                                     ))
                                     .max_height(14.0),
                                     "Rotate Left",
@@ -197,7 +197,7 @@ impl NixobdoPdfApp {
                             if ui
                                 .add(egui::Button::image_and_text(
                                     egui::Image::new(egui::include_image!(
-                                        "../../assets/rotate_right.svg"
+                                        "../../assets/icons/rotate_right.svg"
                                     ))
                                     .max_height(14.0),
                                     "Rotate Right",

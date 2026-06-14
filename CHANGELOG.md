@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.27] - 2026-06-14
+### Added
+- Auto-scroll during text selection in Continuous Scroll mode — viewport scrolls
+  when dragging near the top/bottom edge to reveal hidden content.
+
+### Changed
+- Organised all SVG icons into `assets/icons/` folder with updated internal paths.
+- Right-click context menu Zoom In/Out now uses the same scale as Ctrl+Scroll wheel.
+- Text selection overlay now merges consecutive characters on the same line into
+  continuous highlight rects for a seamless appearance.
+
+### Fixed
+- Selection `selection_end` now updates for every page the cursor moves over
+  during a drag, so selections spanning multiple pages are highlighted immediately
+  without waiting for mouse release.
+
 ## [0.1.14] - 2026-06-08
 ### Changed
 - Converted React website components and filenames to lowercase/kebab-case.
