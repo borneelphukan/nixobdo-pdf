@@ -362,11 +362,13 @@ impl NixobdoPdfApp {
                                                             }
                                                         }
 
-                                                        if self.is_selecting && response.dragged_by(egui::PointerButton::Primary) {
+                                                        if self.is_selecting && ui.input(|i| i.pointer.button_down(egui::PointerButton::Primary)) {
                                                             if let Some(mouse_pos) = ui.ctx().pointer_interact_pos() {
-                                                                let unrot_pos = transform_pos_to_unrot(mouse_pos, response.rect, rot);
-                                                                if let Some(char_idx) = find_closest_char(response.rect, unrot_pos, &tab.page_chars[index]) {
-                                                                    self.selection_end = Some((index, char_idx));
+                                                                if rect.contains(mouse_pos) {
+                                                                    let unrot_pos = transform_pos_to_unrot(mouse_pos, response.rect, rot);
+                                                                    if let Some(char_idx) = find_closest_char(response.rect, unrot_pos, &tab.page_chars[index]) {
+                                                                        self.selection_end = Some((index, char_idx));
+                                                                    }
                                                                 }
                                                             }
                                                         }
@@ -499,10 +501,10 @@ impl NixobdoPdfApp {
                                                         });
 
                                                         if zoom_in_clicked {
-                                                            tab.zoom += 0.1;
+                                                            tab.zoom += 10.0;
                                                         }
                                                         if zoom_out_clicked {
-                                                            tab.zoom = (tab.zoom - 0.1).max(0.0);
+                                                            tab.zoom = (tab.zoom - 10.0).max(0.0);
                                                         }
                                                     }
 
@@ -519,21 +521,33 @@ impl NixobdoPdfApp {
                                                     // Draw blue text selection overlays
                                                     if let (Some(start), Some(end)) = (self.selection_start, self.selection_end) {
                                                         if index < tab.page_chars.len() {
+                                                            let mut merged: Vec<egui::Rect> = Vec::new();
                                                             for char_idx in 0..tab.page_chars[index].len() {
                                                                 if is_char_selected(index, char_idx, start, end) {
                                                                     let char_info = &tab.page_chars[index][char_idx];
                                                                     if !char_info.c.is_whitespace() {
-                                                                        let highlight_rect = transform_rect_to_rot(
-                                                                            char_info.left, char_info.top, char_info.right, char_info.bottom, response.rect, rot
+                                                                        let cr = egui::Rect::from_min_max(
+                                                                            egui::pos2(char_info.left, char_info.top),
+                                                                            egui::pos2(char_info.right, char_info.bottom),
                                                                         );
-
-                                                                        ui.painter().rect_filled(
-                                                                            highlight_rect,
-                                                                            0.0,
-                                                                            egui::Color32::from_rgba_unmultiplied(66, 165, 245, 80),
-                                                                        );
+                                                                        if let Some(last) = merged.last_mut() {
+                                                                            let same_line = (last.center().y - cr.center().y).abs() < 0.01 || (last.min.y.max(cr.min.y) < last.max.y.min(cr.max.y));
+                                                                            if same_line {
+                                                                                *last = last.union(cr);
+                                                                            } else {
+                                                                                merged.push(cr);
+                                                                            }
+                                                                        } else {
+                                                                            merged.push(cr);
+                                                                        }
                                                                     }
                                                                 }
+                                                            }
+                                                            for mr in &merged {
+                                                                let highlight_rect = transform_rect_to_rot(
+                                                                    mr.min.x, mr.min.y, mr.max.x, mr.max.y, response.rect, rot
+                                                                );
+                                                                ui.painter().rect_filled(highlight_rect, 0.0, egui::Color32::from_rgba_unmultiplied(66, 165, 245, 80));
                                                             }
                                                         }
                                                     }
@@ -916,6 +930,25 @@ impl NixobdoPdfApp {
                                 if scrolled {
                                     tab.scroll_to_page = None;
                                 }
+
+                                // Auto-scroll during selection
+                                if self.is_selecting && ui.input(|i| i.pointer.button_down(egui::PointerButton::Primary)) {
+                                    if let Some(mouse_pos) = ui.ctx().pointer_interact_pos() {
+                                        let clip_rect = ui.clip_rect();
+                                        let scroll_margin = 40.0;
+                                        if tab.layout_mode == PageLayoutMode::ContinuousScroll {
+                                            if mouse_pos.y < clip_rect.min.y + scroll_margin {
+                                                let factor = 1.0 - (mouse_pos.y - clip_rect.min.y).max(0.0) / scroll_margin;
+                                                ui.scroll_with_delta(egui::vec2(0.0, 12.0 * factor));
+                                                ui.ctx().request_repaint();
+                                            } else if mouse_pos.y > clip_rect.max.y - scroll_margin {
+                                                let factor = 1.0 - (clip_rect.max.y - mouse_pos.y).max(0.0) / scroll_margin;
+                                                ui.scroll_with_delta(egui::vec2(0.0, -12.0 * factor));
+                                                ui.ctx().request_repaint();
+                                            }
+                                        }
+                                    }
+                                }
                             });
                         });
                     }
@@ -969,12 +1002,12 @@ impl NixobdoPdfApp {
                 ui.style_mut().visuals.widgets.noninteractive.corner_radius = corner_radius;
 
                 let image = if is_fullscreen {
-                    egui::Image::new(egui::include_image!("../../../assets/exit_fullscreen.svg"))
+                    egui::Image::new(egui::include_image!("../../../assets/icons/exit_fullscreen.svg"))
                         .tint(ui.visuals().text_color())
                         .max_height(24.0)
                         .max_width(24.0)
                 } else {
-                    egui::Image::new(egui::include_image!("../../../assets/fullscreen.svg"))
+                    egui::Image::new(egui::include_image!("../../../assets/icons/fullscreen.svg"))
                         .tint(ui.visuals().text_color())
                         .max_height(24.0)
                         .max_width(24.0)
