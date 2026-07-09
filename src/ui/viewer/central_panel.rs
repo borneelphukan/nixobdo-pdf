@@ -10,6 +10,7 @@ impl NixobdoPdfApp {
             let mut select_all_triggered = false;
             let mut copy_triggered = false;
             let mut exit_triggered = false;
+            let mut ai_summarize_clicked = false;
 
             if self.is_placing_signature {
                 if self.active_tab_index.is_none() {
@@ -480,6 +481,11 @@ impl NixobdoPdfApp {
                                                                     copy_triggered = true;
                                                                     ui.close();
                                                                 }
+                                                                if ui.button("⚡ Summarize with AI").clicked() {
+                                                                    ai_summarize_clicked = true;
+                                                                    ui.close();
+                                                                }
+                                                                ui.separator();
                                                             }
                                                             if ui.button("📖 Select All").clicked() {
                                                                 select_all_triggered = true;
@@ -979,6 +985,25 @@ impl NixobdoPdfApp {
             if exit_triggered {
                 ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
             }
+            if ai_summarize_clicked {
+                if let Some(text) = self.get_selected_text() {
+                    self.ai_summary_text = String::new();
+                    self.ai_summary_full_text = String::new();
+                    self.ai_summary_loading = true;
+                    self.ai_summary_error = None;
+                    self.ai_summary_open = true;
+                    self.ai_summary_display_len = 0;
+                    let _ = self
+                        .pdf_task_tx
+                        .send(crate::worker::PdfWorkerTask::AiSummarize {
+                            text,
+                            endpoint_url: self.llm_endpoint_url.clone(),
+                            model: self.llm_model.clone(),
+                            api_key: self.llm_api_key.clone(),
+                            ctx: ui.ctx().clone(),
+                        });
+                }
+            }
         });
 
         // Fullscreen toggle floating button at bottom right
@@ -1031,6 +1056,128 @@ impl NixobdoPdfApp {
                         }
                     });
             });
+
+        // AI Summary Overlay Modal
+        if self.ai_summary_open {
+            let modal_id = egui::Id::new("ai_summary_modal");
+            let modal = egui::Area::new(modal_id)
+                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                .order(egui::Order::Foreground)
+                .constrain(true);
+
+            modal.show(ui.ctx(), |ui| {
+                let frame = egui::Frame::window(ui.style())
+                    .corner_radius(12)
+                    .shadow(egui::epaint::Shadow {
+                        offset: [0, 8],
+                        blur: 24,
+                        spread: 0,
+                        color: egui::Color32::from_black_alpha(120),
+                    })
+                    .inner_margin(egui::Margin::symmetric(24, 20));
+
+                frame.show(ui, |ui| {
+                    ui.set_min_width(400.0);
+                    ui.set_max_width(600.0);
+
+                    ui.horizontal(|ui| {
+                        ui.label(egui::RichText::new("⚡ AI Summary").size(18.0).strong());
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if ui.button("✖").clicked() {
+                                self.ai_summary_open = false;
+                                self.ai_summary_text = String::new();
+                                self.ai_summary_full_text = String::new();
+                                self.ai_summary_error = None;
+                                self.ai_summary_loading = false;
+                            }
+                        });
+                    });
+                    ui.add_space(12.0);
+
+                    if self.ai_summary_loading {
+                        ui.vertical_centered(|ui| {
+                            ui.add_space(20.0);
+                            ui.spinner();
+                            ui.add_space(8.0);
+                            ui.label(
+                                egui::RichText::new("Generating summary...")
+                                    .size(13.0)
+                                    .weak(),
+                            );
+                            ui.add_space(20.0);
+                        });
+                    } else if let Some(error) = self.ai_summary_error.clone() {
+                        ui.vertical_centered(|ui| {
+                            ui.add_space(16.0);
+                            ui.label(
+                                egui::RichText::new("⚠️")
+                                    .size(32.0),
+                            );
+                            ui.add_space(8.0);
+                            ui.label(
+                                egui::RichText::new(&error)
+                                    .size(13.0)
+                                    .color(egui::Color32::from_rgb(255, 100, 100)),
+                            );
+                            ui.add_space(16.0);
+                            if ui.button("Close").clicked() {
+                                self.ai_summary_open = false;
+                                self.ai_summary_error = None;
+                            }
+                        });
+                    } else if !self.ai_summary_full_text.is_empty() {
+                        // Animate text reveal
+                        let now = ui.ctx().input(|i| i.time);
+                        let elapsed = (now - self.ai_summary_start_time) as f32;
+                        let chars_per_second = 40.0;
+                        let target_len = (elapsed * chars_per_second) as usize;
+                        let full_len = self.ai_summary_full_text.chars().count();
+
+                        if target_len >= full_len {
+                            self.ai_summary_display_len = full_len;
+                        } else {
+                            self.ai_summary_display_len = target_len;
+                            ui.ctx().request_repaint();
+                        }
+
+                        let display_text: String = self
+                            .ai_summary_full_text
+                            .chars()
+                            .take(self.ai_summary_display_len)
+                            .collect();
+
+                        egui::ScrollArea::vertical()
+                            .max_height(400.0)
+                            .auto_shrink([false; 2])
+                            .show(ui, |ui| {
+                                ui.label(
+                                    egui::RichText::new(&display_text)
+                                        .size(14.0)
+                                        .line_height(Some(22.0)),
+                                );
+                            });
+
+                        ui.add_space(12.0);
+                        ui.horizontal(|ui| {
+                            if self.ai_summary_display_len < full_len {
+                                ui.label(
+                                    egui::RichText::new("⬤ Generating...")
+                                        .size(11.0)
+                                        .weak(),
+                                );
+                            }
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                if ui.button("Dismiss").clicked() {
+                                    self.ai_summary_open = false;
+                                    self.ai_summary_text = String::new();
+                                    self.ai_summary_full_text = String::new();
+                                }
+                            });
+                        });
+                    }
+                });
+            });
+        }
 
         // Floating Utility Bar at the bottom center
         if self.show_utility_bar && self.active_tab_index.is_some() {

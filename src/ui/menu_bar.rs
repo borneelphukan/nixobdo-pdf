@@ -293,6 +293,39 @@ impl NixobdoPdfApp {
                         ui.add_enabled(false, egui::Button::new("    Two Page"));
                     }
                 });
+                ui.menu_button("AI", |ui| {
+                    ui.set_min_width(220.0);
+                    if ui.button("Settings...").clicked() {
+                        self.show_llm_settings = true;
+                        self.init_llm_preset_from_model();
+                        ui.close();
+                    }
+                    ui.separator();
+                    let has_selection = self.selection_start.is_some();
+                    if ui
+                        .add_enabled(has_selection && self.active_tab_index.is_some(), egui::Button::new("Summarize with AI"))
+                        .clicked()
+                    {
+                        if let Some(text) = self.get_selected_text() {
+                            self.ai_summary_text = String::new();
+                            self.ai_summary_full_text = String::new();
+                            self.ai_summary_loading = true;
+                            self.ai_summary_error = None;
+                            self.ai_summary_open = true;
+                            self.ai_summary_display_len = 0;
+                            let _ = self
+                                .pdf_task_tx
+                                .send(crate::worker::PdfWorkerTask::AiSummarize {
+                                    text,
+                                    endpoint_url: self.llm_endpoint_url.clone(),
+                                    model: self.llm_model.clone(),
+                                    api_key: self.llm_api_key.clone(),
+                                    ctx: ui.ctx().clone(),
+                                });
+                        }
+                        ui.close();
+                    }
+                });
                 ui.menu_button("Help", |ui| {
                     ui.set_min_width(220.0);
                     if ui.button("Check for Updates").clicked() {

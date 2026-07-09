@@ -121,6 +121,25 @@ impl NixobdoPdfApp {
                     self.reload_pdf(ui.ctx(), path);
                 }
 
+                PdfWorkerMessage::AiSummaryResult {
+                    success,
+                    text,
+                    error,
+                } => {
+                    self.ai_summary_loading = false;
+                    if success {
+                        self.ai_summary_full_text = text;
+                        self.ai_summary_text = String::new();
+                        self.ai_summary_display_len = 0;
+                        self.ai_summary_start_time = ui.ctx().input(|i| i.time);
+                        self.ai_summary_error = None;
+                    } else {
+                        self.ai_summary_error = error;
+                        self.ai_summary_text = String::new();
+                        self.ai_summary_full_text = String::new();
+                    }
+                }
+
                 PdfWorkerMessage::UpdateCheckResult(is_available, version, is_manual) => {
                     use crate::app::UpdateState;
                     if is_available {

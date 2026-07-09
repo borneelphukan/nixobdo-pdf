@@ -202,6 +202,11 @@ pub enum PdfWorkerMessage {
     AnnotationsSaved {
         path: PathBuf,
     },
+    AiSummaryResult {
+        success: bool,
+        text: String,
+        error: Option<String>,
+    },
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]

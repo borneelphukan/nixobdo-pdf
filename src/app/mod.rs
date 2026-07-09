@@ -103,6 +103,23 @@ pub struct NixobdoPdfApp {
     pub text_annotation_color: egui::Color32,
     pub is_custom_text_color_open: bool,
     pub custom_text_color_temp: egui::Color32,
+
+    // AI / LLM features
+    pub llm_endpoint_url: String,
+    pub llm_model: String,
+    pub llm_api_key: String,
+    pub show_llm_settings: bool,
+    pub llm_settings_tab_index: usize,
+    pub llm_selected_preset: usize,
+    pub llm_is_custom_model: bool,
+    pub llm_custom_model: String,
+    pub ai_summary_open: bool,
+    pub ai_summary_text: String,
+    pub ai_summary_loading: bool,
+    pub ai_summary_error: Option<String>,
+    pub ai_summary_display_len: usize,
+    pub ai_summary_start_time: f64,
+    pub ai_summary_full_text: String,
 }
 
 impl Default for NixobdoPdfApp {
@@ -192,6 +209,21 @@ impl Default for NixobdoPdfApp {
             text_annotation_color: egui::Color32::BLACK,
             is_custom_text_color_open: false,
             custom_text_color_temp: egui::Color32::BLACK,
+            llm_endpoint_url: "http://localhost:1234/v1".to_string(),
+            llm_model: String::new(),
+            llm_api_key: String::new(),
+            show_llm_settings: false,
+            llm_settings_tab_index: 0,
+            llm_selected_preset: 0,
+            llm_is_custom_model: false,
+            llm_custom_model: String::new(),
+            ai_summary_open: false,
+            ai_summary_text: String::new(),
+            ai_summary_loading: false,
+            ai_summary_error: None,
+            ai_summary_display_len: 0,
+            ai_summary_start_time: 0.0,
+            ai_summary_full_text: String::new(),
         }
     }
 }

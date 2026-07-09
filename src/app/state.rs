@@ -5,6 +5,52 @@ use eframe::egui;
 use std::path::PathBuf;
 
 impl NixobdoPdfApp {
+    pub(crate) fn get_selected_text(&self) -> Option<String> {
+        if let (Some(start), Some(end)) = (self.selection_start, self.selection_end) {
+            if let Some(active_idx) = self.active_tab_index {
+                if let Some(tab) = self.tabs.get(active_idx) {
+                    let mut selected_text = String::new();
+                    let (p_start, c_start, p_end, c_end) = if start.0 < end.0 {
+                        (start.0, start.1, end.0, end.1)
+                    } else if start.0 > end.0 {
+                        (end.0, end.1, start.0, start.1)
+                    } else {
+                        let (c_min, c_max) = if start.1 <= end.1 {
+                            (start.1, end.1)
+                        } else {
+                            (end.1, start.1)
+                        };
+                        (start.0, c_min, start.0, c_max)
+                    };
+
+                    for p_idx in p_start..=p_end {
+                        if let Some(chars) = tab.page_chars.get(p_idx) {
+                            let start_c = if p_idx == p_start { c_start } else { 0 };
+                            let end_c = if p_idx == p_end {
+                                c_end
+                            } else {
+                                chars.len().saturating_sub(1)
+                            };
+                            for c_idx in start_c..=end_c {
+                                if let Some(char_info) = chars.get(c_idx) {
+                                    selected_text.push(char_info.c);
+                                }
+                            }
+                        }
+                        if p_idx < p_end {
+                            selected_text.push('\n');
+                        }
+                    }
+
+                    if !selected_text.is_empty() {
+                        return Some(selected_text);
+                    }
+                }
+            }
+        }
+        None
+    }
+
     pub(crate) fn copy_selection(&self, ctx: &egui::Context) {
         if let (Some(start), Some(end)) = (self.selection_start, self.selection_end) {
             if let Some(active_idx) = self.active_tab_index {

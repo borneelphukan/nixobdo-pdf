@@ -51,6 +51,13 @@ pub enum PdfWorkerTask {
         annotations: Vec<crate::document::AnnotationAction>,
         ctx: egui::Context,
     },
+    AiSummarize {
+        text: String,
+        endpoint_url: String,
+        model: String,
+        api_key: String,
+        ctx: egui::Context,
+    },
 }
 
 pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfWorkerMessage>) {
@@ -598,6 +605,28 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
 
                         ctx.request_repaint();
                     }
+                    PdfWorkerTask::AiSummarize {
+                        text,
+                        endpoint_url,
+                        model,
+                        api_key,
+                        ctx,
+                    } => {
+                        let tx = msg_tx_clone.clone();
+                        std::thread::spawn(move || {
+                            let result = summarize_with_llm(&text, &endpoint_url, &model, &api_key);
+                            let (success, response_text, error) = match result {
+                                Ok(t) => (true, t, None),
+                                Err(e) => (false, String::new(), Some(e)),
+                            };
+                            let _ = tx.send(PdfWorkerMessage::AiSummaryResult {
+                                success,
+                                text: response_text,
+                                error,
+                            });
+                            ctx.request_repaint();
+                        });
+                    }
                 }
             } else {
                 match task {
@@ -718,9 +747,87 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                         });
                         ctx.request_repaint();
                     }
+                    PdfWorkerTask::AiSummarize {
+                        text,
+                        endpoint_url,
+                        model,
+                        api_key,
+                        ctx,
+                    } => {
+                        let tx = msg_tx_clone.clone();
+                        std::thread::spawn(move || {
+                            let result = summarize_with_llm(&text, &endpoint_url, &model, &api_key);
+                            let (success, response_text, error) = match result {
+                                Ok(t) => (true, t, None),
+                                Err(e) => (false, String::new(), Some(e)),
+                            };
+                            let _ = tx.send(PdfWorkerMessage::AiSummaryResult {
+                                success,
+                                text: response_text,
+                                error,
+                            });
+                            ctx.request_repaint();
+                        });
+                    }
                     _ => {}
                 }
             }
         }
     });
+}
+
+fn summarize_with_llm(text: &str, endpoint_url: &str, model: &str, api_key: &str) -> Result<String, String> {
+    let base_url = endpoint_url.trim_end_matches('/');
+    let url = if base_url.ends_with("/chat/completions") {
+        base_url.to_string()
+    } else if base_url.ends_with("/v1") {
+        format!("{}/chat/completions", base_url)
+    } else {
+        format!("{}/v1/chat/completions", base_url)
+    };
+
+    let system_prompt = "You are a helpful assistant. Explain the following text concisely and clearly. \
+        Provide a brief summary of what it means in simple terms. Keep your response under 200 words.";
+
+    let body = serde_json::json!({
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": text}
+        ],
+        "temperature": 0.3,
+        "max_tokens": 500,
+        "stream": false
+    });
+
+    let json_string = serde_json::to_string(&body)
+        .map_err(|e| format!("Failed to serialize request: {}", e))?;
+
+    let mut req = ureq::post(&url)
+        .header("Content-Type", "application/json")
+        .header("User-Agent", "nixobdo-pdf");
+
+    if !api_key.is_empty() {
+        req = req.header("Authorization", &format!("Bearer {}", api_key));
+    }
+
+    let response = req.send(json_string.as_bytes())
+        .map_err(|e| format!("Request failed: {}", e))?;
+
+    use std::io::Read;
+    let mut json = String::new();
+    response.into_body().into_reader().read_to_string(&mut json)
+        .map_err(|e| format!("Failed to read response: {}", e))?;
+
+    let parsed: serde_json::Value = serde_json::from_str(&json)
+        .map_err(|e| format!("Failed to parse response: {} - Response: {}", e, &json[..json.len().min(200)]))?;
+
+    let content = parsed["choices"][0]["message"]["content"]
+        .as_str()
+        .ok_or_else(|| {
+            let error_msg = parsed["error"]["message"].as_str().unwrap_or("Unknown error");
+            format!("API error: {}", error_msg)
+        })?;
+
+    Ok(content.trim().to_string())
 }
