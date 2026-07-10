@@ -49,11 +49,9 @@ impl eframe::App for NixobdoPdfApp {
                 .send_viewport_cmd(egui::ViewportCommand::Fullscreen(false));
         }
 
-        if !is_fullscreen {
-            self.ui_menu_bar(ui);
-            self.ui_tabs(ui);
-            self.ui_toolbar(ui);
-        }
+        self.ui_menu_bar(ui);
+        self.ui_tabs(ui);
+        self.ui_toolbar(ui);
 
         // Rename, Export, About, Update, Export Progress Windows
         self.ui_dialogs(ui);
