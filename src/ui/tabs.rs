@@ -2,17 +2,18 @@ use crate::app::NixobdoPdfApp;
 use eframe::egui;
 
 impl NixobdoPdfApp {
-    pub(crate) fn ui_tabs(&mut self, ctx: &egui::Context) {
-        egui::TopBottomPanel::top("tab_bar_panel").show(ctx, |ui| {
+    pub(crate) fn ui_tabs(&mut self, ui: &mut egui::Ui) {
+        egui::Panel::top("tab_bar_panel").show_inside(ui, |ui| {
             ui.scope(|ui| {
                 let is_dark_mode = ui.visuals().dark_mode;
-                
+
                 // Adjust colors based on user request
                 if !is_dark_mode {
                     // Light mode: use same color as Reset button (standard inactive button bg)
-                    let reset_btn_color = ui.visuals().widgets.inactive.weak_bg_fill; 
+                    let reset_btn_color = ui.visuals().widgets.inactive.weak_bg_fill;
                     ui.style_mut().visuals.selection.bg_fill = reset_btn_color;
-                    ui.style_mut().visuals.widgets.hovered.bg_fill = ui.visuals().widgets.hovered.weak_bg_fill;
+                    ui.style_mut().visuals.widgets.hovered.bg_fill =
+                        ui.visuals().widgets.hovered.weak_bg_fill;
                 } else {
                     // Dark mode: darker than default tab, slightly lighter than universal background (rgb 27)
                     let custom_dark_bg = egui::Color32::from_rgb(38, 38, 38);
@@ -25,17 +26,27 @@ impl NixobdoPdfApp {
                 ui.style_mut().visuals.widgets.active.corner_radius = egui::CornerRadius::same(4);
                 ui.style_mut().visuals.widgets.hovered.corner_radius = egui::CornerRadius::same(4);
                 ui.style_mut().visuals.widgets.inactive.corner_radius = egui::CornerRadius::same(4);
-                ui.style_mut().visuals.widgets.noninteractive.corner_radius = egui::CornerRadius::same(4);
+                ui.style_mut().visuals.widgets.noninteractive.corner_radius =
+                    egui::CornerRadius::same(4);
+
+                // Increase fonts and sizes for tabs
+                ui.style_mut()
+                    .text_styles
+                    .insert(egui::TextStyle::Button, egui::FontId::proportional(13.0));
+                ui.style_mut()
+                    .text_styles
+                    .insert(egui::TextStyle::Body, egui::FontId::proportional(13.0));
+                ui.style_mut().spacing.button_padding = egui::vec2(10.0, 6.0);
 
                 if !self.tabs.is_empty() {
                     ui.horizontal(|ui| {
                         let mut tab_to_close = None;
                         for (index, tab) in self.tabs.iter().enumerate() {
                             let is_active = Some(index) == self.active_tab_index;
-                            
+
                             // Remove logo and add space for the close button within the tab
                             let text = format!("{}      ", tab.file_name);
-                            
+
                             let mut text_color = ui.visuals().text_color();
                             if is_active {
                                 if !is_dark_mode {
@@ -46,32 +57,37 @@ impl NixobdoPdfApp {
                             }
 
                             let text_style = if is_active {
-                                egui::RichText::new(text).color(text_color).strong()
+                                egui::RichText::new(text)
+                                    .color(text_color)
+                                    .strong()
+                                    .size(13.0)
                             } else {
-                                egui::RichText::new(text).color(text_color)
+                                egui::RichText::new(text).color(text_color).size(13.0)
                             };
-                            
+
                             let tab_resp = ui.selectable_label(is_active, text_style);
                             if tab_resp.clicked() {
                                 self.active_tab_index = Some(index);
                             }
-                            
+
                             // Overlay the close button inside the tab's rect, aligned to text
                             let rect = tab_resp.rect;
                             let close_rect = egui::Rect::from_min_size(
-                                egui::pos2(rect.right() - 22.0, rect.top() + (rect.height() - 16.0) / 2.0 - 2.0),
-                                egui::vec2(16.0, 16.0)
+                                egui::pos2(
+                                    rect.right() - 22.0,
+                                    rect.top() + (rect.height() - 16.0) / 2.0 - 2.0,
+                                ),
+                                egui::vec2(16.0, 16.0),
                             );
-                            
-                            let close_btn = egui::Button::new(egui::RichText::new("×").size(14.0))
-                                .frame(false);
+                            let close_btn =
+                                egui::Button::new(egui::RichText::new("×").size(13.0)).frame(false);
                             if ui.put(close_rect, close_btn).clicked() {
                                 tab_to_close = Some(index);
                             }
-                            
+
                             ui.add_space(4.0);
                         }
-                        
+
                         if let Some(close_idx) = tab_to_close {
                             self.close_tab(close_idx);
                         }

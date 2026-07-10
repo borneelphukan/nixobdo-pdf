@@ -12,32 +12,64 @@ use crate::document::{PdfDocumentState, PdfWorkerMessage};
 pub use export::ExportFormat;
 
 pub enum PdfWorkerTask {
-    Load { path: PathBuf, ctx: egui::Context },
-    Export { path: PathBuf, out_path: PathBuf, format: ExportFormat, retain_layout: bool, include_images: bool, ctx: egui::Context, cancel_flag: Arc<AtomicBool> },
-    CheckUpdate { is_manual: bool, ctx: egui::Context },
-    DownloadUpdate { version: String, ctx: egui::Context },
-    SaveSignature { path: PathBuf, page_index: usize, image_path: PathBuf, position: (f32, f32), scale: f32, ctx: egui::Context },
-    SaveRotation { path: PathBuf, rotation: i32, ctx: egui::Context },
-    SaveAnnotations { path: PathBuf, annotations: Vec<crate::document::AnnotationAction>, ctx: egui::Context },
+    Load {
+        path: PathBuf,
+        ctx: egui::Context,
+    },
+    Export {
+        path: PathBuf,
+        out_path: PathBuf,
+        format: ExportFormat,
+        retain_layout: bool,
+        include_images: bool,
+        ctx: egui::Context,
+        cancel_flag: Arc<AtomicBool>,
+    },
+    CheckUpdate {
+        is_manual: bool,
+        ctx: egui::Context,
+    },
+    DownloadUpdate {
+        version: String,
+        ctx: egui::Context,
+    },
+    SaveSignature {
+        path: PathBuf,
+        page_index: usize,
+        image_path: PathBuf,
+        position: (f32, f32),
+        scale: f32,
+        ctx: egui::Context,
+    },
+    SaveRotation {
+        path: PathBuf,
+        rotation: i32,
+        ctx: egui::Context,
+    },
+    SaveAnnotations {
+        path: PathBuf,
+        annotations: Vec<crate::document::AnnotationAction>,
+        ctx: egui::Context,
+    },
 }
 
-pub fn spawn_worker_thread(
-    task_rx: Receiver<PdfWorkerTask>,
-    msg_tx: Sender<PdfWorkerMessage>,
-) {
+pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfWorkerMessage>) {
     let msg_tx_clone = msg_tx.clone();
-    
+
     thread::spawn(move || {
         let exe_path = std::env::current_exe().ok().unwrap_or_default();
         let exe_dir = exe_path.parent().unwrap_or(std::path::Path::new(""));
-        
-        let pdfium_result = Pdfium::bind_to_library(exe_dir.join("libpdfium.dylib").to_str().unwrap_or_default())
-            .or_else(|_| Pdfium::bind_to_library(exe_dir.join("pdfium.dll").to_str().unwrap_or_default()))
-            .or_else(|_| Pdfium::bind_to_library("./lib/libpdfium.dylib"))
-            .or_else(|_| Pdfium::bind_to_library("libpdfium.dylib"))
-            .or_else(|_| Pdfium::bind_to_library("./lib/pdfium.dll"))
-            .or_else(|_| Pdfium::bind_to_library("pdfium.dll"))
-            .or_else(|_| Pdfium::bind_to_system_library());
+
+        let pdfium_result =
+            Pdfium::bind_to_library(exe_dir.join("libpdfium.dylib").to_str().unwrap_or_default())
+                .or_else(|_| {
+                    Pdfium::bind_to_library(exe_dir.join("pdfium.dll").to_str().unwrap_or_default())
+                })
+                .or_else(|_| Pdfium::bind_to_library("./lib/libpdfium.dylib"))
+                .or_else(|_| Pdfium::bind_to_library("libpdfium.dylib"))
+                .or_else(|_| Pdfium::bind_to_library("./lib/pdfium.dll"))
+                .or_else(|_| Pdfium::bind_to_library("pdfium.dll"))
+                .or_else(|_| Pdfium::bind_to_system_library());
 
         let pdfium = match pdfium_result {
             Ok(bindings) => Some(Pdfium::new(bindings)),
@@ -48,28 +80,71 @@ pub fn spawn_worker_thread(
             if let Some(pdf) = &pdfium {
                 match task {
                     PdfWorkerTask::Load { path, ctx } => {
-                        PdfDocumentState::background_load_with_pdfium(path, pdf, msg_tx_clone.clone(), ctx);
+                        PdfDocumentState::background_load_with_pdfium(
+                            path,
+                            pdf,
+                            msg_tx_clone.clone(),
+                            ctx,
+                        );
                     }
-                    PdfWorkerTask::Export { path, out_path, format, retain_layout, include_images, ctx, cancel_flag } => {
+                    PdfWorkerTask::Export {
+                        path,
+                        out_path,
+                        format,
+                        retain_layout,
+                        include_images,
+                        ctx,
+                        cancel_flag,
+                    } => {
                         let tx = msg_tx_clone.clone();
                         // Wrap in catch_unwind so a panic in export doesn't kill the worker thread
                         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                             if format == ExportFormat::Png || format == ExportFormat::Jpeg {
-                                export::export_image(pdf, &path, &out_path, format, &tx, &ctx, &cancel_flag)
+                                export::export_image(
+                                    pdf,
+                                    &path,
+                                    &out_path,
+                                    format,
+                                    &tx,
+                                    &ctx,
+                                    &cancel_flag,
+                                )
                             } else if format == ExportFormat::Docx {
-                                export::export_docx(pdf, &path, &out_path, retain_layout, include_images, &tx, &ctx, &cancel_flag)
+                                export::export_docx(
+                                    pdf,
+                                    &path,
+                                    &out_path,
+                                    retain_layout,
+                                    include_images,
+                                    &tx,
+                                    &ctx,
+                                    &cancel_flag,
+                                )
                             } else {
-                                export::export_doc_rtf(pdf, &path, &out_path, retain_layout, include_images, &tx, &ctx, &cancel_flag)
+                                export::export_doc_rtf(
+                                    pdf,
+                                    &path,
+                                    &out_path,
+                                    retain_layout,
+                                    include_images,
+                                    &tx,
+                                    &ctx,
+                                    &cancel_flag,
+                                )
                             }
                         }));
-                        
+
                         let (success, message) = match result {
                             Ok(Ok(msg)) => (true, msg),
                             Ok(Err(msg)) => (false, msg),
-                            Err(_) => (false, "Export failed unexpectedly (internal error).".to_string()),
+                            Err(_) => (
+                                false,
+                                "Export failed unexpectedly (internal error).".to_string(),
+                            ),
                         };
-                        
-                        let _ = msg_tx_clone.send(PdfWorkerMessage::ExportComplete { success, message });
+
+                        let _ = msg_tx_clone
+                            .send(PdfWorkerMessage::ExportComplete { success, message });
                         ctx.request_repaint();
                     }
                     PdfWorkerTask::CheckUpdate { is_manual, ctx } => {
@@ -78,10 +153,17 @@ pub fn spawn_worker_thread(
                             let url = "https://api.github.com/repos/borneelphukan/nixobdo-pdf/releases/latest";
                             let mut is_available = false;
                             let mut version = None;
-                            if let Ok(response) = ureq::get(url).header("User-Agent", "nixobdo-pdf").call() {
+                            if let Ok(response) =
+                                ureq::get(url).header("User-Agent", "nixobdo-pdf").call()
+                            {
                                 use std::io::Read;
                                 let mut json = String::new();
-                                if response.into_body().into_reader().read_to_string(&mut json).is_ok() {
+                                if response
+                                    .into_body()
+                                    .into_reader()
+                                    .read_to_string(&mut json)
+                                    .is_ok()
+                                {
                                     if let Some(tag_idx) = json.find("\"tag_name\":") {
                                         let rest = &json[tag_idx + 11..];
                                         if let Some(start_quote) = rest.find('"') {
@@ -99,7 +181,11 @@ pub fn spawn_worker_thread(
                                 }
                             }
                             std::thread::sleep(std::time::Duration::from_secs(1));
-                            let _ = tx.send(PdfWorkerMessage::UpdateCheckResult(is_available, version, is_manual));
+                            let _ = tx.send(PdfWorkerMessage::UpdateCheckResult(
+                                is_available,
+                                version,
+                                is_manual,
+                            ));
                             ctx.request_repaint();
                         });
                     }
@@ -109,9 +195,14 @@ pub fn spawn_worker_thread(
                             let url = format!("https://github.com/borneelphukan/nixobdo-pdf/releases/download/v{}/nixobdo-pdfSetup.exe", version);
                             match ureq::get(&url).header("User-Agent", "nixobdo-pdf").call() {
                                 Ok(response) => {
-                                    let len: Option<u64> = response.headers().get("Content-Length").and_then(|h| h.to_str().ok()).and_then(|s| s.parse().ok());
+                                    let len: Option<u64> = response
+                                        .headers()
+                                        .get("Content-Length")
+                                        .and_then(|h| h.to_str().ok())
+                                        .and_then(|s| s.parse().ok());
                                     let mut reader = response.into_body().into_reader();
-                                    let download_dir = dirs::download_dir().unwrap_or_else(|| PathBuf::from("."));
+                                    let download_dir =
+                                        dirs::download_dir().unwrap_or_else(|| PathBuf::from("."));
                                     let out_path = download_dir.join("nixobdo-pdfSetup.exe");
                                     if let Ok(mut file) = std::fs::File::create(&out_path) {
                                         use std::io::Read;
@@ -125,39 +216,57 @@ pub fn spawn_worker_thread(
                                                     let _ = file.write_all(&buf[..n]);
                                                     downloaded += n as u64;
                                                     if let Some(total) = len {
-                                                        let progress = (downloaded as f32) / (total as f32);
+                                                        let progress =
+                                                            (downloaded as f32) / (total as f32);
                                                         let _ = tx.send(PdfWorkerMessage::UpdateDownloadProgress(progress));
                                                         ctx.request_repaint();
                                                     }
                                                 }
                                                 Err(_) => {
-                                                    let _ = tx.send(PdfWorkerMessage::UpdateDownloadComplete(Err("Download failed".into())));
+                                                    let _ = tx.send(
+                                                        PdfWorkerMessage::UpdateDownloadComplete(
+                                                            Err("Download failed".into()),
+                                                        ),
+                                                    );
                                                     ctx.request_repaint();
                                                     return;
                                                 }
                                             }
                                         }
-                                        let _ = tx.send(PdfWorkerMessage::UpdateDownloadComplete(Ok(out_path.to_string_lossy().into())));
+                                        let _ = tx.send(PdfWorkerMessage::UpdateDownloadComplete(
+                                            Ok(out_path.to_string_lossy().into()),
+                                        ));
                                     } else {
-                                        let _ = tx.send(PdfWorkerMessage::UpdateDownloadComplete(Err("Failed to create file".into())));
+                                        let _ = tx.send(PdfWorkerMessage::UpdateDownloadComplete(
+                                            Err("Failed to create file".into()),
+                                        ));
                                     }
                                     ctx.request_repaint();
                                 }
                                 Err(_) => {
-                                    let _ = tx.send(PdfWorkerMessage::UpdateDownloadComplete(Err("Download failed".into())));
+                                    let _ = tx.send(PdfWorkerMessage::UpdateDownloadComplete(Err(
+                                        "Download failed".into(),
+                                    )));
                                     ctx.request_repaint();
                                 }
                             }
                         });
                     }
-                    PdfWorkerTask::SaveSignature { path, page_index, image_path, position, scale, ctx } => {
+                    PdfWorkerTask::SaveSignature {
+                        path,
+                        page_index,
+                        image_path,
+                        position,
+                        scale,
+                        ctx,
+                    } => {
                         let tx = msg_tx_clone.clone();
                         // Open the image to get its dimensions
                         if let Ok(img) = image::open(&image_path) {
                             let img_w = img.width() as f32;
                             let img_h = img.height() as f32;
                             let aspect = img_h / img_w;
-                            
+
                             // Let's assume signature is 200px wide for layout, but we need PDF points
                             // Standard PDF points: 72 per inch
                             let target_w = 150.0_f32 * scale; // 150 points width * scale
@@ -168,7 +277,7 @@ pub fn spawn_worker_thread(
                                     if let Ok(mut page) = doc.pages().get(page_index as u16) {
                                         let page_w = page.width().value;
                                         let page_h = page.height().value;
-                                        
+
                                         // Calculate the position in PDF coordinates
                                         let x = position.0 * page_w - target_w / 2.0;
                                         let y = page_h - (position.1 * page_h) - target_h / 2.0;
@@ -182,9 +291,9 @@ pub fn spawn_worker_thread(
                                                 pdfium_render::prelude::PdfPoints::new(x as f32),
                                                 pdfium_render::prelude::PdfPoints::new(y as f32)
                                             );
-                                            
+
                                             let _ = page.objects_mut().add_image_object(object);
-                                            
+
                                             // Save the document back
                                             if let Ok(_) = doc.save_to_file(path.to_str().unwrap_or_default()) {
                                                 let _ = tx.send(PdfWorkerMessage::SignatureSaved { path: path.clone() });
@@ -197,14 +306,21 @@ pub fn spawn_worker_thread(
                                     }
                                 }
                                 Err(_) => {
-                                    let _ = tx.send(PdfWorkerMessage::ExportComplete { success: false, message: "Failed to load PDF for saving".into() });
+                                    let _ = tx.send(PdfWorkerMessage::ExportComplete {
+                                        success: false,
+                                        message: "Failed to load PDF for saving".into(),
+                                    });
                                 }
                             }
                         }
                         ctx.request_repaint();
                     }
 
-                    PdfWorkerTask::SaveRotation { path, rotation, ctx } => {
+                    PdfWorkerTask::SaveRotation {
+                        path,
+                        rotation,
+                        ctx,
+                    } => {
                         let tx = msg_tx_clone.clone();
                         match pdf.load_pdf_from_file(path.to_str().unwrap_or_default(), None) {
                             Ok(doc) => {
@@ -230,40 +346,79 @@ pub fn spawn_worker_thread(
                                     }
                                 }
                                 if let Ok(_) = doc.save_to_file(path.to_str().unwrap_or_default()) {
-                                    let _ = tx.send(PdfWorkerMessage::RotationSaved { path: path.clone() });
+                                    let _ = tx.send(PdfWorkerMessage::RotationSaved {
+                                        path: path.clone(),
+                                    });
                                 } else {
-                                    let _ = tx.send(PdfWorkerMessage::ExportComplete { success: false, message: "Failed to save PDF".into() });
+                                    let _ = tx.send(PdfWorkerMessage::ExportComplete {
+                                        success: false,
+                                        message: "Failed to save PDF".into(),
+                                    });
                                 }
                             }
                             Err(_) => {
-                                let _ = tx.send(PdfWorkerMessage::ExportComplete { success: false, message: "Failed to load PDF for saving".into() });
+                                let _ = tx.send(PdfWorkerMessage::ExportComplete {
+                                    success: false,
+                                    message: "Failed to load PDF for saving".into(),
+                                });
                             }
                         }
                         ctx.request_repaint();
                     }
-                    PdfWorkerTask::SaveAnnotations { path, annotations, ctx } => {
+                    PdfWorkerTask::SaveAnnotations {
+                        path,
+                        annotations,
+                        ctx,
+                    } => {
                         let tx = msg_tx_clone.clone();
                         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                             match pdf.load_pdf_from_file(path.to_str().unwrap_or_default(), None) {
                                 Ok(mut doc) => {
-                                      for action in annotations {
-                                          if let Ok(mut page) = doc.pages().get(action.page_index as u16) {
-                                              let page_w = page.width().value;
-                                              let page_h = page.height().value;
-                                              
-                                              let pdf_color = pdfium_render::prelude::PdfColor::new(action.color.r(), action.color.g(), action.color.b(), 255);
-      
-                                              match action.tool {
-                                                  crate::document::AnnotationTool::Highlight => {
-                                                      if action.rects.is_empty() { continue; }
-                                                      for r in &action.rects {
-                                                          let x1 = pdfium_render::prelude::PdfPoints::new(r.min.x * page_w);
-                                                          let y1 = pdfium_render::prelude::PdfPoints::new((1.0 - r.max.y) * page_h);
-                                                          let x2 = pdfium_render::prelude::PdfPoints::new(r.max.x * page_w);
-                                                          let y2 = pdfium_render::prelude::PdfPoints::new((1.0 - r.min.y) * page_h);
-  
-                                                          let highlight_color = pdfium_render::prelude::PdfColor::new(action.color.r(), action.color.g(), action.color.b(), 100);
-                                                          if let Ok(mut path) = pdfium_render::prelude::PdfPagePathObject::new(&doc, x1, y1, None, None, Some(highlight_color)) {
+                                    for action in annotations {
+                                        if let Ok(mut page) =
+                                            doc.pages().get(action.page_index as u16)
+                                        {
+                                            let page_w = page.width().value;
+                                            let page_h = page.height().value;
+
+                                            let pdf_color = pdfium_render::prelude::PdfColor::new(
+                                                action.color.r(),
+                                                action.color.g(),
+                                                action.color.b(),
+                                                255,
+                                            );
+
+                                            match action.tool {
+                                                crate::document::AnnotationTool::Highlight => {
+                                                    if action.rects.is_empty() {
+                                                        continue;
+                                                    }
+                                                    for r in &action.rects {
+                                                        let x1 =
+                                                            pdfium_render::prelude::PdfPoints::new(
+                                                                r.min.x * page_w,
+                                                            );
+                                                        let y1 =
+                                                            pdfium_render::prelude::PdfPoints::new(
+                                                                (1.0 - r.max.y) * page_h,
+                                                            );
+                                                        let x2 =
+                                                            pdfium_render::prelude::PdfPoints::new(
+                                                                r.max.x * page_w,
+                                                            );
+                                                        let y2 =
+                                                            pdfium_render::prelude::PdfPoints::new(
+                                                                (1.0 - r.min.y) * page_h,
+                                                            );
+
+                                                        let highlight_color =
+                                                            pdfium_render::prelude::PdfColor::new(
+                                                                action.color.r(),
+                                                                action.color.g(),
+                                                                action.color.b(),
+                                                                100,
+                                                            );
+                                                        if let Ok(mut path) = pdfium_render::prelude::PdfPagePathObject::new(&doc, x1, y1, None, None, Some(highlight_color)) {
                                                               let _ = path.line_to(x2, y1);
                                                               let _ = path.line_to(x2, y2);
                                                               let _ = path.line_to(x1, y2);
@@ -272,40 +427,77 @@ pub fn spawn_worker_thread(
                                                               let _ = path.set_blend_mode(pdfium_render::prelude::PdfPageObjectBlendMode::Multiply);
                                                               let _ = page.objects_mut().add_path_object(path);
                                                           }
-                                                      }
-                                                  }
-                                                  crate::document::AnnotationTool::Underline => {
-                                                      if action.rects.is_empty() { continue; }
-                                                      for r in &action.rects {
-                                                          let x1 = pdfium_render::prelude::PdfPoints::new(r.min.x * page_w);
-                                                          let x2 = pdfium_render::prelude::PdfPoints::new(r.max.x * page_w);
-                                                          let y = pdfium_render::prelude::PdfPoints::new((1.0 - r.max.y) * page_h);
-                                                          
-                                                          if let Ok(path) = pdfium_render::prelude::PdfPagePathObject::new_line(&doc, x1, y, x2, y, pdf_color, pdfium_render::prelude::PdfPoints::new(2.0)) {
+                                                    }
+                                                }
+                                                crate::document::AnnotationTool::Underline => {
+                                                    if action.rects.is_empty() {
+                                                        continue;
+                                                    }
+                                                    for r in &action.rects {
+                                                        let x1 =
+                                                            pdfium_render::prelude::PdfPoints::new(
+                                                                r.min.x * page_w,
+                                                            );
+                                                        let x2 =
+                                                            pdfium_render::prelude::PdfPoints::new(
+                                                                r.max.x * page_w,
+                                                            );
+                                                        let y =
+                                                            pdfium_render::prelude::PdfPoints::new(
+                                                                (1.0 - r.max.y) * page_h,
+                                                            );
+
+                                                        if let Ok(path) = pdfium_render::prelude::PdfPagePathObject::new_line(&doc, x1, y, x2, y, pdf_color, pdfium_render::prelude::PdfPoints::new(2.0)) {
                                                               let _ = page.objects_mut().add_path_object(path);
                                                           }
-                                                      }
-                                                  }
-                                                  crate::document::AnnotationTool::Strikethrough => {
-                                                      if action.rects.is_empty() { continue; }
-                                                      for r in &action.rects {
-                                                          let x1 = pdfium_render::prelude::PdfPoints::new(r.min.x * page_w);
-                                                          let x2 = pdfium_render::prelude::PdfPoints::new(r.max.x * page_w);
-                                                          let y = pdfium_render::prelude::PdfPoints::new((1.0 - (r.min.y + r.max.y) / 2.0) * page_h);
-                                                          if let Ok(path) = pdfium_render::prelude::PdfPagePathObject::new_line(&doc, x1, y, x2, y, pdf_color, pdfium_render::prelude::PdfPoints::new(2.0)) {
+                                                    }
+                                                }
+                                                crate::document::AnnotationTool::Strikethrough => {
+                                                    if action.rects.is_empty() {
+                                                        continue;
+                                                    }
+                                                    for r in &action.rects {
+                                                        let x1 =
+                                                            pdfium_render::prelude::PdfPoints::new(
+                                                                r.min.x * page_w,
+                                                            );
+                                                        let x2 =
+                                                            pdfium_render::prelude::PdfPoints::new(
+                                                                r.max.x * page_w,
+                                                            );
+                                                        let y =
+                                                            pdfium_render::prelude::PdfPoints::new(
+                                                                (1.0 - (r.min.y + r.max.y) / 2.0)
+                                                                    * page_h,
+                                                            );
+                                                        if let Ok(path) = pdfium_render::prelude::PdfPagePathObject::new_line(&doc, x1, y, x2, y, pdf_color, pdfium_render::prelude::PdfPoints::new(2.0)) {
                                                               let _ = page.objects_mut().add_path_object(path);
                                                           }
-                                                      }
-                                                  }
-                                                  crate::document::AnnotationTool::Redact => {
-                                                      if action.rects.is_empty() { continue; }
-                                                      for r in &action.rects {
-                                                          let x1 = pdfium_render::prelude::PdfPoints::new(r.min.x * page_w);
-                                                          let y1 = pdfium_render::prelude::PdfPoints::new((1.0 - r.max.y) * page_h);
-                                                          let x2 = pdfium_render::prelude::PdfPoints::new(r.max.x * page_w);
-                                                          let y2 = pdfium_render::prelude::PdfPoints::new((1.0 - r.min.y) * page_h);
-  
-                                                          if let Ok(mut path) = pdfium_render::prelude::PdfPagePathObject::new(&doc, x1, y1, None, None, Some(pdfium_render::prelude::PdfColor::new(0, 0, 0, 255))) {
+                                                    }
+                                                }
+                                                crate::document::AnnotationTool::Redact => {
+                                                    if action.rects.is_empty() {
+                                                        continue;
+                                                    }
+                                                    for r in &action.rects {
+                                                        let x1 =
+                                                            pdfium_render::prelude::PdfPoints::new(
+                                                                r.min.x * page_w,
+                                                            );
+                                                        let y1 =
+                                                            pdfium_render::prelude::PdfPoints::new(
+                                                                (1.0 - r.max.y) * page_h,
+                                                            );
+                                                        let x2 =
+                                                            pdfium_render::prelude::PdfPoints::new(
+                                                                r.max.x * page_w,
+                                                            );
+                                                        let y2 =
+                                                            pdfium_render::prelude::PdfPoints::new(
+                                                                (1.0 - r.min.y) * page_h,
+                                                            );
+
+                                                        if let Ok(mut path) = pdfium_render::prelude::PdfPagePathObject::new(&doc, x1, y1, None, None, Some(pdfium_render::prelude::PdfColor::new(0, 0, 0, 255))) {
                                                               let _ = path.line_to(x2, y1);
                                                               let _ = path.line_to(x2, y2);
                                                               let _ = path.line_to(x1, y2);
@@ -313,74 +505,97 @@ pub fn spawn_worker_thread(
                                                               let _ = path.set_fill_and_stroke_mode(pdfium_render::prelude::PdfPathFillMode::Winding, false);
                                                               let _ = page.objects_mut().add_path_object(path);
                                                           }
-                                                      }
-                                                  }
-                                                  crate::document::AnnotationTool::Text => {
-                                                      if let Some(text) = &action.text {
-                                                          if !text.is_empty() {
-                                                              let pos = action.position.unwrap_or(egui::pos2(0.5, 0.5));
-                                                              let scale = action.scale.unwrap_or(12.0);
-                                                              
-                                                              let font_size = scale;
-                                                              let doc_fonts = doc.fonts_mut();
-                                                              let font = doc_fonts.helvetica();
-                                                              
-                                                              if let Ok(mut text_obj) = pdfium_render::prelude::PdfPageTextObject::new(&doc, text, font, pdfium_render::prelude::PdfPoints::new(font_size)) {
+                                                    }
+                                                }
+                                                crate::document::AnnotationTool::Text => {
+                                                    if let Some(text) = &action.text {
+                                                        if !text.is_empty() {
+                                                            let pos = action
+                                                                .position
+                                                                .unwrap_or(egui::pos2(0.5, 0.5));
+                                                            let scale =
+                                                                action.scale.unwrap_or(12.0);
+
+                                                            let font_size = scale;
+                                                            let doc_fonts = doc.fonts_mut();
+                                                            let font = doc_fonts.helvetica();
+
+                                                            if let Ok(mut text_obj) = pdfium_render::prelude::PdfPageTextObject::new(&doc, text, font, pdfium_render::prelude::PdfPoints::new(font_size)) {
                                                                   let _ = text_obj.set_fill_color(pdf_color);
-                                                                  
+
                                                                   let text_w = text_obj.width().unwrap_or(pdfium_render::prelude::PdfPoints::new(0.0)).value;
                                                                   let text_h = font_size; // approximate height
-                                                                  
+
                                                                   let _ = text_obj.translate(
                                                                       pdfium_render::prelude::PdfPoints::new(pos.x * page_w - text_w / 2.0),
                                                                       pdfium_render::prelude::PdfPoints::new((1.0 - pos.y) * page_h - text_h / 2.0)
                                                                   );
-                                                                  
+
                                                                   let _ = page.objects_mut().add_text_object(text_obj);
                                                               }
-                                                          }
-                                                      }
-                                                  }
-                                              }
-                                          }
-                                      }
-                                    
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
                                     // Ensure we save via a temporary file to avoid file lock issues on Windows
-                                      let mut tmp_path = std::env::temp_dir();
-                                      tmp_path.push(format!("tmp_pdf_export_{}_{}.pdf", std::process::id(), std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis()));
-                                      if let Ok(_) = doc.save_to_file(&tmp_path) {
-                                          drop(doc); // Release file lock on Windows before copy!
-                                          
-                                          // Retry copying up to 10 times in case of transient locks from antivirus, etc.
-                                          let mut copy_success = false;
-                                          for _ in 0..10 {
-                                              if std::fs::copy(&tmp_path, &path).is_ok() {
-                                                  copy_success = true;
-                                                  break;
-                                              }
-                                              std::thread::sleep(std::time::Duration::from_millis(300));
-                                          }
-                                          
-                                          if copy_success {
-                                              let _ = std::fs::remove_file(&tmp_path);
-                                              let _ = tx.send(PdfWorkerMessage::AnnotationsSaved { path: path.clone() });
-                                          } else {
-                                              let _ = tx.send(PdfWorkerMessage::ExportComplete { success: false, message: "Failed to copy saved annotations PDF. Is it open in another program?".into() });
-                                          }
-                                      } else {
-                                          let _ = tx.send(PdfWorkerMessage::ExportComplete { success: false, message: "Failed to save PDF annotations".into() });
-                                      }
+                                    let mut tmp_path = std::env::temp_dir();
+                                    tmp_path.push(format!(
+                                        "tmp_pdf_export_{}_{}.pdf",
+                                        std::process::id(),
+                                        std::time::SystemTime::now()
+                                            .duration_since(std::time::UNIX_EPOCH)
+                                            .unwrap_or_default()
+                                            .as_millis()
+                                    ));
+                                    if let Ok(_) = doc.save_to_file(&tmp_path) {
+                                        drop(doc); // Release file lock on Windows before copy!
+
+                                        // Retry copying up to 10 times in case of transient locks from antivirus, etc.
+                                        let mut copy_success = false;
+                                        for _ in 0..10 {
+                                            if std::fs::copy(&tmp_path, &path).is_ok() {
+                                                copy_success = true;
+                                                break;
+                                            }
+                                            std::thread::sleep(std::time::Duration::from_millis(
+                                                300,
+                                            ));
+                                        }
+
+                                        if copy_success {
+                                            let _ = std::fs::remove_file(&tmp_path);
+                                            let _ = tx.send(PdfWorkerMessage::AnnotationsSaved {
+                                                path: path.clone(),
+                                            });
+                                        } else {
+                                            let _ = tx.send(PdfWorkerMessage::ExportComplete { success: false, message: "Failed to copy saved annotations PDF. Is it open in another program?".into() });
+                                        }
+                                    } else {
+                                        let _ = tx.send(PdfWorkerMessage::ExportComplete {
+                                            success: false,
+                                            message: "Failed to save PDF annotations".into(),
+                                        });
+                                    }
                                 }
                                 Err(_) => {
-                                    let _ = tx.send(PdfWorkerMessage::ExportComplete { success: false, message: "Failed to load PDF for saving".into() });
+                                    let _ = tx.send(PdfWorkerMessage::ExportComplete {
+                                        success: false,
+                                        message: "Failed to load PDF for saving".into(),
+                                    });
                                 }
                             }
                         }));
-                        
+
                         if result.is_err() {
-                            let _ = msg_tx_clone.send(PdfWorkerMessage::ExportComplete { success: false, message: "A fatal error occurred while saving annotations.".into() });
+                            let _ = msg_tx_clone.send(PdfWorkerMessage::ExportComplete {
+                                success: false,
+                                message: "A fatal error occurred while saving annotations.".into(),
+                            });
                         }
-                        
+
                         ctx.request_repaint();
                     }
                 }
@@ -392,10 +607,17 @@ pub fn spawn_worker_thread(
                             let url = "https://api.github.com/repos/borneelphukan/nixobdo-pdf/releases/latest";
                             let mut is_available = false;
                             let mut version = None;
-                            if let Ok(response) = ureq::get(url).header("User-Agent", "nixobdo-pdf").call() {
+                            if let Ok(response) =
+                                ureq::get(url).header("User-Agent", "nixobdo-pdf").call()
+                            {
                                 use std::io::Read;
                                 let mut json = String::new();
-                                if response.into_body().into_reader().read_to_string(&mut json).is_ok() {
+                                if response
+                                    .into_body()
+                                    .into_reader()
+                                    .read_to_string(&mut json)
+                                    .is_ok()
+                                {
                                     if let Some(tag_idx) = json.find("\"tag_name\":") {
                                         let rest = &json[tag_idx + 11..];
                                         if let Some(start_quote) = rest.find('"') {
@@ -413,7 +635,11 @@ pub fn spawn_worker_thread(
                                 }
                             }
                             std::thread::sleep(std::time::Duration::from_secs(1));
-                            let _ = tx.send(PdfWorkerMessage::UpdateCheckResult(is_available, version, is_manual));
+                            let _ = tx.send(PdfWorkerMessage::UpdateCheckResult(
+                                is_available,
+                                version,
+                                is_manual,
+                            ));
                             ctx.request_repaint();
                         });
                     }
@@ -423,9 +649,14 @@ pub fn spawn_worker_thread(
                             let url = format!("https://github.com/borneelphukan/nixobdo-pdf/releases/download/v{}/nixobdo-pdfSetup.exe", version);
                             match ureq::get(&url).header("User-Agent", "nixobdo-pdf").call() {
                                 Ok(response) => {
-                                    let len: Option<u64> = response.headers().get("Content-Length").and_then(|h| h.to_str().ok()).and_then(|s| s.parse().ok());
+                                    let len: Option<u64> = response
+                                        .headers()
+                                        .get("Content-Length")
+                                        .and_then(|h| h.to_str().ok())
+                                        .and_then(|s| s.parse().ok());
                                     let mut reader = response.into_body().into_reader();
-                                    let download_dir = dirs::download_dir().unwrap_or_else(|| PathBuf::from("."));
+                                    let download_dir =
+                                        dirs::download_dir().unwrap_or_else(|| PathBuf::from("."));
                                     let out_path = download_dir.join("nixobdo-pdfSetup.exe");
                                     if let Ok(mut file) = std::fs::File::create(&out_path) {
                                         use std::io::Read;
@@ -439,26 +670,37 @@ pub fn spawn_worker_thread(
                                                     let _ = file.write_all(&buf[..n]);
                                                     downloaded += n as u64;
                                                     if let Some(total) = len {
-                                                        let progress = (downloaded as f32) / (total as f32);
+                                                        let progress =
+                                                            (downloaded as f32) / (total as f32);
                                                         let _ = tx.send(PdfWorkerMessage::UpdateDownloadProgress(progress));
                                                         ctx.request_repaint();
                                                     }
                                                 }
                                                 Err(_) => {
-                                                    let _ = tx.send(PdfWorkerMessage::UpdateDownloadComplete(Err("Download failed".into())));
+                                                    let _ = tx.send(
+                                                        PdfWorkerMessage::UpdateDownloadComplete(
+                                                            Err("Download failed".into()),
+                                                        ),
+                                                    );
                                                     ctx.request_repaint();
                                                     return;
                                                 }
                                             }
                                         }
-                                        let _ = tx.send(PdfWorkerMessage::UpdateDownloadComplete(Ok(out_path.to_string_lossy().into())));
+                                        let _ = tx.send(PdfWorkerMessage::UpdateDownloadComplete(
+                                            Ok(out_path.to_string_lossy().into()),
+                                        ));
                                     } else {
-                                        let _ = tx.send(PdfWorkerMessage::UpdateDownloadComplete(Err("Failed to create file".into())));
+                                        let _ = tx.send(PdfWorkerMessage::UpdateDownloadComplete(
+                                            Err("Failed to create file".into()),
+                                        ));
                                     }
                                     ctx.request_repaint();
                                 }
                                 Err(_) => {
-                                    let _ = tx.send(PdfWorkerMessage::UpdateDownloadComplete(Err("Download failed".into())));
+                                    let _ = tx.send(PdfWorkerMessage::UpdateDownloadComplete(Err(
+                                        "Download failed".into(),
+                                    )));
                                     ctx.request_repaint();
                                 }
                             }
@@ -469,7 +711,10 @@ pub fn spawn_worker_thread(
                             path: path.clone(),
                             file_name: String::new(),
                             page_count: 0,
-                            error: Some("PDFium not initialized. Please ensure libpdfium is present.".into()),
+                            error: Some(
+                                "PDFium not initialized. Please ensure libpdfium is present."
+                                    .into(),
+                            ),
                         });
                         ctx.request_repaint();
                     }

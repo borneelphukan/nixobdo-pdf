@@ -3,6 +3,9 @@ name: Dev Build (Pre-release)
 on:
   push:
     branches: [ "dev" ]
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
@@ -13,10 +16,12 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
+        with:
+          toolchain: stable
 
       - name: Get current version
         id: version
@@ -32,7 +37,7 @@ jobs:
           }
 
       - name: Convert Logo to ICO
-        run: magick -background none -density 256 assets\logo.svg -define icon:auto-resize="256,128,64,48,32,16" assets\logo.ico
+        run: magick -background none -density 256 assets\icons\logo.svg -define icon:auto-resize="256,128,64,48,32,16" assets\logo.ico
 
       - name: Build nixobdo-pdf
         run: cargo build --release
@@ -59,7 +64,7 @@ jobs:
         continue-on-error: true
 
       - name: Publish dev pre-release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           tag_name: dev
           name: "Dev Build (latest)"

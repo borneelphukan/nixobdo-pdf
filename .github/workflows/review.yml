@@ -1,0 +1,87 @@
+name: Review
+
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
+    types:
+      - opened
+      - synchronize
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  website-build:
+    name: Build website
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./website
+    steps:
+      - &checkout
+        name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - &setup-pnpm
+        name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          package_json_file: website/package.json
+
+      - &setup-node
+        name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: lts/*
+          cache: pnpm
+          cache-dependency-path: website/pnpm-lock.yaml
+
+      - &install-dependencies
+        name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+  website-lint:
+    name: Lint website
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./website
+    steps:
+      - *checkout
+      - *setup-pnpm
+      - *setup-node
+      - *install-dependencies
+
+      - name: Lint
+        run: pnpm lint
+
+  rust-build:
+    name: Build rust code
+    runs-on: windows-latest
+    steps:
+      - *checkout
+
+      - &setup-rust
+        name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
+        with:
+          toolchain: stable
+
+      - name: Build
+        run: cargo build
+
+  rust-lint:
+    name: Lint rust code
+    runs-on: windows-latest
+    steps:
+      - *checkout
+      - *setup-rust
+
+      - name: Format check
+        run: cargo fmt --all -- --check

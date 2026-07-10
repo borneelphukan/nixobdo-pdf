@@ -3,25 +3,31 @@ name: Release (Stable)
 on:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   release:
     runs-on: windows-latest
     # Prevent re-triggering from the version bump commit
-    if: "!startsWith(github.event.head_commit.message, 'chore: bump version')"
+    if: "!contains(github.event.head_commit.message, 'chore: bump version')"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
+        with:
+          toolchain: stable
 
       - name: Bump patch version
         id: version
@@ -46,18 +52,26 @@ jobs:
             Write-Host "Bumped to $newVersion"
           }
 
-      - name: Commit version bump
+      - name: Commit version bump and create PR
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          $branch = "chore/bump-version-${{ steps.version.outputs.VERSION }}"
+          git checkout -b $branch
           git add Cargo.toml setup.iss
           git commit -m "chore: bump version to ${{ steps.version.outputs.VERSION }}"
-          git pull --rebase origin main
-          git push
+          git push -f -u origin $branch
+          gh pr create --title "chore: bump version to ${{ steps.version.outputs.VERSION }}" --body "Automated version bump" --base main --head $branch
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Ignoring gh pr create error (PR likely already exists)"
+            exit 0
+          }
 
       - name: Convert Logo to ICO
-        run: magick -background none -density 256 assets\logo.svg -define icon:auto-resize="256,128,64,48,32,16" assets\logo.ico
+        run: magick -background none -density 256 assets\icons\logo.svg -define icon:auto-resize="256,128,64,48,32,16" assets\logo.ico
 
       - name: Build nixobdo-pdf
         run: cargo build --release
@@ -72,7 +86,7 @@ jobs:
         run: iscc setup.iss
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           tag_name: v${{ steps.version.outputs.VERSION }}
           name: Release v${{ steps.version.outputs.VERSION }}
@@ -80,3 +94,4 @@ jobs:
           draft: false
           prerelease: false
           make_latest: true
+
