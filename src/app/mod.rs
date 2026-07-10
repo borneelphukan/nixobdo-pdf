@@ -151,7 +151,24 @@ impl Default for NixobdoPdfApp {
             crate::document::clean_cache();
         });
 
-        let recent_files = Self::load_recent_files();
+        use serde::{Deserialize, Serialize};
+        #[derive(Serialize, Deserialize, Default)]
+        struct AppSettings {
+            recent_files: Vec<std::path::PathBuf>,
+            llm_api_key: String,
+            llm_model: String,
+            llm_endpoint_url: String,
+        }
+        
+        let mut loaded_settings = AppSettings::default();
+        if let Some(config_dir) = dirs::config_dir() {
+            let path = config_dir.join("nixobdo-pdf").join("settings.json");
+            if let Ok(content) = std::fs::read_to_string(path) {
+                if let Ok(settings) = serde_json::from_str::<AppSettings>(&content) {
+                    loaded_settings = settings;
+                }
+            }
+        }
 
         Self {
             has_pdfium_bindings,
@@ -168,7 +185,7 @@ impl Default for NixobdoPdfApp {
             pending_scroll_delta: eframe::egui::Vec2::ZERO,
             pdf_task_tx: task_tx,
             pdf_receiver: msg_rx,
-            recent_files,
+            recent_files: loaded_settings.recent_files,
             rename_window_open: false,
             rename_buffer: String::new(),
             focus_rename_input: false,
@@ -209,9 +226,9 @@ impl Default for NixobdoPdfApp {
             text_annotation_color: egui::Color32::BLACK,
             is_custom_text_color_open: false,
             custom_text_color_temp: egui::Color32::BLACK,
-            llm_endpoint_url: "http://localhost:1234/v1".to_string(),
-            llm_model: String::new(),
-            llm_api_key: String::new(),
+            llm_endpoint_url: if loaded_settings.llm_endpoint_url.is_empty() { "http://localhost:1234/v1".to_string() } else { loaded_settings.llm_endpoint_url },
+            llm_model: loaded_settings.llm_model,
+            llm_api_key: loaded_settings.llm_api_key,
             show_llm_settings: false,
             llm_settings_tab_index: 0,
             llm_selected_preset: 0,

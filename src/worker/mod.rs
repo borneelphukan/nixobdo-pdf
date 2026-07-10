@@ -812,7 +812,14 @@ fn summarize_with_llm(text: &str, endpoint_url: &str, model: &str, api_key: &str
     }
 
     let response = req.send(json_string.as_bytes())
-        .map_err(|e| format!("Request failed: {}", e))?;
+        .map_err(|e| {
+            let err_str = e.to_string().to_lowercase();
+            if err_str.contains("refused") || err_str.contains("10061") {
+                format!("Connection Refused. If using Local LLM, ensure your server is running. If using API Key, check your Endpoint URL.")
+            } else {
+                format!("Request failed: {}", e)
+            }
+        })?;
 
     use std::io::Read;
     let mut json = String::new();

@@ -101,6 +101,7 @@ impl NixobdoPdfApp {
         self.recent_files.retain(|p| p != &path);
         self.recent_files.insert(0, path.clone());
         self.recent_files.truncate(5);
+        self.save_settings();
 
         // Check if a tab with this path already exists
         if let Some(existing_idx) = self.tabs.iter().position(|t| t.path == path) {
@@ -145,8 +146,28 @@ impl NixobdoPdfApp {
         }
     }
 
-    // Recent Files persistence
-    pub(crate) fn load_recent_files() -> Vec<PathBuf> {
-        Vec::new() // Not implemented in this snippet
+    pub(crate) fn save_settings(&self) {
+        use serde::{Deserialize, Serialize};
+        #[derive(Serialize, Deserialize)]
+        struct AppSettings {
+            recent_files: Vec<PathBuf>,
+            llm_api_key: String,
+            llm_model: String,
+            llm_endpoint_url: String,
+        }
+        let settings = AppSettings {
+            recent_files: self.recent_files.clone(),
+            llm_api_key: self.llm_api_key.clone(),
+            llm_model: self.llm_model.clone(),
+            llm_endpoint_url: self.llm_endpoint_url.clone(),
+        };
+        if let Some(config_dir) = dirs::config_dir() {
+            let dir = config_dir.join("nixobdo-pdf");
+            let _ = std::fs::create_dir_all(&dir);
+            if let Ok(content) = serde_json::to_string_pretty(&settings) {
+                let _ = std::fs::write(dir.join("settings.json"), content);
+            }
+        }
     }
+
 }
