@@ -132,6 +132,19 @@ impl NixobdoPdfApp {
                         rotate_right = true;
                     }
 
+                    ui.separator();
+
+                    let is_fullscreen = ui.ctx().input(|i| i.viewport().fullscreen.unwrap_or(false));
+                    let tooltip = if is_fullscreen { "Exit Fullscreen" } else { "Fullscreen" };
+                    let fullscreen_icon = if is_fullscreen {
+                        egui::Image::new(egui::include_image!("../../assets/icons/exit_fullscreen.svg"))
+                    } else {
+                        egui::Image::new(egui::include_image!("../../assets/icons/fullscreen.svg"))
+                    };
+                    if ui.add(egui::Button::image(fullscreen_icon.tint(ui.visuals().text_color()).max_height(16.0).max_width(16.0))).on_hover_text(tooltip).clicked() {
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Fullscreen(!is_fullscreen));
+                    }
+
                     if has_active_tab {
                         if let Some(active_idx) = self.active_tab_index {
                             if let Some(tab) = self.tabs.get_mut(active_idx) {
@@ -262,6 +275,18 @@ impl NixobdoPdfApp {
                         }
 
                         ui.label("🔍 Find:");
+                        
+                        ui.separator();
+                        
+                        let sidebar_icon = egui::Image::new(egui::include_image!("../../assets/icons/toggle_sidebar.svg"))
+                            .tint(ui.visuals().text_color())
+                            .max_height(16.0)
+                            .max_width(16.0);
+                        
+                        let tooltip = if self.ai_chatbot_open { "Hide AI Panel" } else { "Open AI Panel" };
+                        if ui.add(egui::Button::image(sidebar_icon)).on_hover_text(tooltip).clicked() {
+                            self.ai_chatbot_open = !self.ai_chatbot_open;
+                        }
                     }
                 });
             });

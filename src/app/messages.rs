@@ -122,21 +122,42 @@ impl NixobdoPdfApp {
                 }
 
                 PdfWorkerMessage::AiSummaryResult {
+                    is_chatbot,
                     success,
                     text,
                     error,
                 } => {
-                    self.ai_summary_loading = false;
-                    if success {
-                        self.ai_summary_full_text = text;
-                        self.ai_summary_text = String::new();
-                        self.ai_summary_display_len = 0;
-                        self.ai_summary_start_time = ui.ctx().input(|i| i.time);
-                        self.ai_summary_error = None;
+                    if is_chatbot {
+                        self.ai_chat_loading = false;
+                        if success {
+                            if let Some(active_id) = &self.ai_active_session_id {
+                                if let Some(session) = self.ai_chat_sessions.iter_mut().find(|s| &s.id == active_id) {
+                                    session.messages.push(crate::app::ChatMessage {
+                                        role: "assistant".to_string(),
+                                        content: text,
+                                    });
+                                }
+                            }
+                            self.ai_chat_start_time = ui.ctx().input(|i| i.time);
+                            self.ai_chat_display_len = 0;
+                            self.ai_chat_error = None;
+                            self.save_settings();
+                        } else {
+                            self.ai_chat_error = error;
+                        }
                     } else {
-                        self.ai_summary_error = error;
-                        self.ai_summary_text = String::new();
-                        self.ai_summary_full_text = String::new();
+                        self.ai_summary_loading = false;
+                        if success {
+                            self.ai_summary_full_text = text;
+                            self.ai_summary_text = String::new();
+                            self.ai_summary_display_len = 0;
+                            self.ai_summary_start_time = ui.ctx().input(|i| i.time);
+                            self.ai_summary_error = None;
+                        } else {
+                            self.ai_summary_error = error;
+                            self.ai_summary_text = String::new();
+                            self.ai_summary_full_text = String::new();
+                        }
                     }
                 }
 

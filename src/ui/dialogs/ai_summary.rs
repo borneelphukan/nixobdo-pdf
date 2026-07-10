@@ -35,7 +35,7 @@ impl NixobdoPdfApp {
                         .show(ctx, |ui| {
                             ui.set_style(style.clone());
                             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                if ui.button(egui::RichText::new("Close").size(14.0)).clicked() {
+                                if ui.add(egui::Button::new("Close").min_size(egui::vec2(80.0, 28.0))).clicked() {
                                     summary_open = false;
                                     self.ai_summary_text = String::new();
                                     self.ai_summary_full_text = String::new();

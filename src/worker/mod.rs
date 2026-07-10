@@ -52,7 +52,8 @@ pub enum PdfWorkerTask {
         ctx: egui::Context,
     },
     AiSummarize {
-        text: String,
+        is_chatbot: bool,
+        messages: Vec<crate::app::ChatMessage>,
         endpoint_url: String,
         model: String,
         api_key: String,
@@ -606,7 +607,8 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                         ctx.request_repaint();
                     }
                     PdfWorkerTask::AiSummarize {
-                        text,
+                        is_chatbot,
+                        messages,
                         endpoint_url,
                         model,
                         api_key,
@@ -614,12 +616,13 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                     } => {
                         let tx = msg_tx_clone.clone();
                         std::thread::spawn(move || {
-                            let result = summarize_with_llm(&text, &endpoint_url, &model, &api_key);
+                            let result = summarize_with_llm(messages, &endpoint_url, &model, &api_key);
                             let (success, response_text, error) = match result {
                                 Ok(t) => (true, t, None),
                                 Err(e) => (false, String::new(), Some(e)),
                             };
                             let _ = tx.send(PdfWorkerMessage::AiSummaryResult {
+                                is_chatbot,
                                 success,
                                 text: response_text,
                                 error,
@@ -748,7 +751,8 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                         ctx.request_repaint();
                     }
                     PdfWorkerTask::AiSummarize {
-                        text,
+                        is_chatbot,
+                        messages,
                         endpoint_url,
                         model,
                         api_key,
@@ -756,12 +760,13 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                     } => {
                         let tx = msg_tx_clone.clone();
                         std::thread::spawn(move || {
-                            let result = summarize_with_llm(&text, &endpoint_url, &model, &api_key);
+                            let result = summarize_with_llm(messages, &endpoint_url, &model, &api_key);
                             let (success, response_text, error) = match result {
                                 Ok(t) => (true, t, None),
                                 Err(e) => (false, String::new(), Some(e)),
                             };
                             let _ = tx.send(PdfWorkerMessage::AiSummaryResult {
+                                is_chatbot,
                                 success,
                                 text: response_text,
                                 error,
@@ -776,8 +781,16 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
     });
 }
 
-fn summarize_with_llm(text: &str, endpoint_url: &str, model: &str, api_key: &str) -> Result<String, String> {
-    let base_url = endpoint_url.trim_end_matches('/');
+fn summarize_with_llm(
+    messages: Vec<crate::app::ChatMessage>,
+    endpoint_url: &str,
+    model: &str,
+    api_key: &str,
+) -> Result<String, String> {
+    let mut base_url = endpoint_url.trim_end_matches('/');
+    if !api_key.is_empty() && (base_url.contains("localhost") || base_url.contains("127.0.0.1") || base_url.is_empty()) {
+        base_url = "https://api.openai.com/v1";
+    }
     let url = if base_url.ends_with("/chat/completions") {
         base_url.to_string()
     } else if base_url.ends_with("/v1") {
@@ -786,17 +799,19 @@ fn summarize_with_llm(text: &str, endpoint_url: &str, model: &str, api_key: &str
         format!("{}/v1/chat/completions", base_url)
     };
 
-    let system_prompt = "You are a helpful assistant. Explain the following text concisely and clearly. \
-        Provide a brief summary of what it means in simple terms. Keep your response under 200 words.";
+    let mut json_messages = Vec::new();
+    for msg in messages {
+        json_messages.push(serde_json::json!({
+            "role": msg.role,
+            "content": msg.content
+        }));
+    }
 
     let body = serde_json::json!({
         "model": model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": text}
-        ],
+        "messages": json_messages,
         "temperature": 0.3,
-        "max_tokens": 500,
+        "max_tokens": 1500,
         "stream": false
     });
 

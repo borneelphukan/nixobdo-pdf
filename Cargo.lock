@@ -2518,6 +2518,7 @@ version = "0.1.28"
 dependencies = [
  "anyhow",
  "bincode",
+ "chrono",
  "dirs",
  "docx-rs",
  "eframe",

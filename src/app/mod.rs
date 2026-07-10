@@ -25,6 +25,19 @@ pub enum PointerMode {
     Pan,
 }
 
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct ChatMessage {
+    pub role: String,
+    pub content: String,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct AiChatSession {
+    pub id: String,
+    pub name: String,
+    pub messages: Vec<ChatMessage>,
+}
+
 pub struct NixobdoPdfApp {
     pub has_pdfium_bindings: bool,
     pub tabs: Vec<PdfDocumentState>,
@@ -120,6 +133,19 @@ pub struct NixobdoPdfApp {
     pub ai_summary_display_len: usize,
     pub ai_summary_start_time: f64,
     pub ai_summary_full_text: String,
+    
+    // Chatbot Panel State
+    pub ai_chatbot_open: bool,
+    pub ai_chat_sessions: Vec<AiChatSession>,
+    pub ai_active_session_id: Option<String>,
+    pub ai_chat_input: String,
+    pub ai_chat_loading: bool,
+    pub ai_chat_error: Option<String>,
+    pub ai_chat_display_len: usize,
+    pub ai_chat_start_time: f64,
+
+    pub was_fullscreen: bool,
+    pub fullscreen_toast_timer: f64,
 }
 
 impl Default for NixobdoPdfApp {
@@ -158,6 +184,10 @@ impl Default for NixobdoPdfApp {
             llm_api_key: String,
             llm_model: String,
             llm_endpoint_url: String,
+            #[serde(default)]
+            ai_chat_sessions: Vec<crate::app::AiChatSession>,
+            #[serde(default)]
+            ai_active_session_id: Option<String>,
         }
         
         let mut loaded_settings = AppSettings::default();
@@ -241,6 +271,16 @@ impl Default for NixobdoPdfApp {
             ai_summary_display_len: 0,
             ai_summary_start_time: 0.0,
             ai_summary_full_text: String::new(),
+            ai_chatbot_open: false,
+            ai_chat_sessions: loaded_settings.ai_chat_sessions,
+            ai_active_session_id: loaded_settings.ai_active_session_id,
+            ai_chat_input: String::new(),
+            ai_chat_loading: false,
+            ai_chat_error: None,
+            ai_chat_display_len: 0,
+            ai_chat_start_time: 0.0,
+            was_fullscreen: false,
+            fullscreen_toast_timer: 0.0,
         }
     }
 }

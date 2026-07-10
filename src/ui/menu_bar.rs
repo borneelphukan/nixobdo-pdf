@@ -240,6 +240,16 @@ impl NixobdoPdfApp {
                         ui.close();
                     }
 
+                    let ai_panel_text = if self.ai_chatbot_open {
+                        "✔ Show AI Panel"
+                    } else {
+                        "    Show AI Panel"
+                    };
+                    if ui.button(ai_panel_text).clicked() {
+                        self.ai_chatbot_open = !self.ai_chatbot_open;
+                        ui.close();
+                    }
+
                     let is_fullscreen =
                         ui.ctx().input(|i| i.viewport().fullscreen.unwrap_or(false));
                     let fullscreen_text = if is_fullscreen {
@@ -301,27 +311,55 @@ impl NixobdoPdfApp {
                         ui.close();
                     }
                     ui.separator();
-                    let has_selection = self.selection_start.is_some();
+                    let has_llm = !self.llm_model.is_empty() && (!self.llm_endpoint_url.is_empty() || !self.llm_api_key.is_empty());
                     if ui
-                        .add_enabled(has_selection && self.active_tab_index.is_some(), egui::Button::new("Summarize with AI"))
+                        .add_enabled(has_llm && self.active_tab_index.is_some(), egui::Button::new("Summarize with AI"))
                         .clicked()
                     {
-                        if let Some(text) = self.get_selected_text() {
-                            self.ai_summary_text = String::new();
-                            self.ai_summary_full_text = String::new();
-                            self.ai_summary_loading = true;
-                            self.ai_summary_error = None;
-                            self.ai_summary_open = true;
-                            self.ai_summary_display_len = 0;
-                            let _ = self
-                                .pdf_task_tx
-                                .send(crate::worker::PdfWorkerTask::AiSummarize {
-                                    text,
-                                    endpoint_url: self.llm_endpoint_url.clone(),
-                                    model: self.llm_model.clone(),
-                                    api_key: self.llm_api_key.clone(),
-                                    ctx: ui.ctx().clone(),
-                                });
+                        if let Some(tab_idx) = self.active_tab_index {
+                            if let Some(tab) = self.tabs.get(tab_idx) {
+                                let full_text = tab.page_texts.join("\n");
+                                self.ai_chatbot_open = true;
+                                self.ai_chat_loading = true;
+                                self.ai_chat_error = None;
+                                self.ai_chat_display_len = 0;
+                                
+                                let new_session = crate::app::AiChatSession {
+                                    id: std::time::SystemTime::now()
+                                        .duration_since(std::time::UNIX_EPOCH)
+                                        .unwrap()
+                                        .as_millis()
+                                        .to_string(),
+                                    name: format!("Summary - {}", chrono::Local::now().format("%H:%M")),
+                                    messages: vec![
+                                        crate::app::ChatMessage {
+                                            role: "system".to_string(),
+                                            content: "You are a helpful assistant. Explain the following text concisely and clearly. Provide a brief summary of what it means in simple terms. Keep your response under 200 words.".to_string(),
+                                        },
+                                        crate::app::ChatMessage {
+                                            role: "user".to_string(),
+                                            content: format!("Please summarize the following document:\n\n{}", full_text),
+                                        },
+                                    ],
+                                };
+                                
+                                let active_id = new_session.id.clone();
+                                let messages_clone = new_session.messages.clone();
+                                self.ai_chat_sessions.push(new_session);
+                                self.ai_active_session_id = Some(active_id);
+                                self.save_settings();
+                                
+                                let _ = self
+                                    .pdf_task_tx
+                                    .send(crate::worker::PdfWorkerTask::AiSummarize {
+                                        is_chatbot: true,
+                                        messages: messages_clone,
+                                        endpoint_url: self.llm_endpoint_url.clone(),
+                                        model: self.llm_model.clone(),
+                                        api_key: self.llm_api_key.clone(),
+                                        ctx: ui.ctx().clone(),
+                                    });
+                            }
                         }
                         ui.close();
                     }

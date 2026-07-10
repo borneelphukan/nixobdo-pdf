@@ -481,7 +481,7 @@ impl NixobdoPdfApp {
                                                                     copy_triggered = true;
                                                                     ui.close();
                                                                 }
-                                                                if ui.button("⚡ Summarize with AI").clicked() {
+                                                                if ui.button("⚡ Explain with AI").clicked() {
                                                                     ai_summarize_clicked = true;
                                                                     ui.close();
                                                                 }
@@ -996,7 +996,17 @@ impl NixobdoPdfApp {
                     let _ = self
                         .pdf_task_tx
                         .send(crate::worker::PdfWorkerTask::AiSummarize {
-                            text,
+                            is_chatbot: false,
+                            messages: vec![
+                                crate::app::ChatMessage {
+                                    role: "system".to_string(),
+                                    content: "You are a helpful assistant. Explain the following text concisely and clearly. Provide a brief summary of what it means in simple terms. Keep your response under 200 words.".to_string(),
+                                },
+                                crate::app::ChatMessage {
+                                    role: "user".to_string(),
+                                    content: text,
+                                },
+                            ],
                             endpoint_url: self.llm_endpoint_url.clone(),
                             model: self.llm_model.clone(),
                             api_key: self.llm_api_key.clone(),
@@ -1006,61 +1016,9 @@ impl NixobdoPdfApp {
             }
         });
 
-        // Fullscreen toggle floating button at bottom right
-        egui::Area::new(egui::Id::new("fullscreen_button_area"))
-            .anchor(egui::Align2::RIGHT_BOTTOM, [-24.0, -24.0])
-            .order(egui::Order::Foreground)
-            .show(ui.ctx(), |ui| {
-                let is_fullscreen = ui.ctx().input(|i| i.viewport().fullscreen.unwrap_or(false));
-                let tooltip = if is_fullscreen {
-                    "Exit Fullscreen"
-                } else {
-                    "Fullscreen"
-                };
-
-                // Match the style of the utility bar
-                ui.style_mut().spacing.button_padding = egui::vec2(12.0, 12.0);
-                let corner_radius = egui::CornerRadius::same(100);
-                ui.style_mut().visuals.widgets.inactive.corner_radius = corner_radius;
-                ui.style_mut().visuals.widgets.hovered.corner_radius = corner_radius;
-                ui.style_mut().visuals.widgets.active.corner_radius = corner_radius;
-                ui.style_mut().visuals.widgets.noninteractive.corner_radius = corner_radius;
-
-                let image = if is_fullscreen {
-                    egui::Image::new(egui::include_image!("../../../assets/icons/exit_fullscreen.svg"))
-                        .tint(ui.visuals().text_color())
-                        .max_height(24.0)
-                        .max_width(24.0)
-                } else {
-                    egui::Image::new(egui::include_image!("../../../assets/icons/fullscreen.svg"))
-                        .tint(ui.visuals().text_color())
-                        .max_height(24.0)
-                        .max_width(24.0)
-                };
-                egui::Frame::window(ui.style())
-                    .corner_radius(100)
-                    .shadow(egui::epaint::Shadow {
-                        offset: [0, 4],
-                        blur: 8,
-                        spread: 0,
-                        color: egui::Color32::from_black_alpha(80),
-                    })
-                    .show(ui, |ui| {
-                        let response = ui.add(egui::Button::image(image)).on_hover_text(tooltip);
-
-                        if response.clicked() {
-                            ui.ctx()
-                                .send_viewport_cmd(egui::ViewportCommand::Fullscreen(
-                                    !is_fullscreen,
-                                ));
-                        }
-                    });
-            });
-
-
-
         // Floating Utility Bar at the bottom center
-        if self.show_utility_bar && self.active_tab_index.is_some() {
+        let is_fullscreen = ui.ctx().input(|i| i.viewport().fullscreen.unwrap_or(false));
+        if self.show_utility_bar && self.active_tab_index.is_some() && !is_fullscreen {
             egui::Area::new(egui::Id::new("utility_bar_area"))
                 .anchor(egui::Align2::CENTER_BOTTOM, [0.0, -24.0])
                 .order(egui::Order::Foreground)
@@ -1157,6 +1115,39 @@ impl NixobdoPdfApp {
                                     self.pending_scroll_delta.x -= scroll_speed;
                                 }
                             });
+                        });
+                });
+        }
+        
+        if is_fullscreen {
+            let btn_pos = ui.max_rect().max - egui::vec2(64.0, 64.0);
+            egui::Area::new(egui::Id::new("exit_fullscreen_button_area"))
+                .fixed_pos(btn_pos)
+                .order(egui::Order::Foreground)
+                .show(ui.ctx(), |ui| {
+                    ui.style_mut().spacing.button_padding = egui::vec2(12.0, 12.0);
+                    let corner_radius = egui::CornerRadius::same(100);
+                    ui.style_mut().visuals.widgets.inactive.corner_radius = corner_radius;
+                    ui.style_mut().visuals.widgets.hovered.corner_radius = corner_radius;
+                    ui.style_mut().visuals.widgets.active.corner_radius = corner_radius;
+                    
+                    let image = egui::Image::new(egui::include_image!("../../../assets/icons/exit_fullscreen.svg"))
+                        .tint(ui.visuals().text_color())
+                        .max_height(24.0)
+                        .max_width(24.0);
+                        
+                    egui::Frame::window(ui.style())
+                        .corner_radius(100)
+                        .shadow(egui::epaint::Shadow {
+                            offset: [0, 4],
+                            blur: 8,
+                            spread: 0,
+                            color: egui::Color32::from_black_alpha(80),
+                        })
+                        .show(ui, |ui| {
+                            if ui.add(egui::Button::image(image)).on_hover_text("Exit Fullscreen").clicked() {
+                                ui.ctx().send_viewport_cmd(egui::ViewportCommand::Fullscreen(false));
+                            }
                         });
                 });
         }

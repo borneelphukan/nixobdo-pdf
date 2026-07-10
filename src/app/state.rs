@@ -154,12 +154,16 @@ impl NixobdoPdfApp {
             llm_api_key: String,
             llm_model: String,
             llm_endpoint_url: String,
+            ai_chat_sessions: Vec<crate::app::AiChatSession>,
+            ai_active_session_id: Option<String>,
         }
         let settings = AppSettings {
             recent_files: self.recent_files.clone(),
             llm_api_key: self.llm_api_key.clone(),
             llm_model: self.llm_model.clone(),
             llm_endpoint_url: self.llm_endpoint_url.clone(),
+            ai_chat_sessions: self.ai_chat_sessions.clone(),
+            ai_active_session_id: self.ai_active_session_id.clone(),
         };
         if let Some(config_dir) = dirs::config_dir() {
             let dir = config_dir.join("nixobdo-pdf");

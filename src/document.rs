@@ -203,6 +203,7 @@ pub enum PdfWorkerMessage {
         path: PathBuf,
     },
     AiSummaryResult {
+        is_chatbot: bool,
         success: bool,
         text: String,
         error: Option<String>,
