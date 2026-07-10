@@ -202,6 +202,12 @@ pub enum PdfWorkerMessage {
     AnnotationsSaved {
         path: PathBuf,
     },
+    AiSummaryResult {
+        is_chatbot: bool,
+        success: bool,
+        text: String,
+        error: Option<String>,
+    },
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]

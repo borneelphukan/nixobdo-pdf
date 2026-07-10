@@ -1,4 +1,4 @@
-import { Layout, PenTool, FileOutput, FileSignature, MousePointer2 } from 'lucide-react';
+import { Layout, PenTool, FileOutput, FileSignature, MousePointer2, Bot } from 'lucide-react';
 
 export function DocsFeatures() {
   return (
@@ -157,6 +157,45 @@ export function DocsFeatures() {
           <strong>Note:</strong> The text content will be extracted and saved, but complex layouts, tables, and exact positioning will likely require heavy re-formatting in your word processor.
         </p>
       </div>
+
+      {/* AI Integration */}
+      <h2 className="text-2xl font-bold text-white mt-12 mb-4 border-b border-white/10 pb-2 flex items-center gap-2">
+        <Bot className="w-6 h-6 text-indigo-400" />
+        AI Integration
+      </h2>
+      <p className="text-slate-300 mb-6">
+        Boost your productivity with the built-in AI assistant. Seamlessly connect to your preferred LLM to summarize documents, ask questions, and get insights instantly while reading.
+      </p>
+
+      <div className="bg-amber-900/20 border border-amber-700/50 rounded-xl p-6 mb-8">
+        <h3 className="text-lg font-bold text-amber-400 mb-3 flex items-center gap-2">
+          Bring Your Own AI
+        </h3>
+        <p className="text-slate-300 leading-relaxed">
+          As a Free and Open Source Software, Nixobdo PDF does not offer a built-in abstract LLM service out of the box. Instead, you have the flexibility to connect to any external LLM you choose.
+        </p>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2 mb-10">
+        <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-6">
+          <h3 className="text-lg font-bold text-white mb-2">Connect via API Key</h3>
+          <p className="text-slate-400 text-sm">
+            You can integrate with major providers like OpenAI. Simply select the <strong>OpenAI</strong> configuration, provide your API key, and specify the model (e.g. <code>gpt-4o</code>) to get started immediately.
+          </p>
+        </div>
+
+        <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-6">
+          <h3 className="text-lg font-bold text-white mb-2">Use a Locally Hosted LLM</h3>
+          <p className="text-slate-400 text-sm">
+            For total privacy and no subscription costs, connect to a local model running on tools like <strong>LM Studio</strong> or <strong>Ollama</strong>. Choose <strong>Custom Endpoint</strong> and enter your local URL (e.g. <code>http://localhost:1234/v1</code>).
+          </p>
+        </div>
+      </div>
+
+      <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 mb-8 text-sm text-slate-300">
+        <strong className="text-white">How to access:</strong> Toggle the AI Panel from the toolbar or navigate to <strong>View &gt; Show AI Panel</strong>. To configure your LLM, click the <strong>Open Settings</strong> button inside the AI Panel.
+      </div>
+
 
     </div>
   );

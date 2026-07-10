@@ -2554,6 +2554,7 @@ version = "0.1.28"
 dependencies = [
  "anyhow",
  "bincode",
+ "chrono",
  "dirs",
  "docx-rs",
  "eframe",
@@ -2564,6 +2565,7 @@ dependencies = [
  "rayon",
  "rfd",
  "serde",
+ "serde_json",
  "ureq",
  "webbrowser",
  "winres",
