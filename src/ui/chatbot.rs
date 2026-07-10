@@ -14,7 +14,31 @@ impl NixobdoPdfApp {
             .min_size(300.0)
             .max_size(800.0)
             .default_size(350.0)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
+                if !self.llm_configured {
+                    ui.vertical_centered(|ui| {
+                        ui.add_space(80.0);
+                        ui.label(egui::RichText::new("No LLM Service Available").size(16.0).strong());
+                        ui.add_space(8.0);
+                        ui.label(egui::RichText::new("Please configure an LLM service\nin the settings to use the AI assistant.").weak());
+                        ui.add_space(16.0);
+                        if ui.button("Open Settings").clicked() {
+                            self.show_llm_settings = true;
+                        }
+                    });
+                    return;
+                }
+
+                if self.active_tab_index.is_none() {
+                    ui.vertical_centered(|ui| {
+                        ui.add_space(80.0);
+                        ui.label(egui::RichText::new("No Document Opened").size(16.0).strong());
+                        ui.add_space(8.0);
+                        ui.label(egui::RichText::new("Please open a PDF document\nto interact with the AI assistant.").weak());
+                    });
+                    return;
+                }
+
                 ui.horizontal(|ui| {
                     // Session Selector
                     let active_name = if let Some(active_id) = &self.ai_active_session_id {
@@ -84,7 +108,7 @@ impl NixobdoPdfApp {
 
                 egui::Panel::bottom("ai_chat_input_panel")
                     .frame(egui::Frame::default().inner_margin(egui::Margin::symmetric(0, 8)))
-                    .show_inside(ui, |ui| {
+                    .show(ui, |ui| {
                         ui.horizontal(|ui| {
                             let res = ui.add_sized(
                                 [ui.available_width() - 44.0, 36.0],

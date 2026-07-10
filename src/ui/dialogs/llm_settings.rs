@@ -35,7 +35,7 @@ impl NixobdoPdfApp {
                 egui::ViewportId::from_hash_of("ai_settings_viewport"),
                 egui::ViewportBuilder::default()
                     .with_title("AI Settings")
-                    .with_inner_size([540.0, 400.0])
+                    .with_inner_size([650.0, 450.0])
                     .with_resizable(false)
                     .with_maximize_button(false)
                     .with_minimize_button(false),
@@ -64,12 +64,31 @@ impl NixobdoPdfApp {
                                         self.save_settings();
                                     }
                                     ui.add_space(8.0);
-                                    if ui.add(egui::Button::new("Add").min_size(egui::vec2(80.0, 28.0))).clicked() {
-                                        if self.llm_is_custom_model && !self.llm_custom_model.is_empty() {
-                                            self.llm_model = self.llm_custom_model.clone();
+                                    if !self.llm_configured {
+                                        let can_save = if self.llm_settings_tab_index == 0 {
+                                            !self.llm_endpoint_url.trim().is_empty() && !self.llm_model.trim().is_empty()
+                                        } else {
+                                            !self.llm_api_key.trim().is_empty() && !self.llm_model.trim().is_empty()
+                                        };
+                                        if ui.add_enabled(can_save, egui::Button::new("Save").min_size(egui::vec2(80.0, 28.0))).clicked() {
+                                            if self.llm_is_custom_model && !self.llm_custom_model.is_empty() {
+                                                self.llm_model = self.llm_custom_model.clone();
+                                            }
+                                            self.llm_configured = true;
+                                            settings_open = false;
+                                            self.save_settings();
                                         }
-                                        settings_open = false;
-                                        self.save_settings();
+                                    } else {
+                                        if ui.add(egui::Button::new("Delete").fill(egui::Color32::from_rgb(200, 50, 50)).min_size(egui::vec2(80.0, 28.0))).clicked() {
+                                            self.llm_configured = false;
+                                            self.llm_api_key.clear();
+                                            if self.llm_settings_tab_index == 0 {
+                                                self.llm_endpoint_url = "http://localhost:1234/v1".to_string();
+                                            } else {
+                                                self.llm_endpoint_url = "https://api.openai.com/v1".to_string();
+                                            }
+                                            self.save_settings();
+                                        }
                                     }
                                 });
                             });
@@ -136,8 +155,7 @@ impl NixobdoPdfApp {
                                         ui.add_space(16.0);
 
                                         if self.llm_settings_tab_index == 0 {
-                                            let has_api_key = !self.llm_api_key.trim().is_empty();
-                                            ui.add_enabled_ui(!has_api_key, |ui| {
+                                            ui.add_enabled_ui(!self.llm_configured, |ui| {
                                                 ui.label("Model:");
                                                 let mut selected = self.llm_selected_preset;
                                                 let preset_count = LLM_PRESETS.len();
@@ -198,8 +216,7 @@ impl NixobdoPdfApp {
                                             });
 
                                         } else {
-                                            let has_local_endpoint = !self.llm_endpoint_url.trim().is_empty() && self.llm_endpoint_url != "https://api.openai.com/v1";
-                                            ui.add_enabled_ui(!has_local_endpoint, |ui| {
+                                            ui.add_enabled_ui(!self.llm_configured, |ui| {
                                                 ui.label("Model:");
                                                 let mut selected = self.llm_selected_preset;
                                                 let preset_count = LLM_PRESETS.len();

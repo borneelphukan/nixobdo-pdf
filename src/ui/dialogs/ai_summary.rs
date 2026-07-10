@@ -45,6 +45,7 @@ impl NixobdoPdfApp {
                             });
                         });
 
+                    let ctx_clone = ctx.clone();
                     egui::CentralPanel::default()
                         .frame(egui::Frame::default().inner_margin(16).fill(bg_fill))
                         .show(ctx, |ui| {
@@ -68,7 +69,7 @@ impl NixobdoPdfApp {
                                     ui.add_space(40.0);
                                 });
                                 // Keep repainting so the spinner animates
-                                ctx.request_repaint();
+                                ctx_clone.request_repaint();
                             } else if let Some(error) = self.ai_summary_error.clone() {
                                 ui.vertical_centered(|ui| {
                                     ui.add_space(30.0);
@@ -83,7 +84,7 @@ impl NixobdoPdfApp {
                                 });
                             } else if !self.ai_summary_full_text.is_empty() {
                                 // Animate text reveal
-                                let now = ctx.input(|i| i.time);
+                                let now = ctx_clone.input(|i| i.time);
                                 let elapsed = (now - self.ai_summary_start_time) as f32;
                                 let chars_per_second = 800.0;
                                 let target_len = (elapsed * chars_per_second) as usize;
@@ -93,7 +94,7 @@ impl NixobdoPdfApp {
                                     self.ai_summary_display_len = full_len;
                                 } else {
                                     self.ai_summary_display_len = target_len;
-                                    ctx.request_repaint();
+                                    ctx_clone.request_repaint();
                                 }
 
                                 let display_text: String = self

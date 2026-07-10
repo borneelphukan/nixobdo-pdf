@@ -209,6 +209,19 @@ impl NixobdoPdfApp {
                 }
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let sidebar_icon = egui::Image::new(egui::include_image!("../../assets/icons/toggle_sidebar.svg"))
+                        .tint(ui.visuals().text_color())
+                        .max_height(16.0)
+                        .max_width(16.0);
+                    
+                    let tooltip = if self.ai_chatbot_open { "Hide AI Panel" } else { "Open AI Panel" };
+                    if ui.add(egui::Button::image(sidebar_icon)).on_hover_text(tooltip).clicked() {
+                        self.ai_chatbot_open = !self.ai_chatbot_open;
+                    }
+                    
+                    ui.separator();
+                    
+                    ui.add_enabled_ui(has_active_tab, |ui| {
                     if self.active_tab_index.is_some() {
                         if !self.search_query.is_empty() {
                             if ui.small_button("Clear").clicked() {
@@ -276,18 +289,8 @@ impl NixobdoPdfApp {
 
                         ui.label("🔍 Find:");
                         
-                        ui.separator();
-                        
-                        let sidebar_icon = egui::Image::new(egui::include_image!("../../assets/icons/toggle_sidebar.svg"))
-                            .tint(ui.visuals().text_color())
-                            .max_height(16.0)
-                            .max_width(16.0);
-                        
-                        let tooltip = if self.ai_chatbot_open { "Hide AI Panel" } else { "Open AI Panel" };
-                        if ui.add(egui::Button::image(sidebar_icon)).on_hover_text(tooltip).clicked() {
-                            self.ai_chatbot_open = !self.ai_chatbot_open;
                         }
-                    }
+                    });
                 });
             });
             ui.add_space(8.0);

@@ -154,6 +154,7 @@ impl NixobdoPdfApp {
             llm_api_key: String,
             llm_model: String,
             llm_endpoint_url: String,
+            llm_configured: bool,
             ai_chat_sessions: Vec<crate::app::AiChatSession>,
             ai_active_session_id: Option<String>,
         }
@@ -162,6 +163,7 @@ impl NixobdoPdfApp {
             llm_api_key: self.llm_api_key.clone(),
             llm_model: self.llm_model.clone(),
             llm_endpoint_url: self.llm_endpoint_url.clone(),
+            llm_configured: self.llm_configured,
             ai_chat_sessions: self.ai_chat_sessions.clone(),
             ai_active_session_id: self.ai_active_session_id.clone(),
         };

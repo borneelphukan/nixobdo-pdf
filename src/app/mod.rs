@@ -121,6 +121,7 @@ pub struct NixobdoPdfApp {
     pub llm_endpoint_url: String,
     pub llm_model: String,
     pub llm_api_key: String,
+    pub llm_configured: bool,
     pub show_llm_settings: bool,
     pub llm_settings_tab_index: usize,
     pub llm_selected_preset: usize,
@@ -184,6 +185,8 @@ impl Default for NixobdoPdfApp {
             llm_api_key: String,
             llm_model: String,
             llm_endpoint_url: String,
+            #[serde(default)]
+            llm_configured: bool,
             #[serde(default)]
             ai_chat_sessions: Vec<crate::app::AiChatSession>,
             #[serde(default)]
@@ -259,6 +262,7 @@ impl Default for NixobdoPdfApp {
             llm_endpoint_url: if loaded_settings.llm_endpoint_url.is_empty() { "http://localhost:1234/v1".to_string() } else { loaded_settings.llm_endpoint_url },
             llm_model: loaded_settings.llm_model,
             llm_api_key: loaded_settings.llm_api_key,
+            llm_configured: loaded_settings.llm_configured,
             show_llm_settings: false,
             llm_settings_tab_index: 0,
             llm_selected_preset: 0,
