@@ -159,10 +159,15 @@ impl Default for NixobdoPdfApp {
                 .or_else(|_| {
                     Pdfium::bind_to_library(exe_dir.join("pdfium.dll").to_str().unwrap_or_default())
                 })
+                .or_else(|_| {
+                    Pdfium::bind_to_library(exe_dir.join("libpdfium.so").to_str().unwrap_or_default())
+                })
                 .or_else(|_| Pdfium::bind_to_library("./lib/libpdfium.dylib"))
                 .or_else(|_| Pdfium::bind_to_library("libpdfium.dylib"))
                 .or_else(|_| Pdfium::bind_to_library("./lib/pdfium.dll"))
                 .or_else(|_| Pdfium::bind_to_library("pdfium.dll"))
+                .or_else(|_| Pdfium::bind_to_library("./lib/libpdfium.so"))
+                .or_else(|_| Pdfium::bind_to_library("libpdfium.so"))
                 .or_else(|_| Pdfium::bind_to_system_library())
                 .is_ok();
 
