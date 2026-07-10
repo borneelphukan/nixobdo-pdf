@@ -131,7 +131,11 @@ impl NixobdoPdfApp {
                         self.ai_chat_loading = false;
                         if success {
                             if let Some(active_id) = &self.ai_active_session_id {
-                                if let Some(session) = self.ai_chat_sessions.iter_mut().find(|s| &s.id == active_id) {
+                                if let Some(session) = self
+                                    .ai_chat_sessions
+                                    .iter_mut()
+                                    .find(|s| &s.id == active_id)
+                                {
                                     session.messages.push(crate::app::ChatMessage {
                                         role: "assistant".to_string(),
                                         content: text,

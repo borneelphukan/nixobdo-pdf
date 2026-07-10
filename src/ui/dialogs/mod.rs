@@ -1,11 +1,11 @@
 pub mod about;
+pub mod ai_summary;
 pub mod custom_color;
 pub mod export;
 pub mod export_progress;
 pub mod llm_settings;
 pub mod rename;
 pub mod update;
-pub mod ai_summary;
 
 use crate::app::NixobdoPdfApp;
 use eframe::egui;

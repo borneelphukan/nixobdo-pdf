@@ -1016,7 +1016,6 @@ impl NixobdoPdfApp {
             }
         });
 
-
         // Floating Utility Bar at the bottom center
         let is_fullscreen = ui.ctx().input(|i| i.viewport().fullscreen.unwrap_or(false));
         if self.show_utility_bar && self.active_tab_index.is_some() && !is_fullscreen {
@@ -1119,7 +1118,7 @@ impl NixobdoPdfApp {
                         });
                 });
         }
-        
+
         if is_fullscreen {
             let btn_pos = ui.max_rect().max - egui::vec2(64.0, 64.0);
             egui::Area::new(egui::Id::new("exit_fullscreen_button_area"))
@@ -1131,12 +1130,14 @@ impl NixobdoPdfApp {
                     ui.style_mut().visuals.widgets.inactive.corner_radius = corner_radius;
                     ui.style_mut().visuals.widgets.hovered.corner_radius = corner_radius;
                     ui.style_mut().visuals.widgets.active.corner_radius = corner_radius;
-                    
-                    let image = egui::Image::new(egui::include_image!("../../../assets/icons/exit_fullscreen.svg"))
-                        .tint(ui.visuals().text_color())
-                        .max_height(24.0)
-                        .max_width(24.0);
-                        
+
+                    let image = egui::Image::new(egui::include_image!(
+                        "../../../assets/icons/exit_fullscreen.svg"
+                    ))
+                    .tint(ui.visuals().text_color())
+                    .max_height(24.0)
+                    .max_width(24.0);
+
                     egui::Frame::window(ui.style())
                         .corner_radius(100)
                         .shadow(egui::epaint::Shadow {
@@ -1146,8 +1147,13 @@ impl NixobdoPdfApp {
                             color: egui::Color32::from_black_alpha(80),
                         })
                         .show(ui, |ui| {
-                            if ui.add(egui::Button::image(image)).on_hover_text("Exit Fullscreen").clicked() {
-                                ui.ctx().send_viewport_cmd(egui::ViewportCommand::Fullscreen(false));
+                            if ui
+                                .add(egui::Button::image(image))
+                                .on_hover_text("Exit Fullscreen")
+                                .clicked()
+                            {
+                                ui.ctx()
+                                    .send_viewport_cmd(egui::ViewportCommand::Fullscreen(false));
                             }
                         });
                 });

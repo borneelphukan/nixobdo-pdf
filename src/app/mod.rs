@@ -134,7 +134,7 @@ pub struct NixobdoPdfApp {
     pub ai_summary_display_len: usize,
     pub ai_summary_start_time: f64,
     pub ai_summary_full_text: String,
-    
+
     // Chatbot Panel State
     pub ai_chatbot_open: bool,
     pub ai_chat_sessions: Vec<AiChatSession>,
@@ -192,7 +192,7 @@ impl Default for NixobdoPdfApp {
             #[serde(default)]
             ai_active_session_id: Option<String>,
         }
-        
+
         let mut loaded_settings = AppSettings::default();
         if let Some(config_dir) = dirs::config_dir() {
             let path = config_dir.join("nixobdo-pdf").join("settings.json");
@@ -259,7 +259,11 @@ impl Default for NixobdoPdfApp {
             text_annotation_color: egui::Color32::BLACK,
             is_custom_text_color_open: false,
             custom_text_color_temp: egui::Color32::BLACK,
-            llm_endpoint_url: if loaded_settings.llm_endpoint_url.is_empty() { "http://localhost:1234/v1".to_string() } else { loaded_settings.llm_endpoint_url },
+            llm_endpoint_url: if loaded_settings.llm_endpoint_url.is_empty() {
+                "http://localhost:1234/v1".to_string()
+            } else {
+                loaded_settings.llm_endpoint_url
+            },
             llm_model: loaded_settings.llm_model,
             llm_api_key: loaded_settings.llm_api_key,
             llm_configured: loaded_settings.llm_configured,

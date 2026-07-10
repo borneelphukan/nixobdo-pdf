@@ -134,15 +134,32 @@ impl NixobdoPdfApp {
 
                     ui.separator();
 
-                    let is_fullscreen = ui.ctx().input(|i| i.viewport().fullscreen.unwrap_or(false));
-                    let tooltip = if is_fullscreen { "Exit Fullscreen" } else { "Fullscreen" };
+                    let is_fullscreen =
+                        ui.ctx().input(|i| i.viewport().fullscreen.unwrap_or(false));
+                    let tooltip = if is_fullscreen {
+                        "Exit Fullscreen"
+                    } else {
+                        "Fullscreen"
+                    };
                     let fullscreen_icon = if is_fullscreen {
-                        egui::Image::new(egui::include_image!("../../assets/icons/exit_fullscreen.svg"))
+                        egui::Image::new(egui::include_image!(
+                            "../../assets/icons/exit_fullscreen.svg"
+                        ))
                     } else {
                         egui::Image::new(egui::include_image!("../../assets/icons/fullscreen.svg"))
                     };
-                    if ui.add(egui::Button::image(fullscreen_icon.tint(ui.visuals().text_color()).max_height(16.0).max_width(16.0))).on_hover_text(tooltip).clicked() {
-                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Fullscreen(!is_fullscreen));
+                    if ui
+                        .add(egui::Button::image(
+                            fullscreen_icon
+                                .tint(ui.visuals().text_color())
+                                .max_height(16.0)
+                                .max_width(16.0),
+                        ))
+                        .on_hover_text(tooltip)
+                        .clicked()
+                    {
+                        ui.ctx()
+                            .send_viewport_cmd(egui::ViewportCommand::Fullscreen(!is_fullscreen));
                     }
 
                     if has_active_tab {
@@ -209,86 +226,97 @@ impl NixobdoPdfApp {
                 }
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    let sidebar_icon = egui::Image::new(egui::include_image!("../../assets/icons/toggle_sidebar.svg"))
-                        .tint(ui.visuals().text_color())
-                        .max_height(16.0)
-                        .max_width(16.0);
-                    
-                    let tooltip = if self.ai_chatbot_open { "Hide AI Panel" } else { "Open AI Panel" };
-                    if ui.add(egui::Button::image(sidebar_icon)).on_hover_text(tooltip).clicked() {
+                    let sidebar_icon = egui::Image::new(egui::include_image!(
+                        "../../assets/icons/toggle_sidebar.svg"
+                    ))
+                    .tint(ui.visuals().text_color())
+                    .max_height(16.0)
+                    .max_width(16.0);
+
+                    let tooltip = if self.ai_chatbot_open {
+                        "Hide AI Panel"
+                    } else {
+                        "Open AI Panel"
+                    };
+                    if ui
+                        .add(egui::Button::image(sidebar_icon))
+                        .on_hover_text(tooltip)
+                        .clicked()
+                    {
                         self.ai_chatbot_open = !self.ai_chatbot_open;
                     }
-                    
+
                     ui.separator();
-                    
+
                     ui.add_enabled_ui(has_active_tab, |ui| {
-                    if self.active_tab_index.is_some() {
-                        if !self.search_query.is_empty() {
-                            if ui.small_button("Clear").clicked() {
-                                self.search_query.clear();
+                        if self.active_tab_index.is_some() {
+                            if !self.search_query.is_empty() {
+                                if ui.small_button("Clear").clicked() {
+                                    self.search_query.clear();
+                                    self.search_active_match = 0;
+                                }
+                                if !match_pages.is_empty() {
+                                    let display_match = self
+                                        .search_active_match
+                                        .min(match_pages.len().saturating_sub(1));
+                                    ui.label(
+                                        egui::RichText::new(format!(
+                                            "({}/{})",
+                                            display_match + 1,
+                                            match_pages.len()
+                                        ))
+                                        .size(12.0)
+                                        .weak(),
+                                    );
+                                } else {
+                                    ui.label(egui::RichText::new("(0 matches)").size(12.0).weak());
+                                }
+                            }
+
+                            let text_edit = egui::TextEdit::singleline(&mut self.search_query)
+                                .hint_text("Search PDF... (Ctrl+F)")
+                                .desired_width(150.0)
+                                .id(egui::Id::new("search_bar"));
+                            let response = ui.add(text_edit);
+
+                            if response.changed() {
                                 self.search_active_match = 0;
-                            }
-                            if !match_pages.is_empty() {
-                                let display_match = self
-                                    .search_active_match
-                                    .min(match_pages.len().saturating_sub(1));
-                                ui.label(
-                                    egui::RichText::new(format!(
-                                        "({}/{})",
-                                        display_match + 1,
-                                        match_pages.len()
-                                    ))
-                                    .size(12.0)
-                                    .weak(),
-                                );
-                            } else {
-                                ui.label(egui::RichText::new("(0 matches)").size(12.0).weak());
-                            }
-                        }
-
-                        let text_edit = egui::TextEdit::singleline(&mut self.search_query)
-                            .hint_text("Search PDF... (Ctrl+F)")
-                            .desired_width(150.0)
-                            .id(egui::Id::new("search_bar"));
-                        let response = ui.add(text_edit);
-
-                        if response.changed() {
-                            self.search_active_match = 0;
-                            // Immediately navigate to first match if available
-                            if !match_pages.is_empty() {
-                                if let Some(active_idx) = self.active_tab_index {
-                                    if let Some(tab) = self.tabs.get_mut(active_idx) {
-                                        let target_page = match_pages[0];
-                                        tab.scroll_to_page = Some(target_page);
-                                        tab.selected_page = target_page;
+                                // Immediately navigate to first match if available
+                                if !match_pages.is_empty() {
+                                    if let Some(active_idx) = self.active_tab_index {
+                                        if let Some(tab) = self.tabs.get_mut(active_idx) {
+                                            let target_page = match_pages[0];
+                                            tab.scroll_to_page = Some(target_page);
+                                            tab.selected_page = target_page;
+                                        }
                                     }
                                 }
                             }
-                        }
 
-                        if response.lost_focus()
-                            && ui.ctx().input(|i| i.key_pressed(egui::Key::Enter))
-                        {
-                            if !match_pages.is_empty() {
-                                self.search_active_match =
-                                    (self.search_active_match + 1) % match_pages.len();
-                                if let Some(active_idx) = self.active_tab_index {
-                                    if let Some(tab) = self.tabs.get_mut(active_idx) {
-                                        let target_page = match_pages[self.search_active_match];
-                                        tab.scroll_to_page = Some(target_page);
-                                        tab.selected_page = target_page;
+                            if response.lost_focus()
+                                && ui.ctx().input(|i| i.key_pressed(egui::Key::Enter))
+                            {
+                                if !match_pages.is_empty() {
+                                    self.search_active_match =
+                                        (self.search_active_match + 1) % match_pages.len();
+                                    if let Some(active_idx) = self.active_tab_index {
+                                        if let Some(tab) = self.tabs.get_mut(active_idx) {
+                                            let target_page = match_pages[self.search_active_match];
+                                            tab.scroll_to_page = Some(target_page);
+                                            tab.selected_page = target_page;
+                                        }
                                     }
+                                    response.request_focus(); // keep focus to allow rapid pressing
                                 }
-                                response.request_focus(); // keep focus to allow rapid pressing
                             }
-                        }
 
-                        if has_search_modifier && ui.ctx().input(|i| i.key_pressed(egui::Key::F)) {
-                            response.request_focus();
-                        }
+                            if has_search_modifier
+                                && ui.ctx().input(|i| i.key_pressed(egui::Key::F))
+                            {
+                                response.request_focus();
+                            }
 
-                        ui.label("🔍 Find:");
-                        
+                            ui.label("🔍 Find:");
                         }
                     });
                 });

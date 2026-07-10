@@ -101,7 +101,7 @@ impl NixobdoPdfApp {
                             let mut central_style = style.clone();
                             central_style.spacing.interact_size.y = 32.0;
                             ui.set_style(central_style);
-                            
+
                             ui.vertical(|ui| {
                                 ui.label(
                                     egui::RichText::new("LLM Service Configuration")
@@ -127,7 +127,7 @@ impl NixobdoPdfApp {
 
                                                 ui.scope(|ui| {
                                                     ui.spacing_mut().item_spacing.x = 0.0;
-                                                    
+
                                                     let right_btn = egui::Button::new("API Key")
                                                         .selected(api_selected)
                                                         .corner_radius(egui::CornerRadius { nw: 0, ne: 8, sw: 0, se: 8 });

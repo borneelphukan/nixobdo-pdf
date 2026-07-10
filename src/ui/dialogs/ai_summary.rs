@@ -28,21 +28,43 @@ impl NixobdoPdfApp {
                     if is_light {
                         style.visuals = egui::Visuals::light();
                     }
-                    let bg_fill = if is_light { egui::Color32::from_rgb(245, 245, 245) } else { ctx.global_style().visuals.window_fill };
+                    let bg_fill = if is_light {
+                        egui::Color32::from_rgb(245, 245, 245)
+                    } else {
+                        ctx.global_style().visuals.window_fill
+                    };
 
                     egui::Panel::bottom("ai_summary_bottom_panel")
-                        .frame(egui::Frame::default().inner_margin(egui::Margin { left: 16, right: 16, top: 8, bottom: 16 }).fill(bg_fill))
+                        .frame(
+                            egui::Frame::default()
+                                .inner_margin(egui::Margin {
+                                    left: 16,
+                                    right: 16,
+                                    top: 8,
+                                    bottom: 16,
+                                })
+                                .fill(bg_fill),
+                        )
                         .show(ctx, |ui| {
                             ui.set_style(style.clone());
-                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                if ui.add(egui::Button::new("Close").min_size(egui::vec2(80.0, 28.0))).clicked() {
-                                    summary_open = false;
-                                    self.ai_summary_text = String::new();
-                                    self.ai_summary_full_text = String::new();
-                                    self.ai_summary_error = None;
-                                    self.ai_summary_loading = false;
-                                }
-                            });
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    if ui
+                                        .add(
+                                            egui::Button::new("Close")
+                                                .min_size(egui::vec2(80.0, 28.0)),
+                                        )
+                                        .clicked()
+                                    {
+                                        summary_open = false;
+                                        self.ai_summary_text = String::new();
+                                        self.ai_summary_full_text = String::new();
+                                        self.ai_summary_error = None;
+                                        self.ai_summary_loading = false;
+                                    }
+                                },
+                            );
                         });
 
                     let ctx_clone = ctx.clone();
@@ -103,18 +125,19 @@ impl NixobdoPdfApp {
                                     .take(self.ai_summary_display_len)
                                     .collect();
 
-                                egui::ScrollArea::vertical()
-                                    .max_height(f32::INFINITY)
-                                    .show(ui, |ui| {
+                                egui::ScrollArea::vertical().max_height(f32::INFINITY).show(
+                                    ui,
+                                    |ui| {
                                         ui.label(
                                             egui::RichText::new(display_text)
                                                 .size(14.0)
                                                 .line_height(Some(20.0)),
                                         );
-                                    });
+                                    },
+                                );
                             }
                         });
-                }
+                },
             );
             self.ai_summary_open = summary_open;
         }

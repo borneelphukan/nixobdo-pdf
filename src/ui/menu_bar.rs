@@ -323,7 +323,7 @@ impl NixobdoPdfApp {
                                 self.ai_chat_loading = true;
                                 self.ai_chat_error = None;
                                 self.ai_chat_display_len = 0;
-                                
+
                                 let new_session = crate::app::AiChatSession {
                                     id: std::time::SystemTime::now()
                                         .duration_since(std::time::UNIX_EPOCH)
@@ -342,13 +342,13 @@ impl NixobdoPdfApp {
                                         },
                                     ],
                                 };
-                                
+
                                 let active_id = new_session.id.clone();
                                 let messages_clone = new_session.messages.clone();
                                 self.ai_chat_sessions.push(new_session);
                                 self.ai_active_session_id = Some(active_id);
                                 self.save_settings();
-                                
+
                                 let _ = self
                                     .pdf_task_tx
                                     .send(crate::worker::PdfWorkerTask::AiSummarize {

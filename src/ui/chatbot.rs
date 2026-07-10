@@ -48,7 +48,7 @@ impl NixobdoPdfApp {
                     };
 
                     let mut selected_id = self.ai_active_session_id.clone();
-                    
+
                     ui.scope(|ui| {
                         ui.style_mut().spacing.interact_size.y = 32.0; // Taller dropdown button
                         egui::ComboBox::from_id_salt("ai_chat_session_select")
@@ -63,7 +63,7 @@ impl NixobdoPdfApp {
                                         ui.horizontal(|ui| {
                                             ui.set_min_height(28.0); // Taller dropdown items
                                             ui.style_mut().spacing.interact_size.y = 28.0;
-                                            
+
                                             let is_selected = selected_id.as_ref() == Some(&session.id);
                                             if is_selected {
                                                 let is_dark = ui.visuals().dark_mode;
@@ -73,7 +73,7 @@ impl NixobdoPdfApp {
                                                     egui::Color32::from_rgb(210, 210, 210)
                                                 };
                                             }
-                                            
+
                                             if ui.add_sized(
                                                 [ui.available_width() - 32.0, 28.0],
                                                 egui::Button::new(&session.name).selected(is_selected)
@@ -97,7 +97,7 @@ impl NixobdoPdfApp {
                             }
                         });
                     });
-                    
+
                     if selected_id != self.ai_active_session_id {
                         self.ai_active_session_id = selected_id;
                         self.save_settings();
@@ -153,7 +153,7 @@ impl NixobdoPdfApp {
                                                 .corner_radius(8.0)
                                                 .inner_margin(egui::Margin::same(8))
                                                 .outer_margin(egui::Margin { left: 0, right: 12, top: 0, bottom: 0 });
-                                            
+
                                             frame.show(ui, |ui| {
                                                 for paragraph in text.split('\n') {
                                                     if paragraph.trim().is_empty() {
@@ -168,16 +168,16 @@ impl NixobdoPdfApp {
                                     } else {
                                         ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
                                             let mut text = msg.content.clone();
-                                            
+
                                             // Animation logic for the last assistant message
                                             if i == history_len - 1 && !self.ai_chat_loading && self.ai_chat_display_len < text.len() {
                                                 let chars_per_second = 800.0;
                                                 let elapsed = ui.ctx().input(|i| i.time) - self.ai_chat_start_time;
                                                 let expected_len = (elapsed * chars_per_second) as usize;
-                                                
+
                                                 self.ai_chat_display_len = expected_len.min(text.len());
                                                 text = text[..self.ai_chat_display_len].to_string();
-                                                
+
                                                 if self.ai_chat_display_len < msg.content.len() {
                                                     ui.ctx().request_repaint();
                                                 }
@@ -187,7 +187,7 @@ impl NixobdoPdfApp {
                                                 .fill(ui.visuals().faint_bg_color)
                                                 .corner_radius(8.0)
                                                 .inner_margin(egui::Margin::same(8));
-                                            
+
                                             frame.show(ui, |ui| {
                                                 for paragraph in text.split('\n') {
                                                     if paragraph.trim().is_empty() {
@@ -223,7 +223,7 @@ impl NixobdoPdfApp {
                             ui.add_space(16.0);
                             ui.label(egui::RichText::new(err).color(egui::Color32::RED));
                         }
-                        
+
                         ui.add_space(8.0);
                     });
 
@@ -233,9 +233,9 @@ impl NixobdoPdfApp {
                         if let Some(active_id) = &self.ai_active_session_id {
                             let text = self.ai_chat_input.trim().to_string();
                             self.ai_chat_input.clear();
-                        
+
                         let mut messages_to_send = Vec::new();
-                        
+
                         if let Some(session) = self.ai_chat_sessions.iter_mut().find(|s| &s.id == active_id) {
                             session.messages.push(crate::app::ChatMessage {
                                 role: "user".to_string(),
@@ -244,7 +244,7 @@ impl NixobdoPdfApp {
                             messages_to_send = session.messages.clone();
                             self.save_settings();
                         }
-                        
+
                         self.ai_chat_loading = true;
                         self.ai_chat_error = None;
 

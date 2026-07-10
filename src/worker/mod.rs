@@ -616,7 +616,8 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                     } => {
                         let tx = msg_tx_clone.clone();
                         std::thread::spawn(move || {
-                            let result = summarize_with_llm(messages, &endpoint_url, &model, &api_key);
+                            let result =
+                                summarize_with_llm(messages, &endpoint_url, &model, &api_key);
                             let (success, response_text, error) = match result {
                                 Ok(t) => (true, t, None),
                                 Err(e) => (false, String::new(), Some(e)),
@@ -760,7 +761,8 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                     } => {
                         let tx = msg_tx_clone.clone();
                         std::thread::spawn(move || {
-                            let result = summarize_with_llm(messages, &endpoint_url, &model, &api_key);
+                            let result =
+                                summarize_with_llm(messages, &endpoint_url, &model, &api_key);
                             let (success, response_text, error) = match result {
                                 Ok(t) => (true, t, None),
                                 Err(e) => (false, String::new(), Some(e)),
@@ -788,7 +790,9 @@ fn summarize_with_llm(
     api_key: &str,
 ) -> Result<String, String> {
     let mut base_url = endpoint_url.trim_end_matches('/');
-    if !api_key.is_empty() && (base_url.contains("localhost") || base_url.contains("127.0.0.1") || base_url.is_empty()) {
+    if !api_key.is_empty()
+        && (base_url.contains("localhost") || base_url.contains("127.0.0.1") || base_url.is_empty())
+    {
         base_url = "https://api.openai.com/v1";
     }
     let url = if base_url.ends_with("/chat/completions") {
@@ -815,8 +819,8 @@ fn summarize_with_llm(
         "stream": false
     });
 
-    let json_string = serde_json::to_string(&body)
-        .map_err(|e| format!("Failed to serialize request: {}", e))?;
+    let json_string =
+        serde_json::to_string(&body).map_err(|e| format!("Failed to serialize request: {}", e))?;
 
     let mut req = ureq::post(&url)
         .header("Content-Type", "application/json")
@@ -838,16 +842,26 @@ fn summarize_with_llm(
 
     use std::io::Read;
     let mut json = String::new();
-    response.into_body().into_reader().read_to_string(&mut json)
+    response
+        .into_body()
+        .into_reader()
+        .read_to_string(&mut json)
         .map_err(|e| format!("Failed to read response: {}", e))?;
 
-    let parsed: serde_json::Value = serde_json::from_str(&json)
-        .map_err(|e| format!("Failed to parse response: {} - Response: {}", e, &json[..json.len().min(200)]))?;
+    let parsed: serde_json::Value = serde_json::from_str(&json).map_err(|e| {
+        format!(
+            "Failed to parse response: {} - Response: {}",
+            e,
+            &json[..json.len().min(200)]
+        )
+    })?;
 
     let content = parsed["choices"][0]["message"]["content"]
         .as_str()
         .ok_or_else(|| {
-            let error_msg = parsed["error"]["message"].as_str().unwrap_or("Unknown error");
+            let error_msg = parsed["error"]["message"]
+                .as_str()
+                .unwrap_or("Unknown error");
             format!("API error: {}", error_msg)
         })?;
 
