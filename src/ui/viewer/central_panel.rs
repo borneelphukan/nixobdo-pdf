@@ -4,7 +4,7 @@ use eframe::egui;
 
 impl NixobdoPdfApp {
     pub(crate) fn ui_central_panel(&mut self, ui: &mut egui::Ui) {
-        egui::CentralPanel::default().show_inside(ui, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             let mut show_placeholder = true;
 
             let mut select_all_triggered = false;
@@ -1015,6 +1015,7 @@ impl NixobdoPdfApp {
                 }
             }
         });
+
 
         // Floating Utility Bar at the bottom center
         let is_fullscreen = ui.ctx().input(|i| i.viewport().fullscreen.unwrap_or(false));

@@ -13,7 +13,7 @@ impl NixobdoPdfApp {
             .resizable(false)
             .exact_size(1.0)
             .frame(egui::Frame::NONE)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 let rect = ui.max_rect();
                 let (response, painter) =
                     ui.allocate_painter(rect.size(), egui::Sense::click_and_drag());
