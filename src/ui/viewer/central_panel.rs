@@ -4,7 +4,7 @@ use eframe::egui;
 
 impl NixobdoPdfApp {
     pub(crate) fn ui_central_panel(&mut self, ui: &mut egui::Ui) {
-        egui::CentralPanel::default().show_inside(ui, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             let mut show_placeholder = true;
 
             let mut select_all_triggered = false;
@@ -1002,10 +1002,12 @@ impl NixobdoPdfApp {
                 ui.style_mut().visuals.widgets.noninteractive.corner_radius = corner_radius;
 
                 let image = if is_fullscreen {
-                    egui::Image::new(egui::include_image!("../../../assets/icons/exit_fullscreen.svg"))
-                        .tint(ui.visuals().text_color())
-                        .max_height(24.0)
-                        .max_width(24.0)
+                    egui::Image::new(egui::include_image!(
+                        "../../../assets/icons/exit_fullscreen.svg"
+                    ))
+                    .tint(ui.visuals().text_color())
+                    .max_height(24.0)
+                    .max_width(24.0)
                 } else {
                     egui::Image::new(egui::include_image!("../../../assets/icons/fullscreen.svg"))
                         .tint(ui.visuals().text_color())

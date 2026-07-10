@@ -42,7 +42,7 @@ impl NixobdoPdfApp {
             }
         }
 
-        egui::Panel::top("toolbar_panel").show_inside(ui, |ui| {
+        egui::Panel::top("toolbar_panel").show(ui, |ui| {
             // Increase fonts and padding for the toolbar
             ui.style_mut()
                 .text_styles
@@ -269,7 +269,7 @@ impl NixobdoPdfApp {
         });
 
         if self.is_annotation_mode {
-            egui::Panel::top("annotation_toolbar_panel").show_inside(ui, |ui| {
+            egui::Panel::top("annotation_toolbar_panel").show(ui, |ui| {
                 ui.style_mut().text_styles.insert(egui::TextStyle::Button, egui::FontId::proportional(12.0));
                 ui.style_mut().text_styles.insert(egui::TextStyle::Body, egui::FontId::proportional(12.0));
                 ui.style_mut().spacing.button_padding = egui::vec2(8.0, 6.0);

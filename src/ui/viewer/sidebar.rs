@@ -10,7 +10,7 @@ impl NixobdoPdfApp {
         egui::Panel::left("preview_panel")
             .resizable(false)
             .exact_size(180.0)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 let mut pages_empty = true;
                 if let Some(active_idx) = self.active_tab_index {
                     if let Some(tab) = self.tabs.get_mut(active_idx) {
