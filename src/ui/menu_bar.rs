@@ -4,7 +4,7 @@ use eframe::egui;
 
 impl NixobdoPdfApp {
     pub(crate) fn ui_menu_bar(&mut self, ui: &mut egui::Ui) {
-        egui::Panel::top("menu_bar_panel").show_inside(ui, |ui| {
+        egui::Panel::top("menu_bar_panel").show(ui, |ui| {
             // Apply larger padding specifically for menu buttons to increase hover surface area
             ui.style_mut()
                 .text_styles

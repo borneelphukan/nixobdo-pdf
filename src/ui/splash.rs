@@ -7,7 +7,7 @@ impl NixobdoPdfApp {
         if elapsed < 2.5 {
             egui::CentralPanel::default()
                 .frame(egui::Frame::NONE.fill(ui.ctx().global_style().visuals.window_fill()))
-                .show_inside(ui, |ui| {
+                .show(ui, |ui| {
                     ui.vertical_centered(|ui| {
                         ui.add_space(ui.available_height() / 2.0 - 100.0);
 
