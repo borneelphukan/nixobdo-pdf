@@ -1,3 +1,4 @@
+pub mod chatbot;
 pub mod dialogs;
 pub mod menu_bar;
 pub mod splash;
