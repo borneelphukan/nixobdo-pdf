@@ -74,7 +74,9 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                     Pdfium::bind_to_library(exe_dir.join("pdfium.dll").to_str().unwrap_or_default())
                 })
                 .or_else(|_| {
-                    Pdfium::bind_to_library(exe_dir.join("libpdfium.so").to_str().unwrap_or_default())
+                    Pdfium::bind_to_library(
+                        exe_dir.join("libpdfium.so").to_str().unwrap_or_default(),
+                    )
                 })
                 .or_else(|_| Pdfium::bind_to_library("./lib/libpdfium.dylib"))
                 .or_else(|_| Pdfium::bind_to_library("libpdfium.dylib"))
