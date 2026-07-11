@@ -14,10 +14,12 @@ pub use export::ExportFormat;
 pub enum PdfWorkerTask {
     Load {
         path: PathBuf,
+        password: Option<String>,
         ctx: egui::Context,
     },
     Export {
         path: PathBuf,
+        password: Option<String>,
         out_path: PathBuf,
         format: ExportFormat,
         retain_layout: bool,
@@ -35,6 +37,7 @@ pub enum PdfWorkerTask {
     },
     SaveSignature {
         path: PathBuf,
+        password: Option<String>,
         page_index: usize,
         image_path: PathBuf,
         position: (f32, f32),
@@ -43,11 +46,13 @@ pub enum PdfWorkerTask {
     },
     SaveRotation {
         path: PathBuf,
+        password: Option<String>,
         rotation: i32,
         ctx: egui::Context,
     },
     SaveAnnotations {
         path: PathBuf,
+        password: Option<String>,
         annotations: Vec<crate::document::AnnotationAction>,
         ctx: egui::Context,
     },
@@ -94,9 +99,14 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
         while let Ok(task) = task_rx.recv() {
             if let Some(pdf) = &pdfium {
                 match task {
-                    PdfWorkerTask::Load { path, ctx } => {
+                    PdfWorkerTask::Load {
+                        path,
+                        password,
+                        ctx,
+                    } => {
                         PdfDocumentState::background_load_with_pdfium(
                             path,
+                            password,
                             pdf,
                             msg_tx_clone.clone(),
                             ctx,
@@ -104,6 +114,7 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                     }
                     PdfWorkerTask::Export {
                         path,
+                        password,
                         out_path,
                         format,
                         retain_layout,
@@ -118,6 +129,7 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                                 export::export_image(
                                     pdf,
                                     &path,
+                                    password.as_deref(),
                                     &out_path,
                                     format,
                                     &tx,
@@ -128,6 +140,7 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                                 export::export_docx(
                                     pdf,
                                     &path,
+                                    password.as_deref(),
                                     &out_path,
                                     retain_layout,
                                     include_images,
@@ -139,6 +152,7 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                                 export::export_doc_rtf(
                                     pdf,
                                     &path,
+                                    password.as_deref(),
                                     &out_path,
                                     retain_layout,
                                     include_images,
@@ -269,6 +283,7 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                     }
                     PdfWorkerTask::SaveSignature {
                         path,
+                        password,
                         page_index,
                         image_path,
                         position,
@@ -287,7 +302,10 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                             let target_w = 150.0_f32 * scale; // 150 points width * scale
                             let target_h = target_w * aspect;
 
-                            match pdf.load_pdf_from_file(path.to_str().unwrap_or_default(), None) {
+                            match pdf.load_pdf_from_file(
+                                path.to_str().unwrap_or_default(),
+                                password.as_deref(),
+                            ) {
                                 Ok(doc) => {
                                     if let Ok(mut page) = doc.pages().get(page_index as u16) {
                                         let page_w = page.width().value;
@@ -333,11 +351,15 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
 
                     PdfWorkerTask::SaveRotation {
                         path,
+                        password,
                         rotation,
                         ctx,
                     } => {
                         let tx = msg_tx_clone.clone();
-                        match pdf.load_pdf_from_file(path.to_str().unwrap_or_default(), None) {
+                        match pdf.load_pdf_from_file(
+                            path.to_str().unwrap_or_default(),
+                            password.as_deref(),
+                        ) {
                             Ok(doc) => {
                                 for i in 0..doc.pages().len() {
                                     if let Ok(mut page) = doc.pages().get(i) {
@@ -382,12 +404,16 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                     }
                     PdfWorkerTask::SaveAnnotations {
                         path,
+                        password,
                         annotations,
                         ctx,
                     } => {
                         let tx = msg_tx_clone.clone();
                         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                            match pdf.load_pdf_from_file(path.to_str().unwrap_or_default(), None) {
+                            match pdf.load_pdf_from_file(
+                                path.to_str().unwrap_or_default(),
+                                password.as_deref(),
+                            ) {
                                 Ok(mut doc) => {
                                     for action in annotations {
                                         if let Ok(mut page) =
@@ -746,7 +772,11 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                             }
                         });
                     }
-                    PdfWorkerTask::Load { path, ctx } => {
+                    PdfWorkerTask::Load {
+                        path,
+                        password: _,
+                        ctx,
+                    } => {
                         let _ = msg_tx_clone.send(PdfWorkerMessage::DocumentInfo {
                             path: path.clone(),
                             file_name: String::new(),
@@ -755,6 +785,7 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                                 "PDFium not initialized. Please ensure libpdfium is present."
                                     .into(),
                             ),
+                            password: None,
                         });
                         ctx.request_repaint();
                     }

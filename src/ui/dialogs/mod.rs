@@ -4,6 +4,7 @@ pub mod custom_color;
 pub mod export;
 pub mod export_progress;
 pub mod llm_settings;
+pub mod password_prompt;
 pub mod rename;
 pub mod update;
 
@@ -20,5 +21,6 @@ impl NixobdoPdfApp {
         self.ui_custom_color_dialog(ui);
         self.ui_llm_settings_dialog(ui);
         self.ui_ai_summary_dialog(ui);
+        self.ui_password_dialog(ui);
     }
 }

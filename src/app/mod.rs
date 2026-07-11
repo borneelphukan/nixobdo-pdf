@@ -134,6 +134,7 @@ pub struct NixobdoPdfApp {
     pub ai_summary_display_len: usize,
     pub ai_summary_start_time: f64,
     pub ai_summary_full_text: String,
+    pub password_prompt: Option<crate::ui::dialogs::password_prompt::PasswordPromptState>,
 
     // Chatbot Panel State
     pub ai_chatbot_open: bool,
@@ -286,6 +287,7 @@ impl Default for NixobdoPdfApp {
             ai_summary_display_len: 0,
             ai_summary_start_time: 0.0,
             ai_summary_full_text: String::new(),
+            password_prompt: None,
             ai_chatbot_open: false,
             ai_chat_sessions: loaded_settings.ai_chat_sessions,
             ai_active_session_id: loaded_settings.ai_active_session_id,

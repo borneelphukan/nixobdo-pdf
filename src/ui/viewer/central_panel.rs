@@ -37,6 +37,7 @@ impl NixobdoPdfApp {
 
                                                 let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::SaveSignature {
                                                     path: tab.path.clone(),
+                                                    password: tab.password.clone(),
                                                     page_index: active_page,
                                                     image_path: img_path.clone(),
                                                     position: self.signature_position.unwrap_or((0.5, 0.5)),
@@ -83,6 +84,7 @@ impl NixobdoPdfApp {
 
                                             let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::SaveRotation {
                                                 path: tab.path.clone(),
+                                                password: tab.password.clone(),
                                                 rotation: self.pending_rotation,
                                                 ctx: ui.ctx().clone(),
                                             });
@@ -123,13 +125,16 @@ impl NixobdoPdfApp {
                             });
                         });
                     } else if tab.is_loading {
-                        ui.centered_and_justified(|ui| {
-                            ui.vertical_centered(|ui| {
-                                ui.spinner();
-                                ui.add_space(10.0);
-                                ui.label(egui::RichText::new("Parsing PDF Document...").weak());
+                        let is_password_prompt_open = self.password_prompt.as_ref().map_or(false, |p| p.path == tab.path);
+                        if !is_password_prompt_open {
+                            ui.centered_and_justified(|ui| {
+                                ui.vertical_centered(|ui| {
+                                    ui.spinner();
+                                    ui.add_space(10.0);
+                                    ui.label(egui::RichText::new("Parsing PDF Document...").weak());
+                                });
                             });
-                        });
+                        }
                     } else if tab.pages.is_empty() {
                         ui.centered_and_justified(|ui| {
                             ui.label("No pages found in this PDF.");

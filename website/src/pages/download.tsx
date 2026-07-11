@@ -76,73 +76,72 @@ export function DocsDownload() {
     );
   }
 
-  if (!latestStable) {
-    return (
-      <div className="max-w-4xl animate-in fade-in duration-500">
-        <h1 className="text-3xl font-bold text-white mb-6">Download</h1>
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-slate-400">
-          No stable releases found. Check back later!
-        </div>
-      </div>
-    );
-  }
-
-  const primaryAsset = getPrimaryAsset(latestStable);
-  const totalDownloads = latestStable.assets.reduce((acc, asset) => acc + asset.download_count, 0);
+  const primaryAsset = latestStable ? getPrimaryAsset(latestStable) : null;
+  const totalDownloads = latestStable ? latestStable.assets.reduce((acc, asset) => acc + asset.download_count, 0) : 0;
 
   return (
     <div className="max-w-4xl animate-in fade-in duration-500">
-      <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-white mb-4">{latestStable.tag_name}</h1>
-        
-        <div className="flex flex-wrap items-center gap-3 text-slate-400 text-sm">
-          <div className="flex items-center gap-1.5">
-            <Calendar className="w-4 h-4" />
-            {formatDate(latestStable.published_at)}
-          </div>
-          <span className="text-slate-600">•</span>
-          <div className="flex items-center gap-1.5">
-            <Download className="w-4 h-4" />
-            {totalDownloads}
-          </div>
-          <span className="text-slate-600">•</span>
-          <a 
-            href={latestStable.html_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 hover:text-white transition-colors"
-          >
-            <GitHubIcon className="w-4 h-4" />
-            GitHub
-            <ExternalLink className="w-3 h-3 ml-0.5" />
-          </a>
-        </div>
-      </div>
+      <h1 className="text-3xl font-bold text-white mb-6">Download</h1>
 
-      {primaryAsset && (
-        <a 
-          href={primaryAsset.browser_download_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group block bg-slate-950/50 border border-purple-400/60 rounded-xl p-4 transition-all hover:bg-slate-900/80 mb-12"
-        >
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="bg-slate-800/80 p-3 rounded-lg text-purple-400">
-                <Download className="w-6 h-6" />
+      {!latestStable ? (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-slate-400 mb-12">
+          No stable releases found. Check back later!
+        </div>
+      ) : (
+        <>
+          <div className="mb-8">
+            <h2 className="text-3xl font-extrabold text-white mb-4">{latestStable.tag_name}</h2>
+            
+            <div className="flex flex-wrap items-center gap-3 text-slate-400 text-sm">
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-4 h-4" />
+                {formatDate(latestStable.published_at)}
               </div>
-              <div>
-                <h3 className="text-white font-semibold text-lg">{primaryAsset.name}</h3>
-                <p className="text-slate-500 text-sm mt-0.5">
-                  {formatSize(primaryAsset.size)} • {primaryAsset.download_count} downloads
-                </p>
+              <span className="text-slate-600">•</span>
+              <div className="flex items-center gap-1.5">
+                <Download className="w-4 h-4" />
+                {totalDownloads}
               </div>
-            </div>
-            <div className="pr-2">
-              <ChevronRight className="w-6 h-6 text-purple-500 group-hover:translate-x-1 transition-transform" />
+              <span className="text-slate-600">•</span>
+              <a 
+                href={latestStable.html_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 hover:text-white transition-colors"
+              >
+                <GitHubIcon className="w-4 h-4" />
+                GitHub
+                <ExternalLink className="w-3 h-3 ml-0.5" />
+              </a>
             </div>
           </div>
-        </a>
+
+          {primaryAsset && (
+            <a 
+              href={primaryAsset.browser_download_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group block bg-slate-950/50 border border-purple-400/60 rounded-xl p-4 transition-all hover:bg-slate-900/80 mb-12"
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="bg-slate-800/80 p-3 rounded-lg text-purple-400">
+                    <Download className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-semibold text-lg">{primaryAsset.name}</h3>
+                    <p className="text-slate-500 text-sm mt-0.5">
+                      {formatSize(primaryAsset.size)} • {primaryAsset.download_count} downloads
+                    </p>
+                  </div>
+                </div>
+                <div className="pr-2">
+                  <ChevronRight className="w-6 h-6 text-purple-500 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            </a>
+          )}
+        </>
       )}
 
       {nightlies.length > 0 && (

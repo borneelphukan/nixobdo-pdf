@@ -215,7 +215,13 @@ impl NixobdoPdfApp {
 
                 ui.separator();
 
-                let any_loading = self.tabs.iter().any(|t| t.is_loading);
+                let any_loading = self.tabs.iter().any(|t| {
+                    t.is_loading
+                        && !self
+                            .password_prompt
+                            .as_ref()
+                            .map_or(false, |p| p.path == t.path)
+                });
                 if any_loading {
                     ui.spinner();
                     ui.label("Initializing...");
@@ -580,6 +586,7 @@ impl NixobdoPdfApp {
                                         self.is_saving_annotations = true;
                                         let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::SaveAnnotations {
                                             path: tab.path.clone(),
+                                            password: tab.password.clone(),
                                             annotations: self.pending_annotations.clone(),
                                             ctx: ui.ctx().clone(),
                                         });

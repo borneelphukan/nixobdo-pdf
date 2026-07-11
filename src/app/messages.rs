@@ -11,12 +11,23 @@ impl NixobdoPdfApp {
                     file_name,
                     page_count,
                     error,
+                    password,
                 } => {
                     let mut tab_to_remove = None;
                     for (i, tab) in self.tabs.iter_mut().enumerate() {
                         if tab.path == path {
                             if let Some(err) = error {
-                                if err.contains("NotFound")
+                                if err == "PasswordRequired" || err == "IncorrectPassword" {
+                                    self.password_prompt = Some(
+                                        crate::ui::dialogs::password_prompt::PasswordPromptState {
+                                            path: path.clone(),
+                                            file_name: file_name.clone(),
+                                            is_incorrect: err == "IncorrectPassword",
+                                            password_input: String::new(),
+                                            focus_input: true,
+                                        },
+                                    );
+                                } else if err.contains("NotFound")
                                     || err.contains("cannot find the path specified")
                                     || err.contains("cannot find the file specified")
                                 {
@@ -25,14 +36,15 @@ impl NixobdoPdfApp {
                                         .set_description("The file you are trying to open is no longer available and cannot be opened.")
                                         .set_level(rfd::MessageLevel::Warning)
                                         .show();
+                                    tab_to_remove = Some(i);
                                 } else {
                                     rfd::MessageDialog::new()
                                         .set_title("Nixobdo PDF Reader")
                                         .set_description(&format!("Nixobdo PDF Reader could not open '{}' because it is either not a supported file type or because the file has been damaged.", file_name))
                                         .set_level(rfd::MessageLevel::Info)
                                         .show();
+                                    tab_to_remove = Some(i);
                                 }
-                                tab_to_remove = Some(i);
                             } else {
                                 tab.file_name = file_name;
                                 tab.pages = vec![None; page_count];
@@ -43,6 +55,7 @@ impl NixobdoPdfApp {
                                 tab.page_sizes = vec![egui::Vec2::ZERO; page_count];
                                 tab.page_rotations = vec![0; page_count];
                                 tab.is_loading = false; // Turn off main loading, pages will pop in
+                                tab.password = password;
                             }
                             break;
                         }
