@@ -18,13 +18,15 @@ impl NixobdoPdfApp {
                         if tab.path == path {
                             if let Some(err) = error {
                                 if err == "PasswordRequired" || err == "IncorrectPassword" {
-                                    self.password_prompt = Some(crate::ui::dialogs::password_prompt::PasswordPromptState {
-                                        path: path.clone(),
-                                        file_name: file_name.clone(),
-                                        is_incorrect: err == "IncorrectPassword",
-                                        password_input: String::new(),
-                                        focus_input: true,
-                                    });
+                                    self.password_prompt = Some(
+                                        crate::ui::dialogs::password_prompt::PasswordPromptState {
+                                            path: path.clone(),
+                                            file_name: file_name.clone(),
+                                            is_incorrect: err == "IncorrectPassword",
+                                            password_input: String::new(),
+                                            focus_input: true,
+                                        },
+                                    );
                                 } else if err.contains("NotFound")
                                     || err.contains("cannot find the path specified")
                                     || err.contains("cannot find the file specified")

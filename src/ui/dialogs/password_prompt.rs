@@ -44,24 +44,53 @@ impl NixobdoPdfApp {
                     if is_light {
                         style.visuals = egui::Visuals::light();
                     }
-                    let bg_fill = if is_light { egui::Color32::from_rgb(245, 245, 245) } else { ctx.global_style().visuals.window_fill };
+                    let bg_fill = if is_light {
+                        egui::Color32::from_rgb(245, 245, 245)
+                    } else {
+                        ctx.global_style().visuals.window_fill
+                    };
 
                     #[allow(deprecated)]
                     egui::Panel::bottom("password_prompt_bottom_panel")
-                        .frame(egui::Frame::default().inner_margin(egui::Margin { left: 16, right: 16, top: 8, bottom: 16 }).fill(bg_fill))
+                        .frame(
+                            egui::Frame::default()
+                                .inner_margin(egui::Margin {
+                                    left: 16,
+                                    right: 16,
+                                    top: 8,
+                                    bottom: 16,
+                                })
+                                .fill(bg_fill),
+                        )
                         .show(ctx, |ui| {
                             ui.set_style(style.clone());
                             ui.horizontal(|ui| {
-                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                    if ui.add(egui::Button::new("Cancel").min_size(egui::vec2(80.0, 28.0))).clicked() {
-                                        cancelled = true;
-                                    }
-                                    ui.add_space(8.0);
-                                    let can_submit = !prompt_state.password_input.is_empty();
-                                    if ui.add_enabled(can_submit, egui::Button::new("OK").min_size(egui::vec2(80.0, 28.0))).clicked() {
-                                        submitted = true;
-                                    }
-                                });
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        if ui
+                                            .add(
+                                                egui::Button::new("Cancel")
+                                                    .min_size(egui::vec2(80.0, 28.0)),
+                                            )
+                                            .clicked()
+                                        {
+                                            cancelled = true;
+                                        }
+                                        ui.add_space(8.0);
+                                        let can_submit = !prompt_state.password_input.is_empty();
+                                        if ui
+                                            .add_enabled(
+                                                can_submit,
+                                                egui::Button::new("OK")
+                                                    .min_size(egui::vec2(80.0, 28.0)),
+                                            )
+                                            .clicked()
+                                        {
+                                            submitted = true;
+                                        }
+                                    },
+                                );
                             });
                         });
 
@@ -79,10 +108,11 @@ impl NixobdoPdfApp {
                                 ui.label(label_text);
                                 ui.add_space(10.0);
 
-                                let text_edit = egui::TextEdit::singleline(&mut prompt_state.password_input)
-                                    .password(true)
-                                    .margin(egui::Margin::symmetric(8, 8))
-                                    .desired_width(f32::INFINITY);
+                                let text_edit =
+                                    egui::TextEdit::singleline(&mut prompt_state.password_input)
+                                        .password(true)
+                                        .margin(egui::Margin::symmetric(8, 8))
+                                        .desired_width(f32::INFINITY);
 
                                 let response = ui.add(text_edit);
                                 if prompt_state.focus_input {
@@ -90,12 +120,15 @@ impl NixobdoPdfApp {
                                     prompt_state.focus_input = false;
                                 }
 
-                                if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) && !prompt_state.password_input.is_empty() {
+                                if response.lost_focus()
+                                    && ui.input(|i| i.key_pressed(egui::Key::Enter))
+                                    && !prompt_state.password_input.is_empty()
+                                {
                                     submitted = true;
                                 }
                             });
                         });
-                }
+                },
             );
 
             if cancelled {

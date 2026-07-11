@@ -309,10 +309,13 @@ impl PdfDocumentState {
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_else(|| "Untitled".to_string());
 
-        let is_password_protected = match pdfium.load_pdf_from_file(path.to_str().unwrap_or_default(), None) {
-            Err(PdfiumError::PdfiumLibraryInternalError(PdfiumInternalError::PasswordError)) => true,
-            _ => false,
-        };
+        let is_password_protected =
+            match pdfium.load_pdf_from_file(path.to_str().unwrap_or_default(), None) {
+                Err(PdfiumError::PdfiumLibraryInternalError(
+                    PdfiumInternalError::PasswordError,
+                )) => true,
+                _ => false,
+            };
         let use_cache = !is_password_protected;
 
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
@@ -573,9 +576,9 @@ impl PdfDocumentState {
                 }
 
                 if use_cache {
-                    if let Ok(meta_bytes) =
-                        bincode::serialize(&(page_count, all_texts, all_chars, all_links, all_sizes))
-                    {
+                    if let Ok(meta_bytes) = bincode::serialize(&(
+                        page_count, all_texts, all_chars, all_links, all_sizes,
+                    )) {
                         let _ = std::fs::write(cache_dir.join("metadata.bin"), meta_bytes);
                     }
                 }

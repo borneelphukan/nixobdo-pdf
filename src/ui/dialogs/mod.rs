@@ -4,9 +4,9 @@ pub mod custom_color;
 pub mod export;
 pub mod export_progress;
 pub mod llm_settings;
+pub mod password_prompt;
 pub mod rename;
 pub mod update;
-pub mod password_prompt;
 
 use crate::app::NixobdoPdfApp;
 use eframe::egui;

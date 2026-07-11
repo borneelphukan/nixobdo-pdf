@@ -216,7 +216,11 @@ impl NixobdoPdfApp {
                 ui.separator();
 
                 let any_loading = self.tabs.iter().any(|t| {
-                    t.is_loading && !self.password_prompt.as_ref().map_or(false, |p| p.path == t.path)
+                    t.is_loading
+                        && !self
+                            .password_prompt
+                            .as_ref()
+                            .map_or(false, |p| p.path == t.path)
                 });
                 if any_loading {
                     ui.spinner();

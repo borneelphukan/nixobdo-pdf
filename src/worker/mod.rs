@@ -99,7 +99,11 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
         while let Ok(task) = task_rx.recv() {
             if let Some(pdf) = &pdfium {
                 match task {
-                    PdfWorkerTask::Load { path, password, ctx } => {
+                    PdfWorkerTask::Load {
+                        path,
+                        password,
+                        ctx,
+                    } => {
                         PdfDocumentState::background_load_with_pdfium(
                             path,
                             password,
@@ -298,7 +302,10 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                             let target_w = 150.0_f32 * scale; // 150 points width * scale
                             let target_h = target_w * aspect;
 
-                            match pdf.load_pdf_from_file(path.to_str().unwrap_or_default(), password.as_deref()) {
+                            match pdf.load_pdf_from_file(
+                                path.to_str().unwrap_or_default(),
+                                password.as_deref(),
+                            ) {
                                 Ok(doc) => {
                                     if let Ok(mut page) = doc.pages().get(page_index as u16) {
                                         let page_w = page.width().value;
@@ -349,7 +356,10 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                         ctx,
                     } => {
                         let tx = msg_tx_clone.clone();
-                        match pdf.load_pdf_from_file(path.to_str().unwrap_or_default(), password.as_deref()) {
+                        match pdf.load_pdf_from_file(
+                            path.to_str().unwrap_or_default(),
+                            password.as_deref(),
+                        ) {
                             Ok(doc) => {
                                 for i in 0..doc.pages().len() {
                                     if let Ok(mut page) = doc.pages().get(i) {
@@ -400,7 +410,10 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                     } => {
                         let tx = msg_tx_clone.clone();
                         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                            match pdf.load_pdf_from_file(path.to_str().unwrap_or_default(), password.as_deref()) {
+                            match pdf.load_pdf_from_file(
+                                path.to_str().unwrap_or_default(),
+                                password.as_deref(),
+                            ) {
                                 Ok(mut doc) => {
                                     for action in annotations {
                                         if let Ok(mut page) =
@@ -759,7 +772,11 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                             }
                         });
                     }
-                    PdfWorkerTask::Load { path, password: _, ctx } => {
+                    PdfWorkerTask::Load {
+                        path,
+                        password: _,
+                        ctx,
+                    } => {
                         let _ = msg_tx_clone.send(PdfWorkerMessage::DocumentInfo {
                             path: path.clone(),
                             file_name: String::new(),
