@@ -17,14 +17,23 @@ impl NixobdoPdfApp {
             let mut submitted = false;
             let mut cancelled = false;
 
+            // Center position based on parent
+            let parent_outer_rect = ui.ctx().input(|i| i.viewport().outer_rect);
+            let mut builder = egui::ViewportBuilder::default()
+                .with_title("Password Required")
+                .with_inner_size([400.0, 160.0])
+                .with_resizable(false)
+                .with_maximize_button(false)
+                .with_minimize_button(false);
+
+            if let Some(rect) = parent_outer_rect {
+                let center = rect.center();
+                builder = builder.with_position(center - egui::vec2(200.0, 80.0));
+            }
+
             ui.ctx().show_viewport_immediate(
                 egui::ViewportId::from_hash_of("password_prompt_viewport"),
-                egui::ViewportBuilder::default()
-                    .with_title("Password Required")
-                    .with_inner_size([400.0, 160.0])
-                    .with_resizable(false)
-                    .with_maximize_button(false)
-                    .with_minimize_button(false),
+                builder,
                 |ctx, _class| {
                     if ctx.input(|i| i.viewport().close_requested()) {
                         cancelled = true;
@@ -72,6 +81,7 @@ impl NixobdoPdfApp {
 
                                 let text_edit = egui::TextEdit::singleline(&mut prompt_state.password_input)
                                     .password(true)
+                                    .margin(egui::Margin::symmetric(8, 8))
                                     .desired_width(f32::INFINITY);
 
                                 let response = ui.add(text_edit);

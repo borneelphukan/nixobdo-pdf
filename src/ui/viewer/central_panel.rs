@@ -125,13 +125,16 @@ impl NixobdoPdfApp {
                             });
                         });
                     } else if tab.is_loading {
-                        ui.centered_and_justified(|ui| {
-                            ui.vertical_centered(|ui| {
-                                ui.spinner();
-                                ui.add_space(10.0);
-                                ui.label(egui::RichText::new("Parsing PDF Document...").weak());
+                        let is_password_prompt_open = self.password_prompt.as_ref().map_or(false, |p| p.path == tab.path);
+                        if !is_password_prompt_open {
+                            ui.centered_and_justified(|ui| {
+                                ui.vertical_centered(|ui| {
+                                    ui.spinner();
+                                    ui.add_space(10.0);
+                                    ui.label(egui::RichText::new("Parsing PDF Document...").weak());
+                                });
                             });
-                        });
+                        }
                     } else if tab.pages.is_empty() {
                         ui.centered_and_justified(|ui| {
                             ui.label("No pages found in this PDF.");
