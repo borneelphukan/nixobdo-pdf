@@ -37,6 +37,7 @@ impl NixobdoPdfApp {
 
                                                 let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::SaveSignature {
                                                     path: tab.path.clone(),
+                                                    password: tab.password.clone(),
                                                     page_index: active_page,
                                                     image_path: img_path.clone(),
                                                     position: self.signature_position.unwrap_or((0.5, 0.5)),
@@ -83,6 +84,7 @@ impl NixobdoPdfApp {
 
                                             let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::SaveRotation {
                                                 path: tab.path.clone(),
+                                                password: tab.password.clone(),
                                                 rotation: self.pending_rotation,
                                                 ctx: ui.ctx().clone(),
                                             });

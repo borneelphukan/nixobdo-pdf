@@ -115,6 +115,7 @@ impl NixobdoPdfApp {
 
         let _ = self.pdf_task_tx.send(PdfWorkerTask::Load {
             path: path.clone(),
+            password: None,
             ctx: ctx.clone(),
         });
     }
@@ -124,6 +125,7 @@ impl NixobdoPdfApp {
             self.tabs[idx].is_loading = true;
             let _ = self.pdf_task_tx.send(PdfWorkerTask::Load {
                 path,
+                password: None,
                 ctx: ctx.clone(),
             });
         }

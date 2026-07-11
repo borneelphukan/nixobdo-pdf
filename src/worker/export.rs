@@ -29,6 +29,7 @@ impl ExportFormat {
 pub fn export_image(
     pdf: &Pdfium,
     path: &PathBuf,
+    password: Option<&str>,
     out_path: &PathBuf,
     format: ExportFormat,
     msg_tx: &Sender<PdfWorkerMessage>,
@@ -38,7 +39,7 @@ pub fn export_image(
     use std::io::Write;
 
     let doc = pdf
-        .load_pdf_from_file(path, None)
+        .load_pdf_from_file(path, password)
         .map_err(|e| format!("Failed to load PDF: {:?}", e))?;
 
     let page_count = doc.pages().len();
@@ -111,6 +112,7 @@ pub fn export_image(
 pub fn export_docx(
     pdf: &Pdfium,
     path: &PathBuf,
+    password: Option<&str>,
     out_path: &PathBuf,
     retain_layout: bool,
     include_images: bool,
@@ -118,7 +120,7 @@ pub fn export_docx(
     ctx: &egui::Context,
     cancel_flag: &AtomicBool,
 ) -> Result<String, String> {
-    let doc = match pdf.load_pdf_from_file(path, None) {
+    let doc = match pdf.load_pdf_from_file(path, password) {
         Ok(d) => d,
         Err(e) => {
             return Err(format!("Failed to load PDF: {:?}", e));
@@ -339,6 +341,7 @@ fn export_docx_images<'a>(
 pub fn export_doc_rtf(
     pdf: &Pdfium,
     path: &PathBuf,
+    password: Option<&str>,
     out_path: &PathBuf,
     retain_layout: bool,
     include_images: bool,
@@ -347,7 +350,7 @@ pub fn export_doc_rtf(
     cancel_flag: &AtomicBool,
 ) -> Result<String, String> {
     let doc = pdf
-        .load_pdf_from_file(path, None)
+        .load_pdf_from_file(path, password)
         .map_err(|e| format!("Failed to load PDF for DOC: {:?}", e))?;
 
     let page_count = doc.pages().len();

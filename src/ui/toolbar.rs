@@ -580,6 +580,7 @@ impl NixobdoPdfApp {
                                         self.is_saving_annotations = true;
                                         let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::SaveAnnotations {
                                             path: tab.path.clone(),
+                                            password: tab.password.clone(),
                                             annotations: self.pending_annotations.clone(),
                                             ctx: ui.ctx().clone(),
                                         });

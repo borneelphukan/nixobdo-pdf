@@ -154,6 +154,7 @@ impl NixobdoPdfApp {
 
                         let _ = self.pdf_task_tx.send(PdfWorkerTask::Export {
                             path: tab.path.clone(),
+                            password: tab.password.clone(),
                             out_path,
                             format: self.export_format,
                             retain_layout: true,

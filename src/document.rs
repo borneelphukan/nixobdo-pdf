@@ -168,6 +168,7 @@ pub enum PdfWorkerMessage {
         file_name: String,
         page_count: usize,
         error: Option<String>,
+        password: Option<String>,
     },
     PageData {
         path: PathBuf,
@@ -266,6 +267,7 @@ pub struct PdfDocumentState {
     pub error: Option<String>,
     pub is_loading: bool,
     pub last_page_change_time: f64,
+    pub password: Option<String>,
 }
 
 impl PdfDocumentState {
@@ -291,11 +293,13 @@ impl PdfDocumentState {
             error: None,
             is_loading: true,
             last_page_change_time: 0.0,
+            password: None,
         }
     }
 
     pub fn background_load_with_pdfium(
         path: PathBuf,
+        password: Option<String>,
         pdfium: &Pdfium,
         tx: Sender<PdfWorkerMessage>,
         ctx: egui::Context,
@@ -304,6 +308,12 @@ impl PdfDocumentState {
             .file_name()
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_else(|| "Untitled".to_string());
+
+        let is_password_protected = match pdfium.load_pdf_from_file(path.to_str().unwrap_or_default(), None) {
+            Err(PdfiumError::PdfiumLibraryInternalError(PdfiumInternalError::PasswordError)) => true,
+            _ => false,
+        };
+        let use_cache = !is_password_protected;
 
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         path.hash(&mut hasher);
@@ -322,7 +332,7 @@ impl PdfDocumentState {
             .join("nixobdo-pdf-cache")
             .join(&cache_key);
 
-        if cache_dir.exists() {
+        if use_cache && cache_dir.exists() {
             if let Ok(meta_bytes) = std::fs::read(cache_dir.join("metadata.bin")) {
                 if let Ok((page_count, page_texts, page_chars, page_links, page_sizes)) =
                     bincode::deserialize::<(
@@ -338,6 +348,7 @@ impl PdfDocumentState {
                         file_name: file_name.clone(),
                         page_count,
                         error: None,
+                        password: None,
                     });
                     ctx.request_repaint();
 
@@ -383,7 +394,7 @@ impl PdfDocumentState {
             }
         }
 
-        match pdfium.load_pdf_from_file(path.to_str().unwrap_or_default(), None) {
+        match pdfium.load_pdf_from_file(path.to_str().unwrap_or_default(), password.as_deref()) {
             Ok(doc) => {
                 let page_count = doc.pages().len() as usize;
 
@@ -393,6 +404,7 @@ impl PdfDocumentState {
                     file_name: file_name.clone(),
                     page_count,
                     error: None,
+                    password: password.clone(),
                 });
                 ctx.request_repaint();
 
@@ -405,8 +417,10 @@ impl PdfDocumentState {
                 let mut all_links = Vec::new();
                 let mut all_sizes = Vec::new();
 
-                let _ = std::fs::create_dir_all(&cache_dir);
-                let _ = std::fs::File::create(cache_dir.join("accessed.txt"));
+                if use_cache {
+                    let _ = std::fs::create_dir_all(&cache_dir);
+                    let _ = std::fs::File::create(cache_dir.join("accessed.txt"));
+                }
 
                 for (index, page) in doc.pages().iter().enumerate() {
                     let page_text = page.text().map(|t| t.all()).unwrap_or_default();
@@ -529,8 +543,10 @@ impl PdfDocumentState {
                             }
                         }
 
-                        let _ = rgba.save(cache_dir.join(format!("page_{}.png", index)));
-                        let _ = thumb_rgba.save(cache_dir.join(format!("thumb_{}.png", index)));
+                        if use_cache {
+                            let _ = rgba.save(cache_dir.join(format!("page_{}.png", index)));
+                            let _ = thumb_rgba.save(cache_dir.join(format!("thumb_{}.png", index)));
+                        }
 
                         let pixels = rgba.as_flat_samples();
                         let image = egui::ColorImage::from_rgba_unmultiplied(
@@ -556,21 +572,34 @@ impl PdfDocumentState {
                     ctx.request_repaint();
                 }
 
-                if let Ok(meta_bytes) =
-                    bincode::serialize(&(page_count, all_texts, all_chars, all_links, all_sizes))
-                {
-                    let _ = std::fs::write(cache_dir.join("metadata.bin"), meta_bytes);
+                if use_cache {
+                    if let Ok(meta_bytes) =
+                        bincode::serialize(&(page_count, all_texts, all_chars, all_links, all_sizes))
+                    {
+                        let _ = std::fs::write(cache_dir.join("metadata.bin"), meta_bytes);
+                    }
                 }
 
                 let _ = tx.send(PdfWorkerMessage::Finished { path: path.clone() });
                 ctx.request_repaint();
             }
             Err(e) => {
+                let err_str = match &e {
+                    PdfiumError::PdfiumLibraryInternalError(PdfiumInternalError::PasswordError) => {
+                        if password.is_some() {
+                            "IncorrectPassword".to_string()
+                        } else {
+                            "PasswordRequired".to_string()
+                        }
+                    }
+                    _ => format!("Failed to load PDF: {}", e),
+                };
                 let _ = tx.send(PdfWorkerMessage::DocumentInfo {
                     path: path.clone(),
                     file_name,
                     page_count: 0,
-                    error: Some(format!("Failed to load PDF: {}", e)),
+                    error: Some(err_str),
+                    password: None,
                 });
                 ctx.request_repaint();
             }

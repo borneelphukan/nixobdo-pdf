@@ -11,12 +11,25 @@ impl NixobdoPdfApp {
                     file_name,
                     page_count,
                     error,
+                    password,
                 } => {
                     let mut tab_to_remove = None;
                     for (i, tab) in self.tabs.iter_mut().enumerate() {
                         if tab.path == path {
                             if let Some(err) = error {
-                                if err.contains("NotFound")
+                                if err == "PasswordRequired" || err == "IncorrectPassword" {
+                                    let is_incorrect = err == "IncorrectPassword";
+                                    if let Some(pass) = prompt_password_dialog(&file_name, is_incorrect) {
+                                        let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::Load {
+                                            path: path.clone(),
+                                            password: Some(pass),
+                                            ctx: ui.ctx().clone(),
+                                        });
+                                        tab.is_loading = true;
+                                    } else {
+                                        tab_to_remove = Some(i);
+                                    }
+                                } else if err.contains("NotFound")
                                     || err.contains("cannot find the path specified")
                                     || err.contains("cannot find the file specified")
                                 {
@@ -25,14 +38,15 @@ impl NixobdoPdfApp {
                                         .set_description("The file you are trying to open is no longer available and cannot be opened.")
                                         .set_level(rfd::MessageLevel::Warning)
                                         .show();
+                                    tab_to_remove = Some(i);
                                 } else {
                                     rfd::MessageDialog::new()
                                         .set_title("Nixobdo PDF Reader")
                                         .set_description(&format!("Nixobdo PDF Reader could not open '{}' because it is either not a supported file type or because the file has been damaged.", file_name))
                                         .set_level(rfd::MessageLevel::Info)
                                         .show();
+                                    tab_to_remove = Some(i);
                                 }
-                                tab_to_remove = Some(i);
                             } else {
                                 tab.file_name = file_name;
                                 tab.pages = vec![None; page_count];
@@ -43,6 +57,7 @@ impl NixobdoPdfApp {
                                 tab.page_sizes = vec![egui::Vec2::ZERO; page_count];
                                 tab.page_rotations = vec![0; page_count];
                                 tab.is_loading = false; // Turn off main loading, pages will pop in
+                                tab.password = password;
                             }
                             break;
                         }
@@ -210,4 +225,95 @@ impl NixobdoPdfApp {
             }
         }
     }
+}
+
+#[cfg(target_os = "windows")]
+fn prompt_password_dialog(file_name: &str, incorrect: bool) -> Option<String> {
+    use std::os::windows::process::CommandExt;
+    use std::process::Command;
+
+    let prompt_msg = if incorrect {
+        "Incorrect password. Please try again:"
+    } else {
+        "This PDF is password-protected. Please enter password:"
+    };
+
+    let title = format!("Password Required - {}", file_name);
+
+    let script = format!(
+        r#"
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+$form = New-Object System.Windows.Forms.Form
+$form.Text = '{}'
+$form.Size = New-Object System.Drawing.Size(400,160)
+$form.StartPosition = 'CenterScreen'
+$form.FormBorderStyle = 'FixedDialog'
+$form.MaximizeBox = $false
+$form.MinimizeBox = $false
+
+$label = New-Object System.Windows.Forms.Label
+$label.Location = New-Object System.Drawing.Point(15,15)
+$label.Size = New-Object System.Drawing.Size(370,25)
+$label.Text = '{}'
+
+$textBox = New-Object System.Windows.Forms.TextBox
+$textBox.Location = New-Object System.Drawing.Point(15,45)
+$textBox.Size = New-Object System.Drawing.Size(350,25)
+$textBox.UseSystemPasswordChar = $true
+
+$okButton = New-Object System.Windows.Forms.Button
+$okButton.Location = New-Object System.Drawing.Point(205,85)
+$okButton.Size = New-Object System.Drawing.Size(75,25)
+$okButton.Text = 'OK'
+$okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+
+$cancelButton = New-Object System.Windows.Forms.Button
+$cancelButton.Location = New-Object System.Drawing.Point(290,85)
+$cancelButton.Size = New-Object System.Drawing.Size(75,25)
+$cancelButton.Text = 'Cancel'
+$cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+
+$form.AcceptButton = $okButton
+$form.CancelButton = $cancelButton
+
+$form.Controls.Add($label)
+$form.Controls.Add($textBox)
+$form.Controls.Add($okButton)
+$form.Controls.Add($cancelButton)
+
+$form.TopMost = $true
+$form.Add_Shown({{ $textBox.Focus() }})
+
+$result = $form.ShowDialog()
+if ($result -eq [System.Windows.Forms.DialogResult]::OK) {{
+    Write-Output $textBox.Text
+}} else {{
+    exit 1
+}}
+"#,
+        title.replace("'", "''"),
+        prompt_msg.replace("'", "''")
+    );
+
+    let output = Command::new("powershell")
+        .creation_flags(0x08000000)
+        .args(&["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", &script])
+        .output()
+        .ok()?;
+
+    if output.status.success() {
+        let password_str = String::from_utf8_lossy(&output.stdout)
+            .trim_end_matches(&['\r', '\n'][..])
+            .to_string();
+        Some(password_str)
+    } else {
+        None
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn prompt_password_dialog(_file_name: &str, _incorrect: bool) -> Option<String> {
+    None
 }
