@@ -12,6 +12,7 @@ impl NixobdoPdfApp {
                     page_count,
                     error,
                     password,
+                    cache_dir,
                 } => {
                     let mut tab_to_remove = None;
                     for (i, tab) in self.tabs.iter_mut().enumerate() {
@@ -56,6 +57,7 @@ impl NixobdoPdfApp {
                                 tab.page_rotations = vec![0; page_count];
                                 tab.is_loading = false; // Turn off main loading, pages will pop in
                                 tab.password = password;
+                                tab.cache_dir = cache_dir;
                             }
                             break;
                         }
@@ -77,20 +79,27 @@ impl NixobdoPdfApp {
                     if let Some(tab_index) = self.tabs.iter().position(|t| t.path == path) {
                         let tab = &mut self.tabs[tab_index];
                         if index < tab.pages.len() {
-                            tab.pages[index] = Some(ui.ctx().load_texture(
-                                format!("page_{}_{}", path.display(), index),
-                                image,
-                                egui::TextureOptions::LINEAR,
-                            ));
-                            tab.thumbnails[index] = Some(ui.ctx().load_texture(
-                                format!("thumb_{}_{}", path.display(), index),
-                                thumbnail_image,
-                                egui::TextureOptions::LINEAR,
-                            ));
+                            // Always store metadata (small)
                             tab.page_texts[index] = text;
                             tab.page_chars[index] = chars;
                             tab.page_links[index] = links;
                             tab.page_sizes[index] = page_size;
+
+                            // Only create GPU textures for pages in the visible window
+                            // to avoid GPU OOM on large PDFs (498+ pages).
+                            // The image is already cached to disk by the worker.
+                            if tab.texture_window_range().contains(&index) {
+                                tab.pages[index] = Some(ui.ctx().load_texture(
+                                    format!("page_{}_{}", path.display(), index),
+                                    image,
+                                    egui::TextureOptions::LINEAR,
+                                ));
+                                tab.thumbnails[index] = Some(ui.ctx().load_texture(
+                                    format!("thumb_{}_{}", path.display(), index),
+                                    thumbnail_image,
+                                    egui::TextureOptions::LINEAR,
+                                ));
+                            }
                         }
                     }
                 }
