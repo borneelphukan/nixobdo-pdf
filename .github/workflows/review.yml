@@ -61,8 +61,8 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-  rust-build:
-    name: Build rust code
+  rust-checks:
+    name: Build & lint
     runs-on: windows-latest
     steps:
       - *checkout
@@ -72,16 +72,10 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
         with:
           toolchain: stable
-
-      - name: Build
-        run: cargo build
-
-  rust-lint:
-    name: Lint rust code
-    runs-on: windows-latest
-    steps:
-      - *checkout
-      - *setup-rust
+          cache: true
 
       - name: Format check
         run: cargo fmt --all -- --check
+
+      - name: Build
+        run: cargo build
