@@ -257,7 +257,35 @@ cargo build --release # Release build
 cargo run            # Run debug
 ```
 
-## Platform-Specific Notes
+## Large PDF Memory Management
+
+To prevent GPU/process OOM on large PDFs (e.g., 498+ pages), the following safeguards are in place:
+
+### Texture Window (GPU Memory Budget)
+- **Window size**: `TEXTURE_WINDOW = 30` pages ahead and behind `selected_page`
+- `texture_window_range()` computes the range of pages that should have GPU textures
+- `sync_texture_window(ctx)` is called each frame after `process_messages()`:
+  - Loads textures from disk cache for pages entering the window
+  - Frees textures (`pages[i] = None, thumbnails[i] = None`) for pages leaving the window
+- `load_page_texture_from_cache(ctx, index)` reads cached PNGs from disk and creates textures on demand
+
+### Channel Backpressure
+- Message channel (`PdfWorkerMessage`) uses `sync_channel(8)` instead of unbounded `channel()`
+- Worker blocks when the channel is full, preventing unbounded memory growth
+
+### PageData Handling
+- In `messages.rs::PageData` handler: metadata (text, chars, links, size) is always stored
+- GPU textures are only created if `index` is within `texture_window_range()`
+- ColorImage for out-of-window pages is immediately dropped (memory freed)
+- The worker already cached the page to disk, so it's available for lazy loading
+
+### Render Resolution
+- Full pages: rendered at 1200px width (down from 2400px) → ~3.9 MB per page
+- Thumbnails: rendered at 150px width (down from 300px) → ~0.125 MB per page
+
+### Cache Loading Path
+- When loading from disk cache, all page metadata+images still flow through the bounded channel
+- The main thread filters texture creation using the same texture window logic
 
 ### Windows
 - Requires `pdfium.dll` alongside exe or in `lib/`
