@@ -2,7 +2,7 @@ use eframe::egui;
 use pdfium_render::prelude::*;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::SyncSender;
 
 pub fn clean_cache() {
     let cache_root = dirs::cache_dir()
@@ -169,6 +169,7 @@ pub enum PdfWorkerMessage {
         page_count: usize,
         error: Option<String>,
         password: Option<String>,
+        cache_dir: Option<PathBuf>,
     },
     PageData {
         path: PathBuf,
@@ -268,6 +269,7 @@ pub struct PdfDocumentState {
     pub is_loading: bool,
     pub last_page_change_time: f64,
     pub password: Option<String>,
+    pub cache_dir: Option<PathBuf>,
 }
 
 impl PdfDocumentState {
@@ -294,6 +296,116 @@ impl PdfDocumentState {
             is_loading: true,
             last_page_change_time: 0.0,
             password: None,
+            cache_dir: None,
+        }
+    }
+
+    /// Number of pages ahead and behind the current page that should have textures loaded.
+    /// Pages outside this window have their textures freed to save GPU memory.
+    const TEXTURE_WINDOW: usize = 30;
+
+    /// Returns the range of page indices that should have GPU textures loaded.
+    pub fn texture_window_range(&self) -> std::ops::Range<usize> {
+        if self.pages.is_empty() {
+            return 0..0;
+        }
+        let total = self.pages.len();
+        let center = self.selected_page.min(total.saturating_sub(1));
+        let start = center.saturating_sub(Self::TEXTURE_WINDOW);
+        let end = (center + Self::TEXTURE_WINDOW).min(total);
+        start..end
+    }
+
+    /// Load a single page's image from the PNG cache and create its GPU texture.
+    /// Returns true if the texture was loaded, false if the cache file doesn't exist.
+    pub fn load_page_texture_from_cache(
+        &mut self,
+        ctx: &egui::Context,
+        index: usize,
+    ) -> bool {
+        let Some(ref cache_dir) = self.cache_dir else {
+            return false;
+        };
+        if index >= self.pages.len() {
+            return false;
+        }
+
+        let page_path = cache_dir.join(format!("page_{}.png", index));
+        let thumb_path = cache_dir.join(format!("thumb_{}.png", index));
+
+        if !page_path.exists() {
+            return false;
+        }
+
+        let page_data = match std::fs::read(&page_path) {
+            Ok(d) => d,
+            Err(_) => return false,
+        };
+        let page_img = match image::load_from_memory(&page_data) {
+            Ok(img) => img.to_rgba8(),
+            Err(_) => return false,
+        };
+
+        let thumb_data = if thumb_path.exists() {
+            std::fs::read(&thumb_path).ok()
+        } else {
+            None
+        };
+
+        let page_color = {
+            let samples = page_img.as_flat_samples();
+            egui::ColorImage::from_rgba_unmultiplied(
+                [page_img.width() as usize, page_img.height() as usize],
+                samples.as_slice(),
+            )
+        };
+
+        self.pages[index] = Some(ctx.load_texture(
+            format!("page_{}_{}", self.path.display(), index),
+            page_color,
+            egui::TextureOptions::LINEAR,
+        ));
+
+        if let Some(td) = thumb_data {
+            if let Ok(thumb_img) = image::load_from_memory(&td) {
+                let thumb_rgba = thumb_img.to_rgba8();
+                let thumb_samples = thumb_rgba.as_flat_samples();
+                let thumb_color = egui::ColorImage::from_rgba_unmultiplied(
+                    [thumb_rgba.width() as usize, thumb_rgba.height() as usize],
+                    thumb_samples.as_slice(),
+                );
+                self.thumbnails[index] = Some(ctx.load_texture(
+                    format!("thumb_{}_{}", self.path.display(), index),
+                    thumb_color,
+                    egui::TextureOptions::LINEAR,
+                ));
+            }
+        }
+
+        true
+    }
+
+    /// Sync the texture window: load textures for pages entering the window,
+    /// free textures for pages leaving the window.
+    pub fn sync_texture_window(&mut self, ctx: &egui::Context) {
+        let window = self.texture_window_range();
+        if window.is_empty() {
+            return;
+        }
+
+        // Load textures for pages in the window that are missing them
+        for i in window.clone() {
+            if self.pages[i].is_none() {
+                self.load_page_texture_from_cache(ctx, i);
+            }
+        }
+
+        // Free textures for pages outside the window
+        for i in 0..self.pages.len() {
+            if !window.contains(&i) {
+                self.pages[i] = None;
+                self.thumbnails[i] = None;
+            }
         }
     }
 
@@ -301,7 +413,7 @@ impl PdfDocumentState {
         path: PathBuf,
         password: Option<String>,
         pdfium: &Pdfium,
-        tx: Sender<PdfWorkerMessage>,
+        tx: SyncSender<PdfWorkerMessage>,
         ctx: egui::Context,
     ) {
         let file_name = path
@@ -352,6 +464,7 @@ impl PdfDocumentState {
                         page_count,
                         error: None,
                         password: None,
+                        cache_dir: Some(cache_dir.clone()),
                     });
                     ctx.request_repaint();
 
@@ -408,11 +521,12 @@ impl PdfDocumentState {
                     page_count,
                     error: None,
                     password: password.clone(),
+                    cache_dir: if use_cache { Some(cache_dir.clone()) } else { None },
                 });
                 ctx.request_repaint();
 
                 let render_config = PdfRenderConfig::new()
-                    .set_target_width(2400) // Optimal resolution for fast loading and crisp visuals
+                    .set_target_width(1200)
                     .set_clear_color(PdfColor::new(255, 255, 255, 255));
 
                 let mut all_texts = Vec::new();
@@ -501,7 +615,7 @@ impl PdfDocumentState {
                         let mut rgba = img.to_rgba8();
 
                         // Generate a high-quality downscaled thumbnail BEFORE removing the white background
-                        let thumb_w = 300;
+                        let thumb_w = 150;
                         let thumb_h = (300.0 * (rgba.height() as f32 / rgba.width() as f32)) as u32;
                         let thumb_rgba = image::imageops::resize(
                             &rgba,
@@ -603,6 +717,7 @@ impl PdfDocumentState {
                     page_count: 0,
                     error: Some(err_str),
                     password: None,
+                    cache_dir: None,
                 });
                 ctx.request_repaint();
             }
