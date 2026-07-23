@@ -4,7 +4,7 @@ use eframe::egui;
 use pdfium_render::prelude::*;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
-use std::sync::mpsc::{Receiver, SyncSender};
+use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
 
@@ -66,7 +66,7 @@ pub enum PdfWorkerTask {
     },
 }
 
-pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: SyncSender<PdfWorkerMessage>) {
+pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfWorkerMessage>) {
     let msg_tx_clone = msg_tx.clone();
 
     thread::spawn(move || {
@@ -786,7 +786,6 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: SyncSender<
                                     .into(),
                             ),
                             password: None,
-                            cache_dir: None,
                         });
                         ctx.request_repaint();
                     }

@@ -2,7 +2,7 @@ use eframe::egui;
 use pdfium_render::prelude::*;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::SyncSender;
+use std::sync::mpsc::Sender;
 
 use crate::document::PdfWorkerMessage;
 
@@ -32,7 +32,7 @@ pub fn export_image(
     password: Option<&str>,
     out_path: &PathBuf,
     format: ExportFormat,
-    msg_tx: &SyncSender<PdfWorkerMessage>,
+    msg_tx: &Sender<PdfWorkerMessage>,
     ctx: &egui::Context,
     cancel_flag: &AtomicBool,
 ) -> Result<String, String> {
@@ -116,7 +116,7 @@ pub fn export_docx(
     out_path: &PathBuf,
     retain_layout: bool,
     include_images: bool,
-    msg_tx: &SyncSender<PdfWorkerMessage>,
+    msg_tx: &Sender<PdfWorkerMessage>,
     ctx: &egui::Context,
     cancel_flag: &AtomicBool,
 ) -> Result<String, String> {
@@ -345,7 +345,7 @@ pub fn export_doc_rtf(
     out_path: &PathBuf,
     retain_layout: bool,
     include_images: bool,
-    msg_tx: &SyncSender<PdfWorkerMessage>,
+    msg_tx: &Sender<PdfWorkerMessage>,
     ctx: &egui::Context,
     cancel_flag: &AtomicBool,
 ) -> Result<String, String> {

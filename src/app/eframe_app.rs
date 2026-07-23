@@ -20,15 +20,6 @@ impl eframe::App for NixobdoPdfApp {
         // Process background loaded PDFs and worker messages
         self.process_messages(ui);
 
-        // Sync GPU texture window for the active tab to prevent GPU OOM on large PDFs.
-        // This lazily loads textures for pages near the current viewport from the disk cache
-        // and frees textures for pages far outside the viewport.
-        if let Some(active_idx) = self.active_tab_index {
-            if let Some(tab) = self.tabs.get_mut(active_idx) {
-                tab.sync_texture_window(ui.ctx());
-            }
-        }
-
         // Render toast notification (bottom-right)
         self.ui_toast(ui);
 

@@ -5,7 +5,7 @@ pub mod state;
 use pdfium_render::prelude::Pdfium;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
-use std::sync::mpsc::{channel, sync_channel, Receiver, Sender};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 
 use crate::document::{PdfDocumentState, PdfWorkerMessage};
@@ -175,7 +175,7 @@ impl Default for NixobdoPdfApp {
                 .is_ok();
 
         let (task_tx, task_rx) = channel::<PdfWorkerTask>();
-        let (msg_tx, msg_rx) = sync_channel::<PdfWorkerMessage>(8);
+        let (msg_tx, msg_rx) = channel::<PdfWorkerMessage>();
 
         let msg_tx_clone = msg_tx.clone();
 
