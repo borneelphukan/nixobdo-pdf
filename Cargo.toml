@@ -1,6 +1,6 @@
 [package]
 name = "nixobdo-pdf"
-version = "0.1.31"
+version = "0.1.30"
 edition = "2021"
 
 [dependencies]
