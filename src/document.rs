@@ -169,16 +169,27 @@ pub enum PdfWorkerMessage {
         page_count: usize,
         error: Option<String>,
         password: Option<String>,
+        use_cache: bool,
     },
     PageData {
         path: PathBuf,
         index: usize,
-        image: egui::ColorImage,
-        thumbnail_image: egui::ColorImage,
+        image: Option<egui::ColorImage>,
+        thumbnail_image: Option<egui::ColorImage>,
         text: String,
         chars: Vec<PdfCharInfo>,
         links: Vec<PdfLinkInfo>,
         page_size: egui::Vec2,
+    },
+    PageDataLoaded {
+        path: PathBuf,
+        index: usize,
+        image: egui::ColorImage,
+    },
+    ThumbnailDataLoaded {
+        path: PathBuf,
+        index: usize,
+        image: egui::ColorImage,
     },
     Finished {
         #[allow(dead_code)]
@@ -268,6 +279,9 @@ pub struct PdfDocumentState {
     pub is_loading: bool,
     pub last_page_change_time: f64,
     pub password: Option<String>,
+    pub use_cache: bool,
+    pub pages_loading: std::collections::HashSet<usize>,
+    pub thumbnails_loading: std::collections::HashSet<usize>,
 }
 
 impl PdfDocumentState {
@@ -294,7 +308,29 @@ impl PdfDocumentState {
             is_loading: true,
             last_page_change_time: 0.0,
             password: None,
+            use_cache: true,
+            pages_loading: std::collections::HashSet::new(),
+            thumbnails_loading: std::collections::HashSet::new(),
         }
+    }
+
+    pub fn cache_dir(&self) -> PathBuf {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        self.path.hash(&mut hasher);
+        if let Ok(meta) = std::fs::metadata(&self.path) {
+            meta.len().hash(&mut hasher);
+            if let Ok(time) = meta.modified() {
+                if let Ok(duration) = time.duration_since(std::time::UNIX_EPOCH) {
+                    duration.as_secs().hash(&mut hasher);
+                }
+            }
+        }
+        let cache_key = format!("{:x}", hasher.finish());
+
+        dirs::cache_dir()
+            .unwrap_or_else(|| std::env::temp_dir())
+            .join("nixobdo-pdf-cache")
+            .join(&cache_key)
     }
 
     pub fn background_load_with_pdfium(
@@ -352,21 +388,14 @@ impl PdfDocumentState {
                         page_count,
                         error: None,
                         password: None,
+                        use_cache: true,
                     });
                     ctx.request_repaint();
 
                     let mut success = true;
                     for index in 0..page_count {
-                        if let (Ok(img), Ok(thumb)) = (
-                            image::open(cache_dir.join(format!("page_{}.png", index))),
-                            image::open(cache_dir.join(format!("thumb_{}.png", index))),
-                        ) {
-                            let img_rgba = img.to_rgba8();
+                        if let Ok(thumb) = image::open(cache_dir.join(format!("thumb_{}.png", index))) {
                             let thumb_rgba = thumb.to_rgba8();
-                            let image = egui::ColorImage::from_rgba_unmultiplied(
-                                [img_rgba.width() as usize, img_rgba.height() as usize],
-                                img_rgba.as_flat_samples().as_slice(),
-                            );
                             let thumbnail_image = egui::ColorImage::from_rgba_unmultiplied(
                                 [thumb_rgba.width() as usize, thumb_rgba.height() as usize],
                                 thumb_rgba.as_flat_samples().as_slice(),
@@ -374,8 +403,8 @@ impl PdfDocumentState {
                             let _ = tx.send(PdfWorkerMessage::PageData {
                                 path: path.clone(),
                                 index,
-                                image,
-                                thumbnail_image,
+                                image: None,
+                                thumbnail_image: Some(thumbnail_image),
                                 text: page_texts[index].clone(),
                                 chars: page_chars[index].clone(),
                                 links: page_links[index].clone(),
@@ -408,6 +437,7 @@ impl PdfDocumentState {
                     page_count,
                     error: None,
                     password: password.clone(),
+                    use_cache,
                 });
                 ctx.request_repaint();
 
@@ -565,8 +595,8 @@ impl PdfDocumentState {
                     let _ = tx.send(PdfWorkerMessage::PageData {
                         path: path.clone(),
                         index,
-                        image,
-                        thumbnail_image,
+                        image: Some(image),
+                        thumbnail_image: Some(thumbnail_image),
                         text: page_text,
                         chars,
                         links,
@@ -603,6 +633,7 @@ impl PdfDocumentState {
                     page_count: 0,
                     error: Some(err_str),
                     password: None,
+                    use_cache: false,
                 });
                 ctx.request_repaint();
             }

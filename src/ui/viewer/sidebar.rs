@@ -17,14 +17,23 @@ impl NixobdoPdfApp {
                         pages_empty = tab.pages.is_empty();
 
                         if !pages_empty {
+                            let cache_dir = tab.cache_dir();
+                            let tab_path = tab.path.clone();
+                            let use_cache = tab.use_cache;
+                            let thumbnails_loading = &mut tab.thumbnails_loading;
+                            let selected_page = &mut tab.selected_page;
+                            let scroll_to_page = &mut tab.scroll_to_page;
+                            let thumbnails = &tab.thumbnails;
+                            let pdf_msg_tx = self.pdf_msg_tx.clone();
+
                             egui::ScrollArea::vertical().show(ui, |ui| {
                                 ui.vertical_centered(|ui| {
-                                    for (index, texture_opt) in tab.thumbnails.iter().enumerate() {
+                                    for (index, texture_opt) in thumbnails.iter().enumerate() {
                                         let thumb_w = (ui.available_width() - 16.0).max(40.0);
                                         let thumb_h = thumb_w * 1.414; // Default A4 ratio for placeholder
                                         let thumb_size = egui::vec2(thumb_w, thumb_h);
 
-                                        let is_selected = tab.selected_page == index;
+                                        let is_selected = *selected_page == index;
                                         let stroke_color = if is_selected {
                                             ui.visuals().selection.bg_fill
                                         } else {
@@ -73,8 +82,8 @@ impl NixobdoPdfApp {
                                                         );
                                                     }
                                                     if response.clicked() {
-                                                        tab.selected_page = index;
-                                                        tab.scroll_to_page = Some(index);
+                                                        *selected_page = index;
+                                                        *scroll_to_page = Some(index);
                                                     }
                                                 } else {
                                                     // Placeholder spinner for loading pages
@@ -95,10 +104,35 @@ impl NixobdoPdfApp {
                                                             egui::FontId::proportional(14.0),
                                                             egui::Color32::GRAY,
                                                         );
+
+                                                        if use_cache && !thumbnails_loading.contains(&index) {
+                                                            let thumb_path = cache_dir.join(format!("thumb_{}.png", index));
+                                                            if thumb_path.exists() {
+                                                                thumbnails_loading.insert(index);
+                                                                let path = tab_path.clone();
+                                                                let tx = pdf_msg_tx.clone();
+                                                                let ctx_clone = ui.ctx().clone();
+                                                                std::thread::spawn(move || {
+                                                                    if let Ok(img) = image::open(&thumb_path) {
+                                                                        let img_rgba = img.to_rgba8();
+                                                                        let image = egui::ColorImage::from_rgba_unmultiplied(
+                                                                            [img_rgba.width() as usize, img_rgba.height() as usize],
+                                                                            img_rgba.as_flat_samples().as_slice(),
+                                                                        );
+                                                                        let _ = tx.send(crate::document::PdfWorkerMessage::ThumbnailDataLoaded {
+                                                                            path,
+                                                                            index,
+                                                                            image,
+                                                                        });
+                                                                        ctx_clone.request_repaint();
+                                                                    }
+                                                                });
+                                                            }
+                                                        }
                                                     }
                                                     if response.clicked() {
-                                                        tab.selected_page = index;
-                                                        tab.scroll_to_page = Some(index);
+                                                        *selected_page = index;
+                                                        *scroll_to_page = Some(index);
                                                     }
                                                 }
 

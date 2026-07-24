@@ -12,6 +12,7 @@ impl NixobdoPdfApp {
                     page_count,
                     error,
                     password,
+                    use_cache,
                 } => {
                     let mut tab_to_remove = None;
                     for (i, tab) in self.tabs.iter_mut().enumerate() {
@@ -30,7 +31,7 @@ impl NixobdoPdfApp {
                                 } else if err.contains("NotFound")
                                     || err.contains("cannot find the path specified")
                                     || err.contains("cannot find the file specified")
-                                {
+                                  {
                                     rfd::MessageDialog::new()
                                         .set_title("File Not Available")
                                         .set_description("The file you are trying to open is no longer available and cannot be opened.")
@@ -56,6 +57,9 @@ impl NixobdoPdfApp {
                                 tab.page_rotations = vec![0; page_count];
                                 tab.is_loading = false; // Turn off main loading, pages will pop in
                                 tab.password = password;
+                                tab.use_cache = use_cache;
+                                tab.pages_loading.clear();
+                                tab.thumbnails_loading.clear();
                             }
                             break;
                         }
@@ -77,21 +81,75 @@ impl NixobdoPdfApp {
                     if let Some(tab_index) = self.tabs.iter().position(|t| t.path == path) {
                         let tab = &mut self.tabs[tab_index];
                         if index < tab.pages.len() {
-                            tab.pages[index] = Some(ui.ctx().load_texture(
-                                format!("page_{}_{}", path.display(), index),
-                                image,
-                                egui::TextureOptions::LINEAR,
-                            ));
-                            tab.thumbnails[index] = Some(ui.ctx().load_texture(
-                                format!("thumb_{}_{}", path.display(), index),
-                                thumbnail_image,
-                                egui::TextureOptions::LINEAR,
-                            ));
+                            if let Some(img) = image {
+                                let is_visible = !tab.use_cache || {
+                                    let current_page = tab.selected_page;
+                                    let visible_start = current_page.saturating_sub(2);
+                                    let visible_end = current_page + 2;
+                                    index >= visible_start && index <= visible_end
+                                };
+                                if is_visible {
+                                    tab.pages[index] = Some(ui.ctx().load_texture(
+                                        format!("page_{}_{}", path.display(), index),
+                                        img,
+                                        egui::TextureOptions::LINEAR,
+                                    ));
+                                }
+                            }
+                            if let Some(thumb) = thumbnail_image {
+                                let is_visible = !tab.use_cache || {
+                                    let current_page = tab.selected_page;
+                                    let visible_start = current_page.saturating_sub(15);
+                                    let visible_end = current_page + 15;
+                                    index >= visible_start && index <= visible_end
+                                };
+                                if is_visible {
+                                    tab.thumbnails[index] = Some(ui.ctx().load_texture(
+                                        format!("thumb_{}_{}", path.display(), index),
+                                        thumb,
+                                        egui::TextureOptions::LINEAR,
+                                    ));
+                                }
+                            }
                             tab.page_texts[index] = text;
                             tab.page_chars[index] = chars;
                             tab.page_links[index] = links;
                             tab.page_sizes[index] = page_size;
                         }
+                    }
+                }
+                PdfWorkerMessage::PageDataLoaded {
+                    path,
+                    index,
+                    image,
+                } => {
+                    if let Some(tab_index) = self.tabs.iter().position(|t| t.path == path) {
+                        let tab = &mut self.tabs[tab_index];
+                        if index < tab.pages.len() {
+                            tab.pages[index] = Some(ui.ctx().load_texture(
+                                format!("page_{}_{}", path.display(), index),
+                                image,
+                                egui::TextureOptions::LINEAR,
+                            ));
+                        }
+                        tab.pages_loading.remove(&index);
+                    }
+                }
+                PdfWorkerMessage::ThumbnailDataLoaded {
+                    path,
+                    index,
+                    image,
+                } => {
+                    if let Some(tab_index) = self.tabs.iter().position(|t| t.path == path) {
+                        let tab = &mut self.tabs[tab_index];
+                        if index < tab.thumbnails.len() {
+                            tab.thumbnails[index] = Some(ui.ctx().load_texture(
+                                format!("thumb_{}_{}", path.display(), index),
+                                image,
+                                egui::TextureOptions::LINEAR,
+                            ));
+                        }
+                        tab.thumbnails_loading.remove(&index);
                     }
                 }
                 PdfWorkerMessage::Finished { path: _ } => {}
