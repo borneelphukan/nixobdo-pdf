@@ -177,4 +177,77 @@ impl NixobdoPdfApp {
             }
         }
     }
+
+    pub(crate) fn manage_textures(&mut self, ctx: &egui::Context) {
+        let Some(active_idx) = self.active_tab_index else {
+            return;
+        };
+        let Some(tab) = self.tabs.get_mut(active_idx) else {
+            return;
+        };
+        if tab.is_loading || tab.pages.is_empty() {
+            return;
+        }
+
+        if !tab.use_cache {
+            return;
+        }
+
+        let current_page = tab.selected_page;
+        let page_count = tab.pages.len();
+
+        let visible_start = current_page.saturating_sub(3);
+        let visible_end = (current_page + 3).min(page_count.saturating_sub(1));
+
+        let keep_start = current_page.saturating_sub(5);
+        let keep_end = (current_page + 5).min(page_count.saturating_sub(1));
+
+        for i in 0..page_count {
+            if i < keep_start || i > keep_end {
+                if tab.pages[i].is_some() {
+                    tab.pages[i] = None;
+                }
+            }
+        }
+
+        let keep_thumb_start = current_page.saturating_sub(15);
+        let keep_thumb_end = (current_page + 15).min(page_count.saturating_sub(1));
+
+        for i in 0..page_count {
+            if i < keep_thumb_start || i > keep_thumb_end {
+                if tab.thumbnails[i].is_some() {
+                    tab.thumbnails[i] = None;
+                }
+            }
+        }
+
+        let cache_dir = tab.cache_dir();
+        for i in visible_start..=visible_end {
+            if tab.pages[i].is_none() && !tab.pages_loading.contains(&i) {
+                let page_path = cache_dir.join(format!("page_{}.png", i));
+                if page_path.exists() {
+                    tab.pages_loading.insert(i);
+                    let path = tab.path.clone();
+                    let tx = self.pdf_msg_tx.clone();
+                    let ctx_clone = ctx.clone();
+
+                    std::thread::spawn(move || {
+                        if let Ok(img) = image::open(&page_path) {
+                            let img_rgba = img.to_rgba8();
+                            let image = egui::ColorImage::from_rgba_unmultiplied(
+                                [img_rgba.width() as usize, img_rgba.height() as usize],
+                                img_rgba.as_flat_samples().as_slice(),
+                            );
+                            let _ = tx.send(crate::document::PdfWorkerMessage::PageDataLoaded {
+                                path,
+                                index: i,
+                                image,
+                            });
+                            ctx_clone.request_repaint();
+                        }
+                    });
+                }
+            }
+        }
+    }
 }

@@ -786,6 +786,7 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                                     .into(),
                             ),
                             password: None,
+                            use_cache: false,
                         });
                         ctx.request_repaint();
                     }

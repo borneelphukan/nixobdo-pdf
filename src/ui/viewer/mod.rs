@@ -7,6 +7,7 @@ use eframe::egui;
 
 impl NixobdoPdfApp {
     pub(crate) fn ui_viewer(&mut self, ui: &mut egui::Ui) {
+        self.manage_textures(ui.ctx());
         self.ui_sidebar(ui);
         self.ui_separator(ui);
         self.ui_central_panel(ui);

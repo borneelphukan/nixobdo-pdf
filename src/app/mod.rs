@@ -54,6 +54,7 @@ pub struct NixobdoPdfApp {
     pub pending_scroll_delta: eframe::egui::Vec2,
     // Background Loading
     pub pdf_task_tx: Sender<PdfWorkerTask>,
+    pub pdf_msg_tx: Sender<PdfWorkerMessage>,
     pub pdf_receiver: Receiver<PdfWorkerMessage>,
 
     // File Menu features
@@ -225,6 +226,7 @@ impl Default for NixobdoPdfApp {
             pointer_mode: PointerMode::Select,
             pending_scroll_delta: eframe::egui::Vec2::ZERO,
             pdf_task_tx: task_tx,
+            pdf_msg_tx: msg_tx,
             pdf_receiver: msg_rx,
             recent_files: loaded_settings.recent_files,
             rename_window_open: false,

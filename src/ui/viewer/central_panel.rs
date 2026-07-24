@@ -346,7 +346,13 @@ impl NixobdoPdfApp {
                                                     )
                                                 };
 
-                                                if let Some(texture) = texture_opt {
+                                                let texture_to_draw = if let Some(texture) = texture_opt {
+                                                    Some(texture)
+                                                } else {
+                                                    tab.thumbnails.get(index).and_then(|t| t.as_ref())
+                                                };
+
+                                                if let Some(texture) = texture_to_draw {
                                                     if self.is_annotation_mode {
                                                         if let Some(_tool) = self.active_annotation_tool {
                                                             if response.hovered() {
