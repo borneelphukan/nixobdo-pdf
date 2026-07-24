@@ -179,11 +179,19 @@ impl NixobdoPdfApp {
     }
 
     pub(crate) fn manage_textures(&mut self, ctx: &egui::Context) {
-        let Some(active_idx) = self.active_tab_index else { return; };
-        let Some(tab) = self.tabs.get_mut(active_idx) else { return; };
-        if tab.is_loading || tab.pages.is_empty() { return; }
+        let Some(active_idx) = self.active_tab_index else {
+            return;
+        };
+        let Some(tab) = self.tabs.get_mut(active_idx) else {
+            return;
+        };
+        if tab.is_loading || tab.pages.is_empty() {
+            return;
+        }
 
-        if !tab.use_cache { return; }
+        if !tab.use_cache {
+            return;
+        }
 
         let current_page = tab.selected_page;
         let page_count = tab.pages.len();

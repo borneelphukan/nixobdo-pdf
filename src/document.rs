@@ -394,7 +394,9 @@ impl PdfDocumentState {
 
                     let mut success = true;
                     for index in 0..page_count {
-                        if let Ok(thumb) = image::open(cache_dir.join(format!("thumb_{}.png", index))) {
+                        if let Ok(thumb) =
+                            image::open(cache_dir.join(format!("thumb_{}.png", index)))
+                        {
                             let thumb_rgba = thumb.to_rgba8();
                             let thumbnail_image = egui::ColorImage::from_rgba_unmultiplied(
                                 [thumb_rgba.width() as usize, thumb_rgba.height() as usize],

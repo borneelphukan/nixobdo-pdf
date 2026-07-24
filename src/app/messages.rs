@@ -31,7 +31,7 @@ impl NixobdoPdfApp {
                                 } else if err.contains("NotFound")
                                     || err.contains("cannot find the path specified")
                                     || err.contains("cannot find the file specified")
-                                  {
+                                {
                                     rfd::MessageDialog::new()
                                         .set_title("File Not Available")
                                         .set_description("The file you are trying to open is no longer available and cannot be opened.")
@@ -118,11 +118,7 @@ impl NixobdoPdfApp {
                         }
                     }
                 }
-                PdfWorkerMessage::PageDataLoaded {
-                    path,
-                    index,
-                    image,
-                } => {
+                PdfWorkerMessage::PageDataLoaded { path, index, image } => {
                     if let Some(tab_index) = self.tabs.iter().position(|t| t.path == path) {
                         let tab = &mut self.tabs[tab_index];
                         if index < tab.pages.len() {
@@ -135,11 +131,7 @@ impl NixobdoPdfApp {
                         tab.pages_loading.remove(&index);
                     }
                 }
-                PdfWorkerMessage::ThumbnailDataLoaded {
-                    path,
-                    index,
-                    image,
-                } => {
+                PdfWorkerMessage::ThumbnailDataLoaded { path, index, image } => {
                     if let Some(tab_index) = self.tabs.iter().position(|t| t.path == path) {
                         let tab = &mut self.tabs[tab_index];
                         if index < tab.thumbnails.len() {
