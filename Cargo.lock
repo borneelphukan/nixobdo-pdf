@@ -1379,7 +1379,7 @@ dependencies = [
  "bytemuck",
  "ecolor 0.35.0",
  "emath 0.35.0",
- "epaint_default_fonts",
+ "epaint_default_fonts 0.35.0",
  "font-types 0.11.3",
  "harfrust 0.7.0",
  "log",
@@ -1403,6 +1403,7 @@ dependencies = [
  "ahash",
  "ecolor 0.36.1",
  "emath 0.36.1",
+ "epaint_default_fonts 0.36.1",
  "font-types 0.12.2",
  "harfrust 0.12.0",
  "log",
@@ -1422,6 +1423,12 @@ name = "epaint_default_fonts"
 version = "0.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13ee4e1f553a3584c301f3a56ff1a775f1384781396cea301c8d952e9b93f560"
+
+[[package]]
+name = "epaint_default_fonts"
+version = "0.36.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18dee69613aac468922cf28a32025eb7d7ed6985b61f73245848e58f37876c98"
 
 [[package]]
 name = "equator"
@@ -2645,7 +2652,7 @@ dependencies = [
  "dirs",
  "docx-rs",
  "eframe",
- "egui 0.35.0",
+ "egui 0.36.1",
  "egui_extras",
  "image",
  "pdfium-render",
