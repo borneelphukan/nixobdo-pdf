@@ -1,6 +1,6 @@
 [Setup]
 AppName=nixobdo-pdf
-AppVersion=0.1.32
+AppVersion=0.1.33
 AppPublisher=Borneel Bikash Phukan
 AppPublisherURL=https://borneelphukan.github.io/nixobdo-pdf/
 DefaultDirName={autopf}\nixobdo-pdf
