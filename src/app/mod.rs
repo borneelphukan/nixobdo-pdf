@@ -5,7 +5,7 @@ pub mod state;
 use pdfium_render::prelude::Pdfium;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::Arc;
 
 use crate::document::{PdfDocumentState, PdfWorkerMessage};

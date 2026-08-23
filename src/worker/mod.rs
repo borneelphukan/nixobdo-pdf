@@ -3,9 +3,9 @@ pub mod export;
 use eframe::egui;
 use pdfium_render::prelude::*;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{Receiver, Sender};
-use std::sync::Arc;
 use std::thread;
 
 use crate::document::{PdfDocumentState, PdfWorkerMessage};
@@ -221,7 +221,10 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                     PdfWorkerTask::DownloadUpdate { version, ctx } => {
                         let tx = msg_tx_clone.clone();
                         std::thread::spawn(move || {
-                            let url = format!("https://github.com/borneelphukan/nixobdo-pdf/releases/download/v{}/nixobdo-pdfSetup.exe", version);
+                            let url = format!(
+                                "https://github.com/borneelphukan/nixobdo-pdf/releases/download/v{}/nixobdo-pdfSetup.exe",
+                                version
+                            );
                             match ureq::get(&url).header("User-Agent", "nixobdo-pdf").call() {
                                 Ok(response) => {
                                     let len: Option<u64> = response
@@ -712,7 +715,10 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                     PdfWorkerTask::DownloadUpdate { version, ctx } => {
                         let tx = msg_tx_clone.clone();
                         std::thread::spawn(move || {
-                            let url = format!("https://github.com/borneelphukan/nixobdo-pdf/releases/download/v{}/nixobdo-pdfSetup.exe", version);
+                            let url = format!(
+                                "https://github.com/borneelphukan/nixobdo-pdf/releases/download/v{}/nixobdo-pdfSetup.exe",
+                                version
+                            );
                             match ureq::get(&url).header("User-Agent", "nixobdo-pdf").call() {
                                 Ok(response) => {
                                     let len: Option<u64> = response

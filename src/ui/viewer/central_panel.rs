@@ -1,5 +1,5 @@
 use crate::app::NixobdoPdfApp;
-use crate::document::{find_closest_char, is_char_selected, PageLayoutMode, PdfLinkTarget};
+use crate::document::{PageLayoutMode, PdfLinkTarget, find_closest_char, is_char_selected};
 use eframe::egui;
 
 impl NixobdoPdfApp {
