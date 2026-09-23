@@ -15,11 +15,19 @@
 
 ## Quick Start
 
-1. Download the latest version from **[GitHub Releases](https://github.com/borneelphukan/nixobdo-pdf/releases/latest)**.
-2. Run the application directly.
+### Windows
+1. Download `nixobdo-pdfSetup.exe` from **[GitHub Releases](https://github.com/borneelphukan/nixobdo-pdf/releases/latest)**.
+2. Run the installer and launch the app.
+
+### Ubuntu / Debian
+Download the `.deb` package from **[GitHub Releases](https://github.com/borneelphukan/nixobdo-pdf/releases/latest)** and install:
+```bash
+sudo apt install ./nixobdo-pdf_*_amd64.deb
+```
+*Alternatively, download the portable tarball (`nixobdo-pdf-*-linux-x64.tar.gz`), extract it, and run `./install.sh`.*
 
 > [!NOTE]
-> The project requires the PDFium library to be present alongside the executable or in the `lib/` directory.
+> The application bundles the PDFium library in installer packages. For manual builds, PDFium must be placed alongside the executable or in the `lib/` directory.
 
 ---
 
@@ -47,12 +55,23 @@
 
 ## Setup & Build
 
-To build for Windows, you will need the Windows version of `pdfium.dll`.
-
+### Windows
 1. Ensure Rust is installed on your system.
-2. Download `pdfium-win-x64.tgz` (or x86) from [bblanchon/pdfium-binaries](https://github.com/bblanchon/pdfium-binaries/releases).
+2. Download `pdfium-win-x64.tgz` from [bblanchon/pdfium-binaries](https://github.com/bblanchon/pdfium-binaries/releases).
 3. Extract `pdfium.dll` and place it in the `lib/` directory or next to the executable.
-4. Run the application:
+4. Run:
+   ```bash
+   cargo run
+   ```
+
+### Linux (Ubuntu / Debian)
+1. Install system prerequisites:
+   ```bash
+   sudo apt update
+   sudo apt install -y libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev pkg-config
+   ```
+2. Download `pdfium-linux-x64.tgz` from [bblanchon/pdfium-binaries](https://github.com/bblanchon/pdfium-binaries/releases) and extract `libpdfium.so` into the project directory (or `lib/`).
+3. Run:
    ```bash
    cargo run
    ```
