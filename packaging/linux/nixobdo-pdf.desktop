@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=nixobdo-pdf
+Comment=Distraction-free PDF viewer
+Exec=nixobdo-pdf %U
+Icon=nixobdo-pdf
+Terminal=false
+Type=Application
+Categories=Office;Viewer;Graphics;
+MimeType=application/pdf;application/x-pdf;
+StartupWMClass=nixobdo-pdf
+Keywords=PDF;Viewer;Document;Reader;

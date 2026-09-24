@@ -1,0 +1,150 @@
+name: Nightly Release
+
+on:
+  push:
+    branches: [ "dev" ]
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        with:
+          toolchain: stable
+
+      - name: Convert Logo to ICO
+        run: magick -background none -density 256 assets\icons\logo.svg -define icon:auto-resize="256,128,64,48,32,16" assets\logo.ico
+
+      - name: Build nixobdo-pdf
+        run: cargo build --release
+
+      - name: Download and Extract pdfium
+        run: |
+          Invoke-WebRequest -Uri https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-win-x64.tgz -OutFile pdfium.tgz
+          tar -xzf pdfium.tgz
+          Get-ChildItem -Recurse -Filter pdfium.dll | Copy-Item -Destination .
+
+      - name: Build Installer (Inno Setup)
+        run: iscc setup.iss
+
+      - name: Rename installer for dev build
+        shell: pwsh
+        run: Rename-Item -Path "Output\nixobdo-pdfSetup.exe" -NewName "nixobdo-pdf-dev-${{ github.run_number }}.exe"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: Output\nixobdo-pdf-dev-${{ github.run_number }}.exe
+          retention-days: 1
+
+  build-ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev pkg-config
+
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        with:
+          toolchain: stable
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(grep -m1 '^version = ' Cargo.toml | cut -d '"' -f2)
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Download and extract PDFium
+        run: |
+          curl -fsSL https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-linux-x64.tgz -o pdfium.tgz
+          tar -xzf pdfium.tgz
+          cp $(find . -name "libpdfium.so" | head -n 1) libpdfium.so
+
+      - name: Build nixobdo-pdf
+        run: cargo build --release
+
+      - name: Build Ubuntu packages
+        run: |
+          mkdir -p dist
+          chmod +x packaging/linux/*.sh
+          
+          # Debian package
+          ./packaging/linux/build-deb.sh target/release/nixobdo-pdf libpdfium.so "${{ steps.version.outputs.VERSION }}" dist
+          
+          # Portable tarball
+          TAR_DIR="nixobdo-pdf-${{ steps.version.outputs.VERSION }}-linux-x64"
+          mkdir -p "$TAR_DIR/assets/icons"
+          cp target/release/nixobdo-pdf libpdfium.so packaging/linux/nixobdo-pdf.desktop packaging/linux/install.sh packaging/linux/uninstall.sh "$TAR_DIR/"
+          [ -f assets/logo.png ] && cp assets/logo.png "$TAR_DIR/assets/" || true
+          [ -f assets/icons/logo.svg ] && cp assets/icons/logo.svg "$TAR_DIR/assets/icons/" || true
+          tar -czf "dist/$TAR_DIR.tar.gz" "$TAR_DIR"
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu-installers
+          path: dist/*
+          retention-days: 1
+
+  publish-nightly:
+    needs: [build-windows, build-ubuntu]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(grep -m1 '^version = ' Cargo.toml | cut -d '"' -f2)
+          echo "DEV_VERSION=$VERSION-dev.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+      - name: Download Windows Installer
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: dist/
+
+      - name: Download Ubuntu Installers
+        uses: actions/download-artifact@v4
+        with:
+          name: ubuntu-installers
+          path: dist/
+
+      - name: Delete existing dev release (rolling update)
+        run: gh release delete dev-release --yes --cleanup-tag || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish dev pre-release
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          tag_name: dev-release
+          name: "Dev Build (latest)"
+          body: |
+            ⚠️ **Unstable development build — not for production use.**
+
+            **Version:** `${{ steps.version.outputs.DEV_VERSION }}`
+            **Commit:** `${{ github.sha }}`
+            **Branch:** `dev`
+
+            This release is automatically overwritten on every push to `dev`.
+            For the latest stable release, see the [Releases page](../../releases/latest).
+          files: dist/*
+          draft: false
+          prerelease: true
+          make_latest: false
