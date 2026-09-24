@@ -31,10 +31,10 @@ export function DocsDownload() {
         const response = await fetch('https://api.github.com/repos/borneelphukan/nixobdo-pdf/releases');
         if (!response.ok) throw new Error('Failed to fetch releases');
         const data: GitHubRelease[] = await response.json();
-        
+
         const stable = data.find(r => !r.prerelease);
         if (stable) setLatestStable(stable);
-        
+
         const prereleases = data.filter(r => r.prerelease).slice(0, 3);
         setNightlies(prereleases);
       } catch (error) {
@@ -43,30 +43,26 @@ export function DocsDownload() {
         setLoading(false);
       }
     }
-    
+
     fetchReleases();
   }, []);
 
   const getDownloadAssets = (release: GitHubRelease): GitHubAsset[] => {
     if (!release.assets || release.assets.length === 0) return [];
-    
+
     const windows = release.assets.find(a => a.name.endsWith('.exe') || a.name.endsWith('.msi'));
     const ubuntuDeb = release.assets.find(a => a.name.endsWith('.deb'));
-    
+
     if (!windows && !ubuntuDeb) {
       return [release.assets[0]];
     }
-    
+
     return [windows, ubuntuDeb].filter((a): a is GitHubAsset => a !== undefined && a !== null);
   };
 
   const formatDate = (dateString: string) => {
     const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'numeric', day: 'numeric' };
     return new Date(dateString).toLocaleDateString(undefined, options);
-  };
-
-  const formatSize = (bytes: number) => {
-    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
   };
 
   if (loading) {
@@ -96,7 +92,7 @@ export function DocsDownload() {
         <>
           <div className="mb-8">
             <h2 className="text-3xl font-extrabold text-white mb-4">{latestStable.tag_name}</h2>
-            
+
             <div className="flex flex-wrap items-center gap-3 text-slate-400 text-sm">
               <div className="flex items-center gap-1.5">
                 <Calendar className="w-4 h-4" />
@@ -108,7 +104,7 @@ export function DocsDownload() {
                 {totalDownloads}
               </div>
               <span className="text-slate-600">•</span>
-              <a 
+              <a
                 href={latestStable.html_url}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -128,7 +124,7 @@ export function DocsDownload() {
                 let platformBorderColor = "border-purple-400/60";
                 let platformHoverChevron = "text-purple-500";
                 let platformTitle = "Windows";
-                
+
                 if (asset.name.endsWith('.deb')) {
                   platformIconColor = "text-orange-400";
                   platformBorderColor = "border-orange-400/60";
@@ -137,7 +133,7 @@ export function DocsDownload() {
                 }
 
                 return (
-                  <a 
+                  <a
                     key={asset.name}
                     href={asset.browser_download_url}
                     target="_blank"
@@ -174,7 +170,7 @@ export function DocsDownload() {
             {nightlies.map(nightly => {
               const nAssets = getDownloadAssets(nightly);
               if (nAssets.length === 0) return null;
-              
+
               return (
                 <div key={nightly.id}>
                   <h3 className="text-white font-medium flex items-center gap-2 mb-3">
@@ -187,16 +183,16 @@ export function DocsDownload() {
                       let iconColor = "text-purple-400";
                       let borderColor = "border-purple-500/30";
                       let hoverColor = "hover:border-purple-500/60";
-                      
+
                       if (nAsset.name.endsWith('.deb')) {
                         platformTag = "Ubuntu";
                         iconColor = "text-orange-400";
                         borderColor = "border-orange-500/30";
                         hoverColor = "hover:border-orange-500/60";
                       }
-                      
+
                       return (
-                        <a 
+                        <a
                           key={`${nightly.id}-${nAsset.name}`}
                           href={nAsset.browser_download_url}
                           target="_blank"
@@ -228,9 +224,9 @@ export function DocsDownload() {
 
       <h2 className="text-2xl font-bold text-white mb-4 mt-8">Recent Changes</h2>
       <p className="text-slate-400 mb-6">Check out the latest improvements and bug fixes.</p>
-      
+
       <Link to="/docs/changelog" className="inline-flex items-center text-indigo-400 hover:text-indigo-300 font-medium transition group">
-        View Full Changelog 
+        View Full Changelog
         <span className="ml-1 transition-transform group-hover:translate-x-1">→</span>
       </Link>
     </div>
