@@ -28,7 +28,7 @@ export function Home() {
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-4">
               <Link to="/docs/download" className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-medium text-white transition-all shadow-lg shadow-indigo-500/25">
                 <Download className="w-5 h-5" />
-                Download for Windows
+                Download
               </Link>
               <Link to="/docs/guides/getting-started" className="flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-medium text-white transition-all backdrop-blur-sm">
                 Get Started
