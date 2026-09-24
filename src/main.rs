@@ -24,13 +24,14 @@ fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([800.0, 1000.0])
-            .with_title("PDF Viewer")
+            .with_app_id("nixobdo-pdf")
+            .with_title("Nixobdo PDF")
             .with_icon(icon_data)
             .with_transparent(false),
         ..Default::default()
     };
     eframe::run_native(
-        "PDF Viewer",
+        "nixobdo-pdf",
         options,
         Box::new(|cc| {
             let mut style = egui::Style::default();

@@ -35,7 +35,7 @@ export function DocsDownload() {
         const stable = data.find(r => !r.prerelease);
         if (stable) setLatestStable(stable);
 
-        const prereleases = data.filter(r => r.prerelease).slice(0, 3);
+        const prereleases = data.filter(r => r.prerelease && r.tag_name !== 'dev').slice(0, 3);
         setNightlies(prereleases);
       } catch (error) {
         console.error('Error fetching releases:', error);
