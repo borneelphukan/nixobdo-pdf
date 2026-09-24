@@ -47,12 +47,18 @@ export function DocsDownload() {
     fetchReleases();
   }, []);
 
-  const getPrimaryAsset = (release: GitHubRelease): GitHubAsset | null => {
-    if (!release.assets || release.assets.length === 0) return null;
-    return release.assets.find(a => 
-      a.name.endsWith('.exe') || 
-      a.name.endsWith('.msi')
-    ) || release.assets[0];
+  const getDownloadAssets = (release: GitHubRelease): GitHubAsset[] => {
+    if (!release.assets || release.assets.length === 0) return [];
+    
+    const windows = release.assets.find(a => a.name.endsWith('.exe') || a.name.endsWith('.msi'));
+    const ubuntuDeb = release.assets.find(a => a.name.endsWith('.deb'));
+    const ubuntuTar = release.assets.find(a => a.name.endsWith('.tar.gz'));
+    
+    if (!windows && !ubuntuDeb && !ubuntuTar) {
+      return [release.assets[0]];
+    }
+    
+    return [windows, ubuntuDeb, ubuntuTar].filter((a): a is GitHubAsset => a !== undefined && a !== null);
   };
 
   const formatDate = (dateString: string) => {
@@ -76,7 +82,7 @@ export function DocsDownload() {
     );
   }
 
-  const primaryAsset = latestStable ? getPrimaryAsset(latestStable) : null;
+  const downloadAssets = latestStable ? getDownloadAssets(latestStable) : [];
   const totalDownloads = latestStable ? latestStable.assets.reduce((acc, asset) => acc + asset.download_count, 0) : 0;
 
   return (
@@ -116,30 +122,54 @@ export function DocsDownload() {
             </div>
           </div>
 
-          {primaryAsset && (
-            <a 
-              href={primaryAsset.browser_download_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group block bg-slate-950/50 border border-purple-400/60 rounded-xl p-4 transition-all hover:bg-slate-900/80 mb-12"
-            >
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="bg-slate-800/80 p-3 rounded-lg text-purple-400">
-                    <Download className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-semibold text-lg">{primaryAsset.name}</h3>
-                    <p className="text-slate-500 text-sm mt-0.5">
-                      {formatSize(primaryAsset.size)} • {primaryAsset.download_count} downloads
-                    </p>
-                  </div>
-                </div>
-                <div className="pr-2">
-                  <ChevronRight className="w-6 h-6 text-purple-500 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-            </a>
+          {downloadAssets.length > 0 && (
+            <div className="grid gap-4 mb-12">
+              {downloadAssets.map(asset => {
+                let platformIconColor = "text-purple-400";
+                let platformBorderColor = "border-purple-400/60";
+                let platformHoverChevron = "text-purple-500";
+                let platformTitle = "Windows";
+                
+                if (asset.name.endsWith('.deb')) {
+                  platformIconColor = "text-orange-400";
+                  platformBorderColor = "border-orange-400/60";
+                  platformHoverChevron = "text-orange-500";
+                  platformTitle = "Ubuntu / Debian";
+                } else if (asset.name.endsWith('.tar.gz')) {
+                  platformIconColor = "text-amber-400";
+                  platformBorderColor = "border-amber-400/60";
+                  platformHoverChevron = "text-amber-500";
+                  platformTitle = "Linux (Portable)";
+                }
+
+                return (
+                  <a 
+                    key={asset.name}
+                    href={asset.browser_download_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`group block bg-slate-950/50 border ${platformBorderColor} rounded-xl p-4 transition-all hover:bg-slate-900/80`}
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className={`bg-slate-800/80 p-3 rounded-lg ${platformIconColor}`}>
+                          <Download className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h3 className="text-white font-semibold text-lg">{platformTitle}</h3>
+                          <p className="text-slate-500 text-sm mt-0.5">
+                            {asset.name} • {formatSize(asset.size)} • {asset.download_count} downloads
+                          </p>
+                        </div>
+                      </div>
+                      <div className="pr-2">
+                        <ChevronRight className={`w-6 h-6 ${platformHoverChevron} group-hover:translate-x-1 transition-transform`} />
+                      </div>
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
           )}
         </>
       )}
@@ -150,35 +180,50 @@ export function DocsDownload() {
           <p className="text-slate-400 mb-6">Unstable preview builds for testing new features.</p>
           <div className="grid gap-4">
             {nightlies.map(nightly => {
-              const nAsset = getPrimaryAsset(nightly);
-              if (!nAsset) return null;
-              return (
-                <a 
-                  key={nightly.id}
-                  href={nAsset.browser_download_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/50 border border-slate-800 rounded-xl p-4 transition-all hover:bg-slate-800/60"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="bg-orange-500/10 p-2.5 rounded-lg text-orange-400">
-                      <Download className="w-5 h-5" />
+              const nAssets = getDownloadAssets(nightly);
+              if (nAssets.length === 0) return null;
+              
+              return nAssets.map(nAsset => {
+                let platformTag = "Windows";
+                let tagColor = "bg-purple-500/20 text-purple-400 border-purple-500/20";
+                
+                if (nAsset.name.endsWith('.deb')) {
+                  platformTag = "Ubuntu / Debian";
+                  tagColor = "bg-orange-500/20 text-orange-400 border-orange-500/20";
+                } else if (nAsset.name.endsWith('.tar.gz')) {
+                  platformTag = "Linux (Portable)";
+                  tagColor = "bg-amber-500/20 text-amber-400 border-amber-500/20";
+                }
+                
+                return (
+                  <a 
+                    key={`${nightly.id}-${nAsset.name}`}
+                    href={nAsset.browser_download_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/50 border border-slate-800 rounded-xl p-4 transition-all hover:bg-slate-800/60"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="bg-slate-800/80 p-2.5 rounded-lg text-slate-400 group-hover:text-white transition-colors">
+                        <Download className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-white font-medium flex items-center gap-2">
+                          {nightly.tag_name}
+                          <span className={`text-xs px-2 py-0.5 rounded-full border ${tagColor}`}>{platformTag}</span>
+                          <span className="text-xs bg-slate-500/20 text-slate-400 px-2 py-0.5 rounded-full border border-slate-500/20">Nightly</span>
+                        </h3>
+                        <p className="text-slate-500 text-sm mt-0.5">
+                          {formatDate(nightly.published_at)} • {formatSize(nAsset.size)} • {nAsset.name}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-white font-medium flex items-center gap-2">
-                        {nightly.tag_name}
-                        <span className="text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full border border-orange-500/20">Nightly</span>
-                      </h3>
-                      <p className="text-slate-500 text-sm mt-0.5">
-                        {formatDate(nightly.published_at)} • {formatSize(nAsset.size)}
-                      </p>
+                    <div className="text-slate-400 group-hover:text-white transition-colors text-sm font-medium">
+                      Download
                     </div>
-                  </div>
-                  <div className="text-slate-400 group-hover:text-white transition-colors text-sm font-medium">
-                    Download
-                  </div>
-                </a>
-              );
+                  </a>
+                );
+              });
             })}
           </div>
         </div>
