@@ -11,7 +11,7 @@ pdfium-render = { version = "0.8.37", features = ["image"] }
 rfd = "0.17.2"
 webbrowser = "1.2.4"
 docx-rs = "0.4.22"
-zip = "8.6.0"
+zip = "9.0.1"
 ureq = "3.4.0"
 dirs = "7.0.0"
 serde = { version = "1.0.229", features = ["derive"] }
