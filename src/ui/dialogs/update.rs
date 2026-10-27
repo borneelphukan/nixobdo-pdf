@@ -60,7 +60,7 @@ impl NixobdoPdfApp {
                     egui::Color32::from_rgba_unmultiplied(0, 0, 0, 45)
                 };
 
-                egui::Area::new(egui::Id::new("update_banner"))
+                egui::Area::new(egui::Id::unique("update_banner"))
                     .anchor(egui::Align2::CENTER_TOP, [0.0, 10.0])
                     .order(egui::Order::Foreground)
                     .show(ui.ctx(), |ui| {

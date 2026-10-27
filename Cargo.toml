@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 eframe = "0.37.0"
 egui = "0.37.0"
-egui_extras = { version = "0.36.1", features = ["svg", "image"] }
+egui_extras = { version = "0.37.0", features = ["svg", "image"] }
 pdfium-render = { version = "0.8.37", features = ["image"] }
 rfd = "0.17.2"
 webbrowser = "1.2.4"

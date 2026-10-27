@@ -669,10 +669,10 @@ impl NixobdoPdfApp {
                                                             let screen_y = response.rect.min.y + n_pos.1 * response.rect.height() - sig_h / 2.0;
 
                                                             let sig_rect = egui::Rect::from_min_size(egui::pos2(screen_x, screen_y), sig_size);
-                                                            let sig_response = ui.interact(sig_rect, ui.id().with("sig_drag").with(index), egui::Sense::drag());
+                                                            let sig_response = ui.interact(sig_rect, ui.scope_id().with("sig_drag").with(index), egui::Sense::drag());
 
                                                             let resize_rect = egui::Rect::from_center_size(sig_rect.max, egui::vec2(20.0, 20.0));
-                                                            let resize_response = ui.interact(resize_rect, ui.id().with("sig_resize").with(index), egui::Sense::drag());
+                                                            let resize_response = ui.interact(resize_rect, ui.scope_id().with("sig_resize").with(index), egui::Sense::drag());
 
                                                             if !self.is_saving_signature {
                                                                 if resize_response.dragged() {
@@ -716,7 +716,7 @@ impl NixobdoPdfApp {
                                                                 link_info.left, link_info.top, link_info.right, link_info.bottom, response.rect, rot
                                                             );
 
-                                                            let link_response = ui.interact(link_rect, ui.id().with(format!("link_{}_{}", index, link_idx)), egui::Sense::click());
+                                                            let link_response = ui.interact(link_rect, ui.scope_id().with(format!("link_{}_{}", index, link_idx)), egui::Sense::click());
                                                             if link_response.hovered() {
                                                                 ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
                                                             }
@@ -844,8 +844,8 @@ impl NixobdoPdfApp {
                                                                                 }
                                                                             }
 
-                                                                            let text_drag_id = ui.id().with("text_drag");
-                                                                            let resize_id = ui.id().with("text_resize");
+                                                                            let text_drag_id = ui.scope_id().with("text_drag");
+                                                                            let resize_id = ui.scope_id().with("text_resize");
 
                                                                             let sense = if is_focused { egui::Sense::hover() } else { egui::Sense::click_and_drag() };
                                                                             let text_response = ui.interact(ui.max_rect(), text_drag_id, sense);
@@ -1030,7 +1030,7 @@ impl NixobdoPdfApp {
         // Floating Utility Bar at the bottom center
         let is_fullscreen = ui.ctx().input(|i| i.viewport().fullscreen.unwrap_or(false));
         if self.show_utility_bar && self.active_tab_index.is_some() && !is_fullscreen {
-            egui::Area::new(egui::Id::new("utility_bar_area"))
+            egui::Area::new(egui::Id::unique("utility_bar_area"))
                 .anchor(egui::Align2::CENTER_BOTTOM, [0.0, -24.0])
                 .order(egui::Order::Foreground)
                 .show(ui.ctx(), |ui| {
@@ -1132,7 +1132,7 @@ impl NixobdoPdfApp {
 
         if is_fullscreen {
             let btn_pos = ui.max_rect().max - egui::vec2(64.0, 64.0);
-            egui::Area::new(egui::Id::new("exit_fullscreen_button_area"))
+            egui::Area::new(egui::Id::unique("exit_fullscreen_button_area"))
                 .fixed_pos(btn_pos)
                 .order(egui::Order::Foreground)
                 .show(ui.ctx(), |ui| {
