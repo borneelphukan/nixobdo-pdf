@@ -1411,7 +1411,6 @@ dependencies = [
  "ahash",
  "ecolor 0.36.2",
  "emath 0.36.2",
- "epaint_default_fonts 0.36.2",
  "font-types",
  "harfrust",
  "log",
@@ -1436,7 +1435,7 @@ dependencies = [
  "bytemuck",
  "ecolor 0.37.0",
  "emath 0.37.0",
- "epaint_default_fonts 0.37.0",
+ "epaint_default_fonts",
  "font-types",
  "harfrust",
  "log",
@@ -1451,12 +1450,6 @@ dependencies = [
  "unicode-segmentation",
  "vello_cpu 0.2.0",
 ]
-
-[[package]]
-name = "epaint_default_fonts"
-version = "0.36.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "773fa9c96dd0dbef887e39d0ed6177f141cce4d68e6041df77570aa3702dfa13"
 
 [[package]]
 name = "epaint_default_fonts"
@@ -2691,7 +2684,7 @@ dependencies = [
  "dirs",
  "docx-rs",
  "eframe",
- "egui 0.36.2",
+ "egui 0.37.0",
  "egui_extras",
  "image",
  "pdfium-render",
