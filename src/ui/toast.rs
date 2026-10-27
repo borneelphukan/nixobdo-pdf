@@ -28,7 +28,7 @@ impl NixobdoPdfApp {
                 let text_color = egui::Color32::from_rgba_unmultiplied(255, 255, 255, alpha);
 
                 let toast_msg = msg.clone();
-                egui::Area::new(egui::Id::new("export_toast"))
+                egui::Area::new(egui::Id::unique("export_toast"))
                     .anchor(egui::Align2::RIGHT_BOTTOM, [-16.0, -16.0])
                     .order(egui::Order::Foreground)
                     .show(ui.ctx(), |ui| {

@@ -282,7 +282,7 @@ impl NixobdoPdfApp {
                             let text_edit = egui::TextEdit::singleline(&mut self.search_query)
                                 .hint_text("Search PDF... (Ctrl+F)")
                                 .desired_width(150.0)
-                                .id(egui::Id::new("search_bar"));
+                                .id(egui::Id::unique("search_bar"));
                             let response = ui.add(text_edit);
 
                             if response.changed() {

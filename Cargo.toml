@@ -4,14 +4,14 @@ version = "0.1.35"
 edition = "2024"
 
 [dependencies]
-eframe = "0.36.1"
-egui = "0.36.1"
-egui_extras = { version = "0.36.1", features = ["svg", "image"] }
+eframe = "0.37.0"
+egui = "0.37.0"
+egui_extras = { version = "0.37.0", features = ["svg", "image"] }
 pdfium-render = { version = "0.8.37", features = ["image"] }
 rfd = "0.17.2"
 webbrowser = "1.2.4"
 docx-rs = "0.4.22"
-zip = "8.6.0"
+zip = "9.0.4"
 ureq = "3.4.0"
 dirs = "7.0.0"
 serde = { version = "1.0.229", features = ["derive"] }

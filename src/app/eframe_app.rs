@@ -40,7 +40,7 @@ impl eframe::App for NixobdoPdfApp {
         let has_ctrl_modifier = ui.ctx().input(|i| i.modifiers.command || i.modifiers.ctrl);
         if has_ctrl_modifier && ui.ctx().input(|i| i.key_pressed(egui::Key::F)) {
             ui.ctx()
-                .memory_mut(|mem| mem.request_focus(egui::Id::new("search_bar")));
+                .memory_mut(|mem| mem.request_focus(egui::Id::unique("search_bar")));
         }
 
         let is_fullscreen = ui.ctx().input(|i| i.viewport().fullscreen.unwrap_or(false));
@@ -65,7 +65,7 @@ impl eframe::App for NixobdoPdfApp {
                 let bg_color = egui::Color32::from_rgba_unmultiplied(40, 40, 40, alpha);
                 let text_color = egui::Color32::from_rgba_unmultiplied(255, 255, 255, alpha);
 
-                egui::Area::new(egui::Id::new("fullscreen_toast_area"))
+                egui::Area::new(egui::Id::unique("fullscreen_toast_area"))
                     .anchor(egui::Align2::CENTER_BOTTOM, [0.0, -48.0])
                     .order(egui::Order::Foreground)
                     .show(ui.ctx(), |ui| {
