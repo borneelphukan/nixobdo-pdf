@@ -2595,7 +2595,7 @@ dependencies = [
 
 [[package]]
 name = "nixobdo-pdf"
-version = "0.1.35"
+version = "0.1.38"
 dependencies = [
  "bincode",
  "chrono",
@@ -2612,7 +2612,7 @@ dependencies = [
  "ureq",
  "webbrowser",
  "winres",
- "zip 9.2.2",
+ "zip 9.1.3",
 ]
 
 [[package]]
@@ -5059,9 +5059,9 @@ dependencies = [
 
 [[package]]
 name = "webbrowser"
-version = "1.2.6"
+version = "1.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe8d20d0214027baf11b8b0cc307c1da7657d8f4db9aa956f7de27a6fb1acbd5"
+checksum = "d2c8ddfbbf66e501434657400268cefe51b95140a0266236415cda7627732df7"
 dependencies = [
  "jni",
  "log",
@@ -5966,9 +5966,9 @@ dependencies = [
 
 [[package]]
 name = "zip"
-version = "9.2.2"
+version = "9.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e408c6cc4699dd017d53dc080cd51c2cea2b5354af57a1479bd265ed42911487"
+checksum = "1156b39d142a34b999c2310a50455e0cb3760bf7efad0122f796d813bee26ccb"
 dependencies = [
  "aes",
  "bzip2",
@@ -5979,7 +5979,6 @@ dependencies = [
  "getrandom 0.4.3",
  "hmac",
  "indexmap",
- "libc",
  "lzma-rust2",
  "memchr",
  "nix",

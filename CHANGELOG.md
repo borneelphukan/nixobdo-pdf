@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.38] - 2026-11-05
+### Internal
+- polish workflows, dependabot, and release gates
+- keep advisory clippy/audit jobs green
+- make version tags authoritative and add macOS builds
+
 ## [0.1.27] - 2026-06-14
 ### Added
 - Auto-scroll during text selection in Continuous Scroll mode — viewport scrolls
