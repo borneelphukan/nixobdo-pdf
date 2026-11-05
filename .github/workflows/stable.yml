@@ -227,7 +227,7 @@ jobs:
         run: cargo build --release
 
       - name: Install FUSE
-        run: sudo apt-get update && sudo apt-get install -y fuse3
+        run: sudo apt-get update && sudo apt-get install -y fuse libfuse2
 
       - name: Build AppImage
         run: |
