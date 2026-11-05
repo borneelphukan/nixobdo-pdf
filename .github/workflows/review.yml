@@ -8,6 +8,11 @@ on:
     types:
       - opened
       - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
@@ -61,27 +66,84 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-  rust-build:
-    name: Build rust code
-    runs-on: windows-latest
+  rust-fmt:
+    name: Format rust code
+    runs-on: ubuntu-latest
     steps:
       - *checkout
-
       - &setup-rust
         name: Setup Rust
         uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
-        with:
-          toolchain: stable
 
-      - name: Build
-        run: cargo build
+      - name: Format check
+        run: cargo fmt --all -- --check
 
-  rust-lint:
-    name: Lint rust code
-    runs-on: windows-latest
+  rust-clippy:
+    name: Clippy rust code
+    runs-on: ubuntu-latest
+    steps:
+      - *checkout
+      - &install-linux-deps
+        name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev pkg-config
+      - *setup-rust
+      - &cache-rust
+        name: Cache Rust build
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+
+      - name: Clippy
+        # Advisory until the existing warning backlog is cleared.
+        continue-on-error: true
+        run: cargo clippy --locked --all-targets -- -D warnings
+
+  rust-test:
+    name: Test rust code
+    runs-on: ubuntu-latest
+    steps:
+      - *checkout
+      - *install-linux-deps
+      - *setup-rust
+      - *cache-rust
+
+      - name: Test
+        run: cargo test --locked --all-targets
+
+  rust-audit:
+    name: Audit rust dependencies
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
     steps:
       - *checkout
       - *setup-rust
 
-      - name: Format check
-        run: cargo fmt --all -- --check
+      - name: Audit
+        # Advisory for now; make blocking once the dependency tree is clean.
+        continue-on-error: true
+        uses: rustsec/audit-check@69366f33c96575abad1ee0dba8212993eecbe998 # v2.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  rust-build:
+    name: Build rust code (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+    steps:
+      - *checkout
+      - *install-linux-deps
+      - *setup-rust
+      - *cache-rust
+
+      - name: Build
+        run: cargo build --locked

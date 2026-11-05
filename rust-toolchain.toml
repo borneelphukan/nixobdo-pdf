@@ -1,0 +1,7 @@
+[toolchain]
+# Track stable so CI and local builds stay in sync without forcing a separate
+# patch-level download. Pin to an exact version (e.g. "1.99.1") once the
+# release cadence settles.
+channel = "stable"
+components = ["clippy", "rustfmt"]
+profile = "minimal"
