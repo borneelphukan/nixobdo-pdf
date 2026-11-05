@@ -176,11 +176,25 @@ jobs:
       - name: Build nixobdo-pdf
         run: cargo build --release
 
+      - name: Verify and prepare DMG source
+        run: |
+          set -e
+          echo "Checking build output..."
+          ls -la target/release/
+          if [ -f target/release/nixobdo-pdf ]; then
+            echo "Binary found, copying to dist..."
+            mkdir -p dist
+            cp target/release/nixobdo-pdf dist/nixobdo-pdf
+          else
+            echo "ERROR: nixobdo-pdf binary not found in target/release/"
+            exit 1
+          fi
+
       - name: Create DMG
         run: |
           VERSION="${{ needs.prepare.outputs.VERSION }}"
           DMG_NAME="nixobdo-pdf-${VERSION}-macos.dmg"
-          hdiutil create -volname "nixobdo-pdf" -srcfolder target/release -format UDZO -o dist/$DMG_NAME
+          hdiutil create -volname "nixobdo-pdf" -srcfolder dist -format UDZO -o dist/$DMG_NAME
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v7
