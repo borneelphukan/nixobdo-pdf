@@ -154,8 +154,37 @@ jobs:
           path: dist/*
           retention-days: 1
 
+  build-macos:
+    needs: prepare
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.COMMIT_SHA }}
+
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
+        with:
+          toolchain: stable
+
+      - name: Build nixobdo-pdf
+        run: cargo build --release
+
+      - name: Create DMG
+        run: |
+          VERSION="${{ needs.prepare.outputs.VERSION }}"
+          DMG_NAME="nixobdo-pdf-${VERSION}-macos.dmg"
+          hdiutil create -volname "nixobdo-pdf" -srcfolder target/release -format UDZO -o dist/$DMG_NAME
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: macos-dmg
+          path: dist/$DMG_NAME
+          retention-days: 1
+
   publish-stable:
-    needs: [prepare, build-windows, build-ubuntu]
+    needs: [prepare, build-windows, build-ubuntu, build-macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -172,6 +201,12 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: ubuntu-installers
+          path: dist/
+
+      - name: Download macOS DMG
+        uses: actions/download-artifact@v8
+        with:
+          name: macos-dmg
           path: dist/
 
       - name: Create GitHub Release
