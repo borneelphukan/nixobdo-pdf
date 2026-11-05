@@ -1,150 +1,115 @@
 name: Release (Stable)
 
-# Flow:
-#   1. A push to main with a version equal to the latest tag opens a version-bump PR.
-#   2. Merging that PR makes Cargo.toml newer than the latest tag -> this workflow
-#      builds and publishes the release from the merge commit itself.
-# This keeps the tag, the version in Cargo.toml, and the released binaries aligned.
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
     paths-ignore:
-      - "README.md"
-      - "docs/**"
-      - "website/**"
-      - "CHANGELOG.md"
+      - 'README.md'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
-  contents: read
-
-concurrency:
-  group: stable-release
-  cancel-in-progress: false
+  contents: write
+  pull-requests: write
 
 jobs:
-  plan:
-    name: Plan release
-    runs-on: ubuntu-latest
+  prepare:
+    runs-on: windows-latest
+    if: "!contains(github.event.head_commit.message, 'chore: bump version')"
     outputs:
-      mode: ${{ steps.plan.outputs.mode }}
-      version: ${{ steps.plan.outputs.version }}
-      current: ${{ steps.plan.outputs.current }}
-      latest: ${{ steps.plan.outputs.latest }}
+      VERSION: ${{ steps.version.outputs.VERSION }}
+      COMMIT_SHA: ${{ steps.commit.outputs.SHA }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
-
-      - name: Decide whether to bump or release
-        id: plan
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python3 scripts/release_plan.py
-
-  bump:
-    name: Open version bump PR
-    needs: plan
-    if: needs.plan.outputs.mode == 'bump'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
-      - name: Bump version and changelog
+      - name: Bump patch version
+        id: version
+        shell: pwsh
         run: |
-          python3 scripts/bump_version.py \
-            --version "${{ needs.plan.outputs.version }}" \
-            --from-tag "${{ needs.plan.outputs.latest }}"
+          $cargo = Get-Content Cargo.toml -Raw
+          if ($cargo -match 'version\s*=\s*"(\d+)\.(\d+)\.(\d+)"') {
+            $major = [int]$Matches[1]
+            $minor = [int]$Matches[2]
+            $patch = [int]$Matches[3] + 1
+            $newVersion = "$major.$minor.$patch"
+            $regex = [regex]'(version\s*=\s*")(\d+\.\d+\.\d+)(")'
+            $cargo = $regex.Replace($cargo, "`${1}$newVersion`${3}", 1)
+            Set-Content Cargo.toml $cargo -NoNewline
+            
+            $iss = Get-Content setup.iss -Raw
+            $iss = $iss -replace '(AppVersion=)(\d+\.\d+\.\d+)', "`${1}$newVersion"
+            Set-Content setup.iss $iss -NoNewline
+            
+            echo "VERSION=$newVersion" >> $env:GITHUB_OUTPUT
+            Write-Host "Bumped to $newVersion"
+          }
 
-      - name: Commit, push, and open PR
+      - name: Commit version bump and create PR
+        id: commit
+        shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ needs.plan.outputs.version }}
         run: |
-          set -euo pipefail
-          BRANCH="chore/bump-version-$VERSION"
-
-          if gh pr list --head "$BRANCH" --state open --json number --jq 'length' | grep -q '^[1-9]'; then
-            PR_EXISTS=1
-          else
-            PR_EXISTS=0
-          fi
-
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -B "$BRANCH"
-
-          git add Cargo.toml Cargo.lock setup.iss CHANGELOG.md
-          git commit -m "chore: bump version to $VERSION"
-          git push -f -u origin "$BRANCH"
-
-          if [ "$PR_EXISTS" = "0" ]; then
-            gh pr create \
-              --title "chore: bump version to $VERSION" \
-              --body "Automated version bump. Merging this PR publishes v$VERSION." \
-              --base main \
-              --head "$BRANCH"
-          else
-            echo "Updated existing bump PR for $VERSION."
-          fi
+          $branch = "chore/bump-version-${{ steps.version.outputs.VERSION }}"
+          git checkout -b $branch
+          git add Cargo.toml setup.iss
+          git commit -m "chore: bump version to ${{ steps.version.outputs.VERSION }}"
+          $sha = git rev-parse HEAD
+          echo "SHA=$sha" >> $env:GITHUB_OUTPUT
+          git push -f -u origin $branch
+          gh pr create --title "chore: bump version to ${{ steps.version.outputs.VERSION }}" --body "Automated version bump" --base main --head $branch
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Ignoring gh pr create error (PR likely already exists)"
+            exit 0
+          }
 
   build-windows:
-    name: Build Windows installer
-    needs: plan
-    if: needs.plan.outputs.mode == 'release'
+    needs: prepare
     runs-on: windows-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.prepare.outputs.COMMIT_SHA }}
 
       - name: Set up Rust
-        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
+        with:
+          toolchain: stable
 
-      - name: Cache Rust build
-        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-
-      - name: Convert logo to ICO
+      - name: Convert Logo to ICO
         run: magick -background none -density 256 assets\icons\logo.svg -define icon:auto-resize="256,128,64,48,32,16" assets\logo.ico
 
       - name: Build nixobdo-pdf
-        run: cargo build --release --locked
+        run: cargo build --release
 
-      - name: Download and extract PDFium
+      - name: Download and Extract pdfium
         run: |
           Invoke-WebRequest -Uri https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-win-x64.tgz -OutFile pdfium.tgz
           tar -xzf pdfium.tgz
           Get-ChildItem -Recurse -Filter pdfium.dll | Copy-Item -Destination .
 
-      - name: Build installer (Inno Setup)
+      - name: Build Installer (Inno Setup)
         run: iscc setup.iss
 
-      - name: Upload installer
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v7
         with:
           name: windows-installer
           path: Output\nixobdo-pdfSetup.exe
           retention-days: 1
 
   build-ubuntu:
-    name: Build Ubuntu packages
-    needs: plan
-    if: needs.plan.outputs.mode == 'release'
+    needs: prepare
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.prepare.outputs.COMMIT_SHA }}
 
       - name: Install system dependencies
         run: |
@@ -152,28 +117,29 @@ jobs:
           sudo apt-get install -y libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev pkg-config
 
       - name: Set up Rust
-        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
-
-      - name: Cache Rust build
-        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
+        with:
+          toolchain: stable
 
       - name: Download and extract PDFium
         run: |
           curl -fsSL https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-linux-x64.tgz -o pdfium.tgz
           tar -xzf pdfium.tgz
-          cp "$(find . -name 'libpdfium.so' | head -n 1)" libpdfium.so
+          cp $(find . -name "libpdfium.so" | head -n 1) libpdfium.so
 
       - name: Build nixobdo-pdf
-        run: cargo build --release --locked
+        run: cargo build --release
 
       - name: Build Ubuntu packages
         run: |
           mkdir -p dist
           chmod +x packaging/linux/*.sh
-          VERSION="${{ needs.plan.outputs.version }}"
-
+          VERSION="${{ needs.prepare.outputs.VERSION }}"
+          
+          # Debian package
           ./packaging/linux/build-deb.sh target/release/nixobdo-pdf libpdfium.so "$VERSION" dist
-
+          
+          # Portable tarball
           TAR_DIR="nixobdo-pdf-${VERSION}-linux-x64"
           mkdir -p "$TAR_DIR/assets/icons"
           cp target/release/nixobdo-pdf libpdfium.so packaging/linux/nixobdo-pdf.desktop packaging/linux/install.sh packaging/linux/uninstall.sh "$TAR_DIR/"
@@ -181,100 +147,39 @@ jobs:
           [ -f assets/icons/logo.svg ] && cp assets/icons/logo.svg "$TAR_DIR/assets/icons/" || true
           tar -czf "dist/$TAR_DIR.tar.gz" "$TAR_DIR"
 
-      - name: Upload packages
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v7
         with:
           name: ubuntu-installers
-          path: |
-            dist/*.deb
-            dist/*.tar.gz
+          path: dist/*
           retention-days: 1
 
-  build-macos:
-    name: Build macOS app
-    needs: plan
-    if: needs.plan.outputs.mode == 'release'
-    runs-on: macos-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.sha }}
-
-      - name: Set up Rust
-        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
-
-      - name: Cache Rust build
-        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-
-      - name: Download and extract PDFium
-        run: |
-          curl -fsSL https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-mac-univ.tgz -o pdfium.tgz
-          tar -xzf pdfium.tgz
-          cp "$(find . -name 'libpdfium.dylib' | head -n 1)" libpdfium.dylib
-
-      - name: Build nixobdo-pdf
-        run: cargo build --release --locked
-
-      - name: Build app bundle and DMG
-        run: |
-          chmod +x packaging/macos/build-app.sh
-          ./packaging/macos/build-app.sh \
-            target/release/nixobdo-pdf \
-            libpdfium.dylib \
-            "${{ needs.plan.outputs.version }}" \
-            dist \
-            "$(uname -m)"
-
-      - name: Upload app
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: macos-installers
-          path: dist/*.dmg
-          retention-days: 1
-
-  publish:
-    name: Publish GitHub release
-    needs: [plan, build-windows, build-ubuntu, build-macos]
-    if: needs.plan.outputs.mode == 'release'
+  publish-stable:
+    needs: [prepare, build-windows, build-ubuntu]
     runs-on: ubuntu-latest
-    environment:
-      name: release
-      url: ${{ github.server_url }}/${{ github.repository }}/releases/tag/v${{ needs.plan.outputs.version }}
-    permissions:
-      contents: write
     steps:
-      - name: Download Windows installer
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.COMMIT_SHA }}
+
+      - name: Download Windows Installer
+        uses: actions/download-artifact@v8
         with:
           name: windows-installer
           path: dist/
 
-      - name: Download Ubuntu packages
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - name: Download Ubuntu Installers
+        uses: actions/download-artifact@v8
         with:
           name: ubuntu-installers
           path: dist/
 
-      - name: Download macOS app
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
-          name: macos-installers
-          path: dist/
-
-      - name: Generate checksums
-        working-directory: dist
-        run: sha256sum * > SHA256SUMS
-
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
-        with:
-          tag_name: v${{ needs.plan.outputs.version }}
-          target_commitish: ${{ github.sha }}
-          name: Release v${{ needs.plan.outputs.version }}
-          generate_release_notes: true
+          tag_name: v${{ needs.prepare.outputs.VERSION }}
+          name: Release v${{ needs.prepare.outputs.VERSION }}
           files: dist/*
-          fail_on_unmatched_files: true
           draft: false
           prerelease: false
           make_latest: true
