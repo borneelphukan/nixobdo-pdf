@@ -1,7 +1,7 @@
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "workflow-optimization" ]
     paths-ignore:
       - 'README.md'
       - 'docs/**'
@@ -232,6 +232,9 @@ jobs:
       - name: Build nixobdo-pdf
         run: cargo build --release
 
+      - name: Install FUSE
+        run: sudo apt-get update && sudo apt-get install -y fuse fuse2
+
       - name: Build AppImage
         run: |
           mkdir -p dist
@@ -243,6 +246,9 @@ jobs:
           cp libpdfium.so AppImage/nixobdo-pdf-${VERSION}-linux-x86_64/
           cp packaging/linux/nixobdo-pdf.desktop AppImage/nixobdo-pdf-${VERSION}-linux-x86_64/
           cp packaging/linux/install.sh AppImage/nixobdo-pdf-${VERSION}-linux-x86_64/
+          
+          # Copy icon file for desktop entry
+          cp assets/logo.png AppImage/nixobdo-pdf-${VERSION}-linux-x86_64/nixobdo-pdf.png
           
           # Use appimagetool to create AppImage
           curl -sL "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -o appimagetool
