@@ -170,6 +170,10 @@ jobs:
       - name: Build nixobdo-pdf
         run: cargo build --release
 
+      - name: Verify build output
+        run: |
+          ls -la target/release/ || echo "No target/release directory found"
+
       - name: Create DMG
         run: |
           VERSION="${{ needs.prepare.outputs.VERSION }}"
