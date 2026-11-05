@@ -55,15 +55,16 @@ export function DocsDownload() {
     const tarball = release.assets.find(
       (a) => a.name.endsWith(".tar.gz"),
     );
+    const appimage = release.assets.find((a) => a.name.endsWith(".AppImage"));
     const macos = release.assets.find(
       (a) => a.name.endsWith(".dmg") || a.name.endsWith(".app"),
     );
 
-    if (!windows && !debian && !tarball && !macos) {
+    if (!windows && !debian && !tarball && !appimage && !macos) {
       return [release.assets[0]];
     }
 
-    return [windows, debian, tarball, macos].filter(
+    return [windows, debian, tarball, appimage, macos].filter(
       (a): a is GitHubAsset => a !== undefined && a !== null,
     );
   };
@@ -131,107 +132,107 @@ export function DocsDownload() {
                 <ExternalLink className="w-3 h-3 ml-0.5" />
               </a>
             </div>
-          </div>
 
-          {downloadAssets.length > 0 && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
-              {/* Windows Section */}
-              <div>
-                {downloadAssets.find((a) => a.name.endsWith(".exe") || a.name.endsWith(".msi")) && (
-                  <div className="bg-slate-950/50 border-purple-500/60 rounded-xl p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="bg-slate-800/80 p-2 rounded-lg text-purple-400">
-                        <Download className="w-5 h-5" />
+            {downloadAssets.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+                {/* Windows Section */}
+                <div>
+                  {downloadAssets.find((a) => a.name.endsWith(".exe") || a.name.endsWith(".msi")) && (
+                    <div className="bg-slate-950/50 border-purple-500/60 rounded-xl p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="bg-slate-800/80 p-2 rounded-lg text-purple-400">
+                          <Download className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-white font-semibold">Windows</h3>
+                          <p className="text-slate-400 text-sm">Windows installer</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-white font-semibold">Windows</h3>
-                        <p className="text-slate-400 text-sm">Windows installer</p>
-                      </div>
+                      <a
+                        href={downloadAssets.find((a) => a.name.endsWith(".exe") || a.name.endsWith(".msi"))!.browser_download_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full bg-purple-600/60 text-purple-400 rounded-lg py-3 px-4 text-sm font-medium hover:bg-purple-500/70 transition-colors"
+                      >
+                        Download for Windows
+                      </a>
                     </div>
-                    <a
-                      href={downloadAssets.find((a) => a.name.endsWith(".exe") || a.name.endsWith(".msi"))!.browser_download_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full bg-purple-600/60 text-purple-400 rounded-lg py-3 px-4 text-sm font-medium hover:bg-purple-500/70 transition-colors"
-                    >
-                      Download for Windows
-                    </a>
+                  )}
+                </div>
+
+                {/* Linux Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-white font-medium">Linux</h3>
+                    <span className="text-slate-500 text-xs">Package options</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Debian Package */}
+                    {downloadAssets.find((a) => a.name.endsWith(".deb")) && (
+                      <div>
+                        <div className="bg-slate-800/80 p-3 rounded-lg text-orange-400">
+                          <Download className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-white font-medium text-sm">Debian package (x86_64)</h4>
+                          <p className="text-slate-500 text-xs mt-1">Debian, Ubuntu and derivatives</p>
+                        </div>
+                      </div>
+                    )}
+                    {/* Tarball */}
+                    {downloadAssets.find((a) => a.name.endsWith(".tar.gz")) && (
+                      <div>
+                        <div className="bg-slate-800/80 p-3 rounded-lg text-green-400">
+                          <Download className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-white font-medium text-sm">x86_64</h4>
+                          <p className="text-slate-500 text-xs mt-1">Plain binaries to run anywhere</p>
+                        </div>
+                      </div>
+                    )}
+                    {/* AppImage */}
+                    {downloadAssets.find((a) => a.name.endsWith(".AppImage")) && (
+                      <div>
+                        <div className="bg-slate-800/80 p-3 rounded-lg text-green-400">
+                          <Download className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-white font-medium text-sm">AppImage (x86_64)</h4>
+                          <p className="text-slate-500 text-xs mt-1">Run as portable application on most Linux distributions</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* macOS Section */}
+                {downloadAssets.find((a) => a.name.endsWith(".dmg") || a.name.endsWith(".app")) && (
+                  <div>
+                    <div className="bg-slate-950/50 border-orange-500/60 rounded-xl p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="bg-slate-800/80 p-2 rounded-lg text-orange-400">
+                          <Download className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-white font-semibold">macOS</h3>
+                          <p className="text-slate-400 text-sm">DMG installer</p>
+                        </div>
+                      </div>
+                      <a
+                        href={downloadAssets.find((a) => a.name.endsWith(".dmg") || a.name.endsWith(".app"))!.browser_download_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full bg-orange-600/60 text-orange-400 rounded-lg py-3 px-4 text-sm font-medium hover:bg-orange-500/70 transition-colors"
+                      >
+                        Download for macOS
+                      </a>
+                    </div>
                   </div>
                 )}
               </div>
-
-              {/* Linux Section */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-white font-medium">Linux</h3>
-                  <span className="text-slate-500 text-xs">Package options</span>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Debian Package */}
-                  {downloadAssets.find((a) => a.name.endsWith(".deb")) && (
-                    <div>
-                      <div className="bg-slate-800/80 p-3 rounded-lg text-orange-400">
-                        <Download className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h4 className="text-white font-medium text-sm">Debian package (x86_64)</h4>
-                        <p className="text-slate-500 text-xs mt-1">Debian, Ubuntu and derivatives</p>
-                      </div>
-                    </div>
-                  )}
-                  {/* Tarball */}
-                  {downloadAssets.find((a) => a.name.endsWith(".tar.gz")) && (
-                    <div>
-                      <div className="bg-slate-800/80 p-3 rounded-lg text-green-400">
-                        <Download className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h4 className="text-white font-medium text-sm">x86_64</h4>
-                        <p className="text-slate-500 text-xs mt-1">Plain binaries to run anywhere</p>
-                      </div>
-                    </div>
-                  )}
-                  {/* AppImage */}
-                  {downloadAssets.find((a) => a.name.endsWith(".AppImage")) && (
-                    <div>
-                      <div className="bg-slate-800/80 p-3 rounded-lg text-green-400">
-                        <Download className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h4 className="text-white font-medium text-sm">AppImage (x86_64)</h4>
-                        <p className="text-slate-500 text-xs mt-1">Run as portable application on most Linux distributions</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* macOS Section */}
-              {downloadAssets.find((a) => a.name.endsWith(".dmg") || a.name.endsWith(".app")) && (
-                <div>
-                  <div className="bg-slate-950/50 border-orange-500/60 rounded-xl p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="bg-slate-800/80 p-2 rounded-lg text-orange-400">
-                        <Download className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="text-white font-semibold">macOS</h3>
-                        <p className="text-slate-400 text-sm">DMG installer</p>
-                      </div>
-                    </div>
-                    <a
-                      href={downloadAssets.find((a) => a.name.endsWith(".dmg") || a.name.endsWith(".app"))!.browser_download_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full bg-orange-600/60 text-orange-400 rounded-lg py-3 px-4 text-sm font-medium hover:bg-orange-500/70 transition-colors"
-                    >
-                      Download for macOS
-                    </a>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </>
       )}
 
