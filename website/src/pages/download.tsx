@@ -52,12 +52,15 @@ export function DocsDownload() {
       (a) => a.name.endsWith(".exe") || a.name.endsWith(".msi"),
     );
     const ubuntuDeb = release.assets.find((a) => a.name.endsWith(".deb"));
+    const tarball = release.assets.find(
+      (a) => a.name.endsWith(".tar.gz"),
+    );
 
-    if (!windows && !ubuntuDeb) {
+    if (!windows && !ubuntuDeb && !tarball) {
       return [release.assets[0]];
     }
 
-    return [windows, ubuntuDeb].filter(
+    return [windows, ubuntuDeb, tarball].filter(
       (a): a is GitHubAsset => a !== undefined && a !== null,
     );
   };
@@ -140,6 +143,11 @@ export function DocsDownload() {
                   platformBorderColor = "border-orange-400/60";
                   platformHoverChevron = "text-orange-500";
                   platformTitle = "Ubuntu";
+                } else if (asset.name.endsWith(".tar.gz")) {
+                  platformIconColor = "text-green-400";
+                  platformBorderColor = "border-green-400/60";
+                  platformHoverChevron = "text-green-500";
+                  platformTitle = "Tarball";
                 }
 
                 return (
