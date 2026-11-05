@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Calendar, Download, ChevronRight, ExternalLink } from 'lucide-react';
+import { Calendar, Download, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import GitHubIcon from '@mui/icons-material/GitHub';
 
@@ -22,7 +22,6 @@ interface GitHubRelease {
 
 export function DocsDownload() {
   const [latestStable, setLatestStable] = useState<GitHubRelease | null>(null);
-  const [nightlies, setNightlies] = useState<GitHubRelease[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,9 +33,6 @@ export function DocsDownload() {
 
         const stable = data.find(r => !r.prerelease);
         if (stable) setLatestStable(stable);
-
-        const prereleases = data.filter(r => r.prerelease && r.tag_name !== 'dev').slice(0, 3);
-        setNightlies(prereleases);
       } catch (error) {
         console.error('Error fetching releases:', error);
       } finally {
@@ -160,66 +156,6 @@ export function DocsDownload() {
             </div>
           )}
         </>
-      )}
-
-      {nightlies.length > 0 && (
-        <div className="mb-12">
-          <h2 className="text-2xl font-bold text-white mb-4">Nightly Updates</h2>
-          <p className="text-slate-400 mb-6">Unstable preview builds for testing new features.</p>
-          <div className="flex flex-col gap-8">
-            {nightlies.map(nightly => {
-              const nAssets = getDownloadAssets(nightly);
-              if (nAssets.length === 0) return null;
-
-              return (
-                <div key={nightly.id}>
-                  <h3 className="text-white font-medium flex items-center gap-2 mb-3">
-                    {nightly.tag_name}
-                    <span className="text-xs bg-slate-500/20 text-slate-400 px-2 py-0.5 rounded-full border border-slate-500/20">Nightly</span>
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {nAssets.map(nAsset => {
-                      let platformTag = "Windows";
-                      let iconColor = "text-purple-400";
-                      let borderColor = "border-purple-500/30";
-                      let hoverColor = "hover:border-purple-500/60";
-
-                      if (nAsset.name.endsWith('.deb')) {
-                        platformTag = "Ubuntu";
-                        iconColor = "text-orange-400";
-                        borderColor = "border-orange-500/30";
-                        hoverColor = "hover:border-orange-500/60";
-                      }
-
-                      return (
-                        <a
-                          key={`${nightly.id}-${nAsset.name}`}
-                          href={nAsset.browser_download_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`group flex items-center justify-between gap-4 bg-slate-900/50 border ${borderColor} rounded-xl p-4 transition-all ${hoverColor} hover:bg-slate-800/80`}
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className={`bg-slate-800/80 p-2.5 rounded-lg ${iconColor}`}>
-                              <Download className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <div className="text-white font-medium">{platformTag}</div>
-                              <div className="text-slate-500 text-sm mt-0.5">Version {nightly.tag_name}</div>
-                            </div>
-                          </div>
-                          <div className="pr-2">
-                            <ChevronRight className={`w-5 h-5 ${iconColor} opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all`} />
-                          </div>
-                        </a>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
       )}
 
       <h2 className="text-2xl font-bold text-white mb-4 mt-8">Recent Changes</h2>
