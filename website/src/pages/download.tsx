@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import { Calendar, Download, ExternalLink } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import GitHubIcon from '@mui/icons-material/GitHub';
+import { useEffect, useState } from "react";
+import { Calendar, ChevronRight, Download, ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
+import GitHubIcon from "@mui/icons-material/GitHub";
 
 interface GitHubAsset {
   name: string;
@@ -27,14 +27,16 @@ export function DocsDownload() {
   useEffect(() => {
     async function fetchReleases() {
       try {
-        const response = await fetch('https://api.github.com/repos/borneelphukan/nixobdo-pdf/releases');
-        if (!response.ok) throw new Error('Failed to fetch releases');
+        const response = await fetch(
+          "https://api.github.com/repos/borneelphukan/nixobdo-pdf/releases",
+        );
+        if (!response.ok) throw new Error("Failed to fetch releases");
         const data: GitHubRelease[] = await response.json();
 
-        const stable = data.find(r => !r.prerelease);
+        const stable = data.find((r) => !r.prerelease);
         if (stable) setLatestStable(stable);
       } catch (error) {
-        console.error('Error fetching releases:', error);
+        console.error("Error fetching releases:", error);
       } finally {
         setLoading(false);
       }
@@ -46,18 +48,26 @@ export function DocsDownload() {
   const getDownloadAssets = (release: GitHubRelease): GitHubAsset[] => {
     if (!release.assets || release.assets.length === 0) return [];
 
-    const windows = release.assets.find(a => a.name.endsWith('.exe') || a.name.endsWith('.msi'));
-    const ubuntuDeb = release.assets.find(a => a.name.endsWith('.deb'));
+    const windows = release.assets.find(
+      (a) => a.name.endsWith(".exe") || a.name.endsWith(".msi"),
+    );
+    const ubuntuDeb = release.assets.find((a) => a.name.endsWith(".deb"));
 
     if (!windows && !ubuntuDeb) {
       return [release.assets[0]];
     }
 
-    return [windows, ubuntuDeb].filter((a): a is GitHubAsset => a !== undefined && a !== null);
+    return [windows, ubuntuDeb].filter(
+      (a): a is GitHubAsset => a !== undefined && a !== null,
+    );
   };
 
   const formatDate = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'numeric', day: 'numeric' };
+    const options: Intl.DateTimeFormatOptions = {
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+    };
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
@@ -74,7 +84,9 @@ export function DocsDownload() {
   }
 
   const downloadAssets = latestStable ? getDownloadAssets(latestStable) : [];
-  const totalDownloads = latestStable ? latestStable.assets.reduce((acc, asset) => acc + asset.download_count, 0) : 0;
+  const totalDownloads = latestStable
+    ? latestStable.assets.reduce((acc, asset) => acc + asset.download_count, 0)
+    : 0;
 
   return (
     <div className="max-w-4xl animate-in fade-in duration-500">
@@ -87,7 +99,9 @@ export function DocsDownload() {
       ) : (
         <>
           <div className="mb-8">
-            <h2 className="text-3xl font-extrabold text-white mb-4">{latestStable.tag_name}</h2>
+            <h2 className="text-3xl font-extrabold text-white mb-4">
+              {latestStable.tag_name}
+            </h2>
 
             <div className="flex flex-wrap items-center gap-3 text-slate-400 text-sm">
               <div className="flex items-center gap-1.5">
@@ -115,13 +129,13 @@ export function DocsDownload() {
 
           {downloadAssets.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
-              {downloadAssets.map(asset => {
+              {downloadAssets.map((asset) => {
                 let platformIconColor = "text-purple-400";
                 let platformBorderColor = "border-purple-400/60";
                 let platformHoverChevron = "text-purple-500";
                 let platformTitle = "Windows";
 
-                if (asset.name.endsWith('.deb')) {
+                if (asset.name.endsWith(".deb")) {
                   platformIconColor = "text-orange-400";
                   platformBorderColor = "border-orange-400/60";
                   platformHoverChevron = "text-orange-500";
@@ -137,18 +151,24 @@ export function DocsDownload() {
                     className={`group flex items-center justify-between bg-slate-950/50 border ${platformBorderColor} rounded-xl p-4 transition-all hover:bg-slate-900/80`}
                   >
                     <div className="flex items-center gap-4">
-                      <div className={`bg-slate-800/80 p-3 rounded-lg ${platformIconColor}`}>
+                      <div
+                        className={`bg-slate-800/80 p-3 rounded-lg ${platformIconColor}`}
+                      >
                         <Download className="w-6 h-6" />
                       </div>
                       <div>
-                        <h3 className="text-white font-semibold text-lg">{platformTitle}</h3>
+                        <h3 className="text-white font-semibold text-lg">
+                          {platformTitle}
+                        </h3>
                         <p className="text-slate-500 text-sm mt-0.5">
                           Version {latestStable.tag_name}
                         </p>
                       </div>
                     </div>
                     <div className="pr-2">
-                      <ChevronRight className={`w-6 h-6 ${platformHoverChevron} group-hover:translate-x-1 transition-transform`} />
+                      <ChevronRight
+                        className={`w-6 h-6 ${platformHoverChevron} group-hover:translate-x-1 transition-transform`}
+                      />
                     </div>
                   </a>
                 );
@@ -158,12 +178,21 @@ export function DocsDownload() {
         </>
       )}
 
-      <h2 className="text-2xl font-bold text-white mb-4 mt-8">Recent Changes</h2>
-      <p className="text-slate-400 mb-6">Check out the latest improvements and bug fixes.</p>
+      <h2 className="text-2xl font-bold text-white mb-4 mt-8">
+        Recent Changes
+      </h2>
+      <p className="text-slate-400 mb-6">
+        Check out the latest improvements and bug fixes.
+      </p>
 
-      <Link to="/docs/changelog" className="inline-flex items-center text-indigo-400 hover:text-indigo-300 font-medium transition group">
+      <Link
+        to="/docs/changelog"
+        className="inline-flex items-center text-indigo-400 hover:text-indigo-300 font-medium transition group"
+      >
         View Full Changelog
-        <span className="ml-1 transition-transform group-hover:translate-x-1">→</span>
+        <span className="ml-1 transition-transform group-hover:translate-x-1">
+          →
+        </span>
       </Link>
     </div>
   );
