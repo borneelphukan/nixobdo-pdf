@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Calendar, ChevronRight, Download, ExternalLink } from "lucide-react";
+import { Calendar, Download, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import GitHubIcon from "@mui/icons-material/GitHub";
 
@@ -51,16 +51,20 @@ export function DocsDownload() {
     const windows = release.assets.find(
       (a) => a.name.endsWith(".exe") || a.name.endsWith(".msi"),
     );
-    const ubuntuDeb = release.assets.find((a) => a.name.endsWith(".deb"));
+    const debian = release.assets.find((a) => a.name.endsWith(".deb"));
     const tarball = release.assets.find(
       (a) => a.name.endsWith(".tar.gz"),
     );
+    const appimage = release.assets.find((a) => a.name.endsWith(".AppImage"));
+    const macos = release.assets.find(
+      (a) => a.name.endsWith(".dmg") || a.name.endsWith(".app"),
+    );
 
-    if (!windows && !ubuntuDeb && !tarball) {
+    if (!windows && !debian && !tarball && !appimage && !macos) {
       return [release.assets[0]];
     }
 
-    return [windows, ubuntuDeb, tarball].filter(
+    return [windows, debian, tarball, appimage, macos].filter(
       (a): a is GitHubAsset => a !== undefined && a !== null,
     );
   };
@@ -128,61 +132,107 @@ export function DocsDownload() {
                 <ExternalLink className="w-3 h-3 ml-0.5" />
               </a>
             </div>
-          </div>
 
-          {downloadAssets.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
-              {downloadAssets.map((asset) => {
-                let platformIconColor = "text-purple-400";
-                let platformBorderColor = "border-purple-400/60";
-                let platformHoverChevron = "text-purple-500";
-                let platformTitle = "Windows";
-
-                if (asset.name.endsWith(".deb")) {
-                  platformIconColor = "text-orange-400";
-                  platformBorderColor = "border-orange-400/60";
-                  platformHoverChevron = "text-orange-500";
-                  platformTitle = "Ubuntu";
-                } else if (asset.name.endsWith(".tar.gz")) {
-                  platformIconColor = "text-green-400";
-                  platformBorderColor = "border-green-400/60";
-                  platformHoverChevron = "text-green-500";
-                  platformTitle = "Tarball";
-                }
-
-                return (
-                  <a
-                    key={asset.name}
-                    href={asset.browser_download_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`group flex items-center justify-between bg-slate-950/50 border ${platformBorderColor} rounded-xl p-4 transition-all hover:bg-slate-900/80`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div
-                        className={`bg-slate-800/80 p-3 rounded-lg ${platformIconColor}`}
+            {downloadAssets.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+                {/* Windows Section */}
+                <div>
+                  {downloadAssets.find((a) => a.name.endsWith(".exe") || a.name.endsWith(".msi")) && (
+                    <div className="bg-slate-950/50 border-purple-500/60 rounded-xl p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="bg-slate-800/80 p-2 rounded-lg text-purple-400">
+                          <Download className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-white font-semibold">Windows</h3>
+                          <p className="text-slate-400 text-sm">Windows installer</p>
+                        </div>
+                      </div>
+                      <a
+                        href={downloadAssets.find((a) => a.name.endsWith(".exe") || a.name.endsWith(".msi"))!.browser_download_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full bg-purple-600/60 text-purple-400 rounded-lg py-3 px-4 text-sm font-medium hover:bg-purple-500/70 transition-colors"
                       >
-                        <Download className="w-6 h-6" />
-                      </div>
+                        Download for Windows
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {/* Linux Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-white font-medium">Linux</h3>
+                    <span className="text-slate-500 text-xs">Package options</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Debian Package */}
+                    {downloadAssets.find((a) => a.name.endsWith(".deb")) && (
                       <div>
-                        <h3 className="text-white font-semibold text-lg">
-                          {platformTitle}
-                        </h3>
-                        <p className="text-slate-500 text-sm mt-0.5">
-                          Version {latestStable.tag_name}
-                        </p>
+                        <div className="bg-slate-800/80 p-3 rounded-lg text-orange-400">
+                          <Download className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-white font-medium text-sm">Debian package (x86_64)</h4>
+                          <p className="text-slate-500 text-xs mt-1">Debian, Ubuntu and derivatives</p>
+                        </div>
                       </div>
+                    )}
+                    {/* Tarball */}
+                    {downloadAssets.find((a) => a.name.endsWith(".tar.gz")) && (
+                      <div>
+                        <div className="bg-slate-800/80 p-3 rounded-lg text-green-400">
+                          <Download className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-white font-medium text-sm">x86_64</h4>
+                          <p className="text-slate-500 text-xs mt-1">Plain binaries to run anywhere</p>
+                        </div>
+                      </div>
+                    )}
+                    {/* AppImage */}
+                    {downloadAssets.find((a) => a.name.endsWith(".AppImage")) && (
+                      <div>
+                        <div className="bg-slate-800/80 p-3 rounded-lg text-green-400">
+                          <Download className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-white font-medium text-sm">AppImage (x86_64)</h4>
+                          <p className="text-slate-500 text-xs mt-1">Run as portable application on most Linux distributions</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* macOS Section */}
+                {downloadAssets.find((a) => a.name.endsWith(".dmg") || a.name.endsWith(".app")) && (
+                  <div>
+                    <div className="bg-slate-950/50 border-orange-500/60 rounded-xl p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="bg-slate-800/80 p-2 rounded-lg text-orange-400">
+                          <Download className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-white font-semibold">macOS</h3>
+                          <p className="text-slate-400 text-sm">DMG installer</p>
+                        </div>
+                      </div>
+                      <a
+                        href={downloadAssets.find((a) => a.name.endsWith(".dmg") || a.name.endsWith(".app"))!.browser_download_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full bg-orange-600/60 text-orange-400 rounded-lg py-3 px-4 text-sm font-medium hover:bg-orange-500/70 transition-colors"
+                      >
+                        Download for macOS
+                      </a>
                     </div>
-                    <div className="pr-2">
-                      <ChevronRight
-                        className={`w-6 h-6 ${platformHoverChevron} group-hover:translate-x-1 transition-transform`}
-                      />
-                    </div>
-                  </a>
-                );
-              })}
-            </div>
-          )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </>
       )}
 

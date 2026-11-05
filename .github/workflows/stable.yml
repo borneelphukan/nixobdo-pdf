@@ -196,6 +196,60 @@ jobs:
           path: dist/*
           retention-days: 1
 
+  appimage-x86_64:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.COMMIT_SHA }}
+
+      - name: Install ImageMagick
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev pkg-config
+
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        with:
+          toolchain: stable
+
+      - name: Download and extract PDFium
+        run: |
+          curl -fsSL https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-linux-x64.tgz -o pdfium.tgz
+          tar -xzf pdfium.tgz
+          cp $(find . -name "libpdfium.so" | head -n 1) libpdfium.so
+
+      - name: Build nixobdo-pdf
+        run: cargo build --release
+
+      - name: Build AppImage
+        run: |
+          mkdir -p dist
+          VERSION="${{ needs.prepare.outputs.VERSION }}"
+          
+          # Create AppDir structure
+          mkdir -p "AppImage/nixobdo-pdf-${VERSION}-linux-x86_64"
+          cp target/release/nixobdo-pdf AppImage/nixobdo-pdf-${VERSION}-linux-x86_64/
+          cp libpdfium.so AppImage/nixobdo-pdf-${VERSION}-linux-x86_64/
+          cp packaging/linux/nixobdo-pdf.desktop AppImage/nixobdo-pdf-${VERSION}-linux-x86_64/
+          cp packaging/linux/install.sh AppImage/nixobdo-pdf-${VERSION}-linux-x86_64/
+          
+          # Use appimagetool to create AppImage
+          curl -sL "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -o appimagetool
+          chmod +x appimagetool
+          ./appimagetool AppImage/nixobdo-pdf-${VERSION}-linux-x86_64 "dist/nixobdo-pdf-${VERSION}-linux-x86_64.AppImage"
+
+      - name: Upload AppImage Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: appimage-installer
+          path: dist/*
+          retention-days: 1
+
   build-macos:
     needs: prepare
     runs-on: macos-latest
@@ -243,7 +297,7 @@ jobs:
           retention-days: 1
 
   publish-stable:
-    needs: [prepare, windows_64, debian-x86_64, tarball-x86_64, build-macos]
+    needs: [prepare, windows_64, debian-x86_64, tarball-x86_64, appimage-x86_64, build-macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -266,6 +320,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: tarball-installer
+          path: dist/
+
+      - name: Download AppImage Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: appimage-installer
           path: dist/
 
       - name: Download macOS DMG
