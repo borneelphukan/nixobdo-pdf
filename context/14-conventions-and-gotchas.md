@@ -32,7 +32,7 @@ future AI agents (and humans) should be aware of when working with this codebase
 
 | Failed task | UI state after failure |
 |---|---|
-| `SaveSignature` | `is_saving_signature` remains `true`; `ExportComplete { success: false }` is sent but the UI does not clear it. User must toggle "Add Signature" off and on to reset. |
+| `SaveSignature` | `is_saving_signature` remains `true`; `ExportComplete { success: false }` is sent but the UI does not clear it. User must toggle “Add Signature” off and on to reset. |
 | `SaveRotation` | `is_saving_rotation` remains `true`; same leak as above. |
 | `SaveAnnotations` | `is_saving_annotations` is **always** cleared (success or failure). UI correctly resets `is_annotation_mode = false` and clears pending/redo stacks. |
 
@@ -40,7 +40,7 @@ future AI agents (and humans) should be aware of when working with this codebase
 
 - The update check parses the GitHub Releases JSON and searches for `"tag_name"`.
 - Comparison is a **plain string inequality** against the current version; it does
-  **not** use semver parsing. This means `v0.1.10` would be considered "older"
+  **not** use semver parsing. This means `v0.1.10` would be considered “older”
   than `v0.1.9` if compared lexicographically, which happens to work for the
   current zero‑padded version scheme but is technically incorrect for general
   semver.
@@ -114,7 +114,7 @@ red warning label in the toolbar. No PDF operations work without PDFium.
 - `page_chars` retains whitespace characters (used for copy), but they are
   ignored when painting selection/annotation rectangles.
 
-## 12. Search‑Only Text Layer
+## 12. Search-Only Text Layer
 
 - Search scans `page_chars` for contiguous lowercase character matches.
 - **No regex, no diacritic folding, no whole‑word option.**
@@ -157,17 +157,3 @@ underlining/strikethrough/redact/text appear on top of everything.
 - `accessed.txt` mtime is what `clean_cache()` checks against the 7‑day TTL.
 - If `accessed.txt` exists but is stale (old mtime), the directory will be
   deleted during cleanup even if the PNG files inside are still valid.
-
-## 16. `build.rs` GIT_BRANCH Env
-
-- `build.rs` sets `GIT_BRANCH` env variable for the Inno Setup script.
-- The value is derived from `std::env::var("CARGO_CHANGED_BRANCH")` or similar
-  git introspection.
-- This is used by the Windows installer to potentially conditionally include
-  branch-specific information.
-
-## 17. `website/vite.config.ts` Base Path
-
-- The Vite config has `base: '/nixobdo-pdf'` which prefixes all routes.
-- This means the site deploys to `borneelphukan.github.io/nixobdo-pdf/`.
-- Pushes to `dev` branch build the site but do NOT deploy to GitHub Pages.

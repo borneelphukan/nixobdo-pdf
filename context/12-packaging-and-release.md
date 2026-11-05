@@ -43,7 +43,7 @@ Three sub‑scripts under `packaging/linux/`:
 
 | Script | Output |
 |---|---|
-| `build-deb.sh` | `.deb` package for amd64, depends on `libc6, libgtk-3-0 | libgtk-3-0t64, libxcb1, libxcb-render0, libxcb-shape0, libxcb-xfixes0, libxcb-xfixes0, libxkbcommon0`. |
+| `build-deb.sh` | `.deb` package for amd64, depends on `libc6, libgtk-3-0 | libgtk-3-0t64, libxcb1, libxcb-render0, libxcb-shape0, libxcb-xfixes0, libxkbcommon0`. |
 | `install.sh` | Portable tarball installer; extracts to `opt/` and creates a `.desktop` entry. |
 | `uninstall.sh` | Removes the tarball, `.desktop`, and resets icon cache. |
 

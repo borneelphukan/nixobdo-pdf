@@ -4,7 +4,7 @@
 
 ```text
 nixobdo-pdf/
-├ .github/
+├── .github/
 │   ├── CODEOWNERS                  # Everything owned by @borneelphukan
 │   ├── dependabot.yml              # Weekly cargo + actions updates into dev
 │   └── workflows/
@@ -13,7 +13,7 @@ nixobdo-pdf/
 │       ├── stable.yml              # Push to main -> bump PR or stable release
 │       ├── website.yml             # PR build/lint for website changes
 │       └── deploy.yml              # GitHub Pages deploy from main
-├ assets/
+├── assets/
 │   ├── cover.png                   # README banner
 │   ├── logo.png                    # App icon (also converted to ICO in CI)
 │   ├── Screenshot-1.png            # README screenshot
@@ -31,10 +31,10 @@ nixobdo-pdf/
 │       ├── rotate_right.svg
 │       ├── github.svg
 │       └── website.svg
-├ lib/
+├── lib/
 │   ├── libpdfium.dylib             # macOS PDFium binary shipped in repo
 │   └── pdfium.dll                  # Windows PDFium binary shipped in repo
-├ packaging/
+├── packaging/
 │   ├── linux/
 │   │   ├── build-deb.sh            # Builds the .deb staging tree
 │   │   ├── install.sh              # Portable tarball installer
@@ -42,40 +42,40 @@ nixobdo-pdf/
 │   │   └── nixobdo-pdf.desktop     # XDG desktop entry
 │   └── macos/
 │       └── build-app.sh            # .app bundle + Info.plist + icns + DMG
-├ scripts/
+├── scripts/
 │   ├── release_plan.py             # Decides bump/release/skip for stable CI
 │   └── bump_version.py             # Updates Cargo.toml, Cargo.lock, setup.iss, CHANGELOG
-├ scratch/
+├── scratch/
 │   ├── nightly.yml                 # OBSOLETE workflow draft (do not use)
 │   └── stable.yml                  # OBSOLETE workflow draft (do not use)
-├ src/                            # Rust application (see below)
-├ website/                        # React/Vite documentation + marketing site
-├ Cargo.toml / Cargo.lock         # Rust manifest / locked dependency graph
-├ build.rs                        # Windows icon resources + GIT_BRANCH env
-├ rust-toolchain.toml             # stable + clippy + rustfmt
-├ setup.iss                       # Inno Setup Windows installer script
-├ AGENTS.md                       # OLD agent notes; prefer context/
-├ README.md                       # User-facing quick start
-├ CHANGELOG.md                    # Release history
-└ LICENSE                         # MIT
+├── src/                            # Rust application (see below)
+├── website/                        # React/Vite documentation + marketing site
+├── Cargo.toml / Cargo.lock         # Rust manifest / locked dependency graph
+├── build.rs                        # Windows icon resources + GIT_BRANCH env
+├── rust-toolchain.toml             # stable + clippy + rustfmt
+├── setup.iss                       # Inno Setup Windows installer script
+├── AGENTS.md                       # OLD agent notes; prefer context/
+├── README.md                       # User-facing quick start
+├── CHANGELOG.md                    # Release history
+└── LICENSE                         # MIT
 ```
 
 ### `src/` module map
 
 ```text
 src/
-├ main.rs                         # Binary entry, window/theme setup, CLI file arg
-├ document.rs                     # PdfDocumentState, worker messages, annotation types,
+├── main.rs                         # Binary entry, window/theme setup, CLI file arg
+├── document.rs                     # PdfDocumentState, worker messages, annotation types,
 │                                   # layout enum, text/link extraction, cache, PDFium render
-├ app/
+├── app/
 │   ├── mod.rs                      # NixobdoPdfApp struct + Default construction
 │   ├── eframe_app.rs               # eframe::App::ui frame orchestration
 │   ├── state.rs                    # Tab lifecycle, copy/select text, settings, texture lazy-load
 │   └── messages.rs                 # Consumer for every PdfWorkerMessage
-├ worker/
+├── worker/
 │   ├── mod.rs                      # Task enum, worker thread, PDF saves, update, LLM
 │   └── export.rs                   # DOCX / DOC(RTF) / PNG / JPEG export
-└ ui/
+└── ui/
     ├── mod.rs                      # Module exports
     ├── menu_bar.rs                 # File/Edit/View/AI/Help menus
     ├── tabs.rs                     # Tab bar and close buttons
@@ -133,11 +133,11 @@ src/
 ```text
 main
  └─ app
-      ├─ document  (types + PDF/cache)
-      ├─ worker    (task enum + execution; re-exports ExportFormat)
-      └─ ui
-          ├─ (calls NixobdoPdfApp methods/fields, document types, worker tasks)
-          └─ dialogs (same)
+     ├─ document  (types + PDF/cache)
+     ├─ worker    (task enum + execution; re-exports ExportFormat)
+     └─ ui
+         ├─ (calls NixobdoPdfApp methods/fields, document types, worker tasks)
+         └─ dialogs (same)
 
 document ──► worker sends PdfWorkerMessage
 worker   ──► document types + app::ChatMessage
@@ -155,7 +155,7 @@ There is a deliberate two-way type dependency between `app` and `worker` (`worke
 If you are changing behaviour, these are the files most likely to need edits:
 
 | File | Approx. lines | Why it matters |
-|---|---|---|
+|---|---:|---|
 | `src/ui/viewer/central_panel.rs` | ~1,170 | Largest file; all page drawing and interaction |
 | `src/worker/mod.rs` | ~910 | All background side effects |
 | `src/document.rs` | ~640 | PDF render/cache and message types |
@@ -166,7 +166,7 @@ If you are changing behaviour, these are the files most likely to need edits:
 ## Notes for agents
 
 - `src/ui/mod.rs` only declares modules; each module adds `impl NixobdoPdfApp` methods. There are no separate widget structs for most UI.
-- `src/ui/dialogs/mod.rs` fixes the dialog dispatch order: rename → export → about → update → export progress → custom colour → LLM summary → password.
+- `src/ui/dialogs/mod.rs` fixes the dialog dispatch order: rename → export → about → update → export progress → custom colour → LLM settings → AI summary → password.
 - `assets/logo.ico` is **not** committed. CI generates it with ImageMagick before Windows compilation; `build.rs` safely skips resources if absent.
 - `website/.vite/` is a local Vite cache, not application source.
 - `scratch/` is dead weight and diverges from `.github/workflows/`; never copy from it.

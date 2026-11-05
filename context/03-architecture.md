@@ -30,7 +30,7 @@
 Key properties:
 
 - The `Pdfium` instance is created and used **only on the worker thread**. `pdfium-render`'s bindings are not shared with the UI thread.
-- `PdfWorkerTask` is a single-consumer `std::sync::mpsc` queue. Loads, exports, and saves are therefore serialised. A large export blocks subsequent page loads and saves.
+- `PdfWorkerTask` is a single-consumer `std::sync::mpsc` queue. Loads, exports, and saves are therefore serialised. A long export blocks subsequent page loads and saves.
 - `PdfWorkerMessage` is also an `mpsc` channel. The UI drains it once per frame with `try_recv()` until empty.
 - `egui::Context` clones are sent with tasks so background code can call `request_repaint()` when data is ready or progress changes.
 - `egui::TextureHandle` creation happens **only on the UI thread**, inside `process_messages`, using `ui.ctx().load_texture(...)`.
@@ -68,7 +68,7 @@ Order per frame:
 6. **Global shortcuts**:
    - `Ctrl/Cmd+F` requests focus on the search text field (`Id::unique("search_bar")`).
    - `Escape` leaves fullscreen.
-   - Fullscreen shows a 3-second "click Esc" hint.
+   - Fullscreen shows a 3-second “click Esc” hint.
 7. **Fullscreen gate**: if not fullscreen, render `ui_menu_bar` → `ui_tabs` → `ui_toolbar`.
 8. **Dialogs**: `ui_dialogs`, which dispatches rename, export, about, update, export progress, custom colour, LLM settings, AI summary, password.
 9. **AI panel**: `ui_chatbot` (right `Panel`) when not fullscreen.
@@ -145,7 +145,7 @@ Duplicate detection is by exact `PathBuf`, not canonical path. Opening the same 
 
 - `PasswordRequired` / `IncorrectPassword` → open `password_prompt`; the tab stays loading.
 - Missing path errors → native warning and remove the tab.
-- Other PDFium errors → native "could not open/damaged" dialog and remove the tab.
+- Other PDFium errors → native “could not open/damaged” dialog and remove the tab.
 
 The `PdfDocumentState.error` field exists and `central_panel` can render it, but `messages.rs` does **not** populate it in the current code; load failures generally close the tab instead.
 
@@ -200,26 +200,13 @@ Path: `dirs::cache_dir()/nixobdo-pdf-cache/<hash>/`
 
 ```text
 <hash>/
-├ accessed.txt        # touched on cache use; drives TTL cleanup
-├ metadata.bin        # bincode (page_count, texts, chars, links, sizes)
-├ page_0.png ...      # transparent-background full page renders
-└── thumb_0.png ...   # 300 px wide thumbnails
+├── accessed.txt        # touched on cache use; drives TTL cleanup
+├── metadata.bin        # bincode (page_count, texts, chars, links, sizes)
+├── page_0.png ...      # transparent-background full page renders
+└── thumb_0.png ...     # 300 px wide thumbnails
 ```
 
-The hash is `DefaultHasher` over the path, file length, and mtime seconds. See [05-pdf-pipeline.md](05-pdf-pipeline.md) for the exact cache protocol.
-
-### Cleanup
-
-`clean_cache()` runs in a detached thread at startup:
-
-- deletes any subdirectory whose `accessed.txt` (or directory) mtime is older than **7 days**;
-- sums the remaining directories and, if total size > **400 MB**, deletes oldest-accessed directories first until under the limit.
-
-`accessed.txt` is created on a full cached load and touched on a successful cache hit. It is not updated on every page read.
-
-### Cache bypass
-
-Password-protected PDFs set `use_cache = false`; no cache files are read or written. All pages are delivered with full images, and `manage_textures` returns early (so pages stay resident).
+The hash is `DefaultHasher` over the path, file length, and modification time in **seconds**. See [05-pdf-pipeline.md](05-pdf-pipeline.md) for the exact cache protocol.
 
 ## 8. Why the architecture looks like this
 

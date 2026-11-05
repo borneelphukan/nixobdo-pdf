@@ -37,7 +37,7 @@ it, including annotation, signature, AI, and export workflows.
   maps screen point → nearest char index. During drag, `selection_end` updates
   for whatever page the pointer is over (multi‑page selections work).
 - **On release:** `is_selecting` becomes false. If `is_annotation_mode` is true,
-  the selection rects are converted into annotation rects (highlight/underline/etc.)
+  the selection is converted into annotation rects (highlight/underline/etc.)
   based on the active tool.
 - **`Ctrl/Cmd+A`** selects from `(0,0)` to the last char of the last page; gated
   on `!egui_wants_keyboard_input()`.
@@ -113,8 +113,8 @@ presses the annotation button in the toolbar). The system tracks:
 ### Saving annotations
 
 - When the user clicks **Save** in the annotation toolbar, a confirmation dialog
-  appears ("Annotation in a document is permanent. Are you sure you want to
-  annotate the document?").
+  appears (“Annotation in a document is permanent. Are you sure you want to
+  annotate the document?”).
 - On Yes, `is_saving_annotations = true` and `SaveAnnotations` task is sent to
   the worker.
 - **Worker:** iterates actions, fetches the page, converts normalised rects to PDF
@@ -125,7 +125,7 @@ presses the annotation button in the toolbar). The system tracks:
   the document (releases Windows lock), then retries copying over the original up
   to 10 times with 300 ms sleeps.
 - On success: sends `AnnotationsSaved`; UI resets `is_annotation_mode = false`,
-  clears pending/redo annotations, shows toast "Annotations saved successfully".
+  clears pending/redo annotations, shows toast “Annotations saved successfully”.
 - On failure: sends `ExportComplete { success: false }`; UI shows toast with
   error message. Note: `is_saving_annotations` is cleared but
   `is_saving_signature`/`is_saving_rotation` can remain stuck if their saves
@@ -134,7 +134,7 @@ presses the annotation button in the toolbar). The system tracks:
 ## 7. Digital Signatures
 
 - **Add Signature** (`Edit → Add Signature`): file picker for PNG/JPG. Image
-  loaded, texture created, user enters "placing" mode. Signature can be dragged
+  loaded, texture created, user enters “placing” mode. Signature can be dragged
   and resized by corner handle.
 - **Save:** triggered by `Ctrl+S` (code checks `modifiers.ctrl` only, not
   `modifiers.command`). The worker embeds the image as a `PdfPageImageObject`
@@ -145,11 +145,11 @@ presses the annotation button in the toolbar). The system tracks:
   `is_placing_signature = false`, `is_saving_signature = false`, reloads PDF.
 - **Failure mode:** if the save fails, `ExportComplete { success: false }` is sent
   but `is_saving_signature` can remain `true` (the UI does not automatically
-  clear it). The user must manually toggle "Add Signature" off and on to reset.
+  clear it). The user must manually toggle “Add Signature” off and on to reset.
 
 ## 8. Export
 
-Three export formats, dispatched from the toolbar's **Export…** dialog:
+Three export formats, dispatched from the toolbar’s **Export…** dialog:
 
 | Format | Implementation |
 |---|---|
@@ -161,9 +161,9 @@ Three export formats, dispatched from the toolbar's **Export…** dialog:
 | **DOC (RTF)** | Text + optional images as RTF. Uses custom RTF generation. |
 
 - Export dialog (`src/ui/dialogs/export.rs`) lets the user set a file name,
-  choose format, and optionally "Include images".
+  choose format, and optionally “Include images”.
 - Cancellation: `export_cancel_flag: Arc<AtomicBool>` checked each page in the
-  worker; cancels with error "Export cancelled by user."
+  worker; cancels with error “Export cancelled by user.”
 - Progress: `export_progress: Option<f32>` (0.0–1.0) displayed in a modal dialog.
 
 ## 9. AI Summaries and Chat
@@ -189,7 +189,7 @@ Three export formats, dispatched from the toolbar's **Export…** dialog:
 
 - Triggered from `AI → Summarize with AI` menu. Gathers all page text via
   `tab.page_texts.join("\n")`.
-- Sends `PdfWorkerTask::AiSummarize { is_chatbot: false, messages, endpoint_url, model, api_key, ctx }`.
+- Sends `AiSummarize` task with the full text, endpoint, model, and API key.
 - On success: stores `ai_summary_full_text`, clears `ai_summary_text`, shows
   toast.
 - On failure: stores `ai_summary_error`.
@@ -202,6 +202,6 @@ Three export formats, dispatched from the toolbar's **Export…** dialog:
 - User types in a send field; `send_msg` is set when the user presses Enter.
 - Messages stored per‑session; on successful reply the assistant message is
   pushed and `save_settings()` is called.
-- If LLM is not configured, shows "No LLM Service Available" with "Open Settings"
+- If LLM is not configured, shows “No LLM Service Available” with “Open Settings”
   button.
-- If no document open, shows "No Document Opened".
+- If no document open, shows “No Document Opened”.

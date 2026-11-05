@@ -11,6 +11,7 @@ Native process
 │  eframe event loop
 │  NixobdoPdfApp (all UI state, egui textures)
 │  └─ task_tx → msg_rx (mpsc channels)
+│
 └─ Worker thread (one, started in Default)
    owns Pdfium; serialises Load/Export/Save*
    └─ short-lived sub‑threads:
@@ -65,7 +66,7 @@ update checks and AI calls.
 | Task | Panic protection |
 |---|---|
 | `Export` and `SaveAnnotations` | Wrapped in `std::panic::catch_unwind`. A panic becomes a failure message sent via `ExportComplete` / `AnnotationsSaved`. |
-| `SaveSignature` and `SaveRotation` | **No** `catch_unwind`. If the worker thread panics, the UI loses the ability to save signatures/rotations until restarted. |
+| `SaveSignature` and `SaveRotation` | **No** `catch_unwind`. If the thread panics, the worker thread dies and the UI loses the ability to save signatures/rotations until restarted. |
 | `CheckUpdate`, `DownloadUpdate`, `AiSummarize` | Sub‑threads; if they panic, the message channel simply gets a broken sender; the UI shows a toast or falls back to last known state. |
 
 ### `SaveAnnotations` specifically
@@ -85,10 +86,10 @@ update checks and AI calls.
 - **No retry logic.** Saves directly to the original path via a single
   `pdfium-render` call.
 - If the original file is locked (e.g. by another process on Windows), the save
-  may silently fail or corrupt the PDF. No retry or fallback is performed.
+  may silently fail or corrupt the file. The UI does not automatically retry.
 - **Bug:** On failure, `ExportComplete { success: false }` is sent, but
   `is_saving_signature` or `is_saving_rotation` can remain `true` (the UI does
-  not clear them). The user must toggle "Add Signature" or "Rotate PDF" off and
+  not clear them). The user must toggle “Add Signature” or “Rotate PDF” off and
   on to reset the flags.
 
 ## 5. Update Checks and Downloads
@@ -103,7 +104,7 @@ update checks and AI calls.
   `UpdateDownloadProgress`.
 - **`UpdateDownloadComplete`:** if the downloaded path is valid, spawns the
   installer (`std::process::Command::new(&path).spawn()`) and then exits the app
-  (`std::process::exit(0)`). On failure, shows toast "Download failed: {err}".
+  (`std::process::exit(0)`). On failure, shows toast “Download failed: {err}”.
 
 ## 6. Cache Cleanup (detached thread)
 

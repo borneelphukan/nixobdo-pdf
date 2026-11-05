@@ -46,6 +46,7 @@ pub rename_window_open: bool,
 pub rename_buffer: String,
 pub focus_rename_input: bool,
 pub export_window_open: bool,
+pub export_name: String,
 pub export_format: ExportFormat,            // Doc | Docx | Png | Jpeg
 pub export_location: Option<PathBuf>,
 ```
@@ -206,7 +207,7 @@ pub enum PdfLinkTarget {
 }
 
 pub struct PdfLinkInfo {
-    pub left: f32, pub right: pub top: f32, pub bottom: f32,
+    pub left: f32, pub right: f32, pub top: f32, pub bottom: f32,
     pub target: PdfLinkTarget,
 }
 
@@ -219,7 +220,7 @@ pub enum PageLayoutMode {
 
 `PdfCharInfo` and `PdfLinkInfo` derive `Serialize`, `Deserialize`, `Clone` because they are cached with `bincode`.
 
-## 3. Annotation types
+### Annotation types
 
 ```rust
 pub enum AnnotationTool {
@@ -246,7 +247,7 @@ pub struct AnnotationAction {
 
 `AnnotationAction` is `Clone + Debug` but **not** serialized; pending annotations live only in memory until saved into the PDF.
 
-## 4. Worker tasks (`src/worker/mod.rs`)
+## 3. Worker tasks (`src/worker/mod.rs`)
 
 ```rust
 pub enum PdfWorkerTask {
@@ -305,7 +306,7 @@ pub enum PdfWorkerTask {
 }
 ```
 
-## 5. Worker messages (`src/document.rs`)
+## 4. Worker messages (`src/document.rs`)
 
 ```rust
 pub enum PdfWorkerMessage {
@@ -362,7 +363,7 @@ pub enum PdfWorkerMessage {
 }
 ```
 
-## 6. Export types (`src/worker/export.rs`)
+## 5. Export types (`src/worker/export.rs`)
 
 ```rust
 pub enum ExportFormat { Doc, Docx, Png, Jpeg }
@@ -376,7 +377,7 @@ impl ExportFormat {
 
 `ExportFormat` is re-exported from `worker/mod.rs`.
 
-## 7. Password prompt state
+## 6. Password prompt state
 
 ```rust
 pub struct PasswordPromptState {
@@ -388,7 +389,7 @@ pub struct PasswordPromptState {
 }
 ```
 
-## 8. State-transition invariants
+## 7. State-transition invariants
 
 1. `active_tab_index` is either `None` or a valid index into `tabs`.
 2. A tab's vectors (`pages`, `thumbnails`, `page_texts`, `page_chars`, `page_links`, `page_sizes`, `page_rotations`) are all sized to `page_count` after a successful `DocumentInfo`.
@@ -403,7 +404,7 @@ pub struct PasswordPromptState {
 11. `ai_chat_loading` / `ai_summary_loading` are cleared by the corresponding `AiSummaryResult`.
 12. Chat sessions and the active session id are persisted whenever they change; summary-viewport text is not persisted.
 
-## 9. Settings schema
+## 8. Settings schema
 
 Defined inline in both `NixobdoPdfApp::default` and `save_settings`:
 
@@ -421,7 +422,7 @@ struct AppSettings {
 
 `default()` fills a missing endpoint with `http://localhost:1234/v1`. `save_settings()` writes pretty JSON under `dirs::config_dir()/nixobdo-pdf/settings.json`.
 
-## 10. Cache metadata schema
+## 9. Cache metadata schema
 
 `metadata.bin` is a `bincode` encoding of:
 

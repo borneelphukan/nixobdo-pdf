@@ -19,9 +19,8 @@ This document describes how to build, run, and configure `nixobdo-pdf` locally.
   8. `./lib/libpdfium.so`
   9. `libpdfium.so`
   10. System library (`Pdfium::bind_to_system_library()`)
-
-If none of the above are found, `has_pdfium_bindings = false` and the app
-shows a red "⚠ PDFium library not found!" label in the toolbar.
+- If none of the above are found, `has_pdfium_bindings = false` and the app
+  shows a red “⚠ PDFium library not found!” label in the toolbar.
 
 ### Platform notes
 

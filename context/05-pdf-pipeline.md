@@ -1,6 +1,6 @@
 # 05 — PDF Pipeline
 
-Everything PDF-specific is split between `src/document.rs` (types, cache, rendering, extraction) and `src/worker/mod.rs` (task execution, saving). This document follows the data from "user opens a file" to "pixels are on screen".
+Everything PDF-specific is split between `src/document.rs` (types, cache, rendering, extraction) and `src/worker/mod.rs` (task execution, saving). This document follows the data from “user opens a file” to “pixels are on screen”.
 
 ## 1. PDFium binding
 
@@ -106,7 +106,7 @@ A save that changes the file size or mtime (seconds) produces a new key. A save 
 - deletes any subdirectory whose `accessed.txt` (or directory) mtime is older than **7 days**;
 - sums the remaining directories and, if total size > **400 MB**, deletes oldest-accessed directories first until under the limit.
 
-`accessed.txt` is touched on a successful cache hit (i.e. when the cache is used without a full re-render). It is not updated on every page read.
+`accessed.txt` is created on a full cached load and touched on a successful cache hit. It is not updated on every page read.
 
 ### Cache bypass
 
@@ -170,7 +170,7 @@ Links without a target are not cached. Clicking a URL calls `webbrowser::open`; 
 
 Search is character-sequence matching, not PDF text search:
 
-- toolbar lowercases the query and each page's chars, then scans for contiguous character matches;
+- toolbar lowercases the query and each page's chars, then scans for contiguous matches;
 - it records **page indices**, one per occurrence (the same page appears multiple times for multiple matches);
 - Enter cycles `search_active_match` through the page list and scrolls to that page;
 - central panel independently re-scans each page and paints yellow overlays on every match.
@@ -231,7 +231,7 @@ Aspect ratio is inverted for 90/270. Interaction coordinates are un-rotated with
 5. the PDF page mesh (transparent background lets 2–4 show through);
 6. signature overlay;
 7. link hit areas (invisible);
-8. underline/strikethrough/redact/text annotations (on top);
+8. underline/strikethrough/redact/text annotations on top;
 9. loading text if no texture.
 
 ## 7. Selection model
@@ -244,7 +244,7 @@ Selection is a pair of `(page, char)` indices. On primary drag start, `find_clos
 
 During drag, `selection_end` updates for whatever page the pointer is over (multi-page selections work). On release, `is_selecting` becomes false. `is_char_selected` implements a lexicographic range compare. `get_selected_text` and `copy_selection` walk pages/chars and insert `\n` between pages. Selection rectangles merge adjacent boxes on the same line for a continuous highlight.
 
-`Ctrl+A` selects from `(0, 0)` to the last char of the last page. It is gated on `!egui_wants_keyboard_input()` so it does not hijack text fields.
+`Ctrl/Cmd+A` sets the selection from `(0, 0)` to the last char of the last page. It is gated on `!egui_wants_keyboard_input()` so it does not hijack text fields.
 
 Auto-scroll during selection: in continuous mode, dragging within 40 px of the top/bottom edge scrolls the viewport with a speed proportional to proximity.
 
@@ -256,8 +256,8 @@ All save paths open a fresh PDFium document and write to the original path (or a
 
 - Iterates actions, fetches the page, converts normalised rects to PDF points with `(1 - y)` inversion.
 - Highlight: filled path, alpha 100 fill, `Multiply` blend mode.
-- Underline: 2 pt line at `y = (1 - max.y) * h` (PDF bottom-left origin).
-- Strikethrough: 2 pt line at vertical centre of the char box.
+- Underline: 2 pt line at `y = (1 - max.y) * h`.
+- Strikethrough: 2 pt line at vertical centre.
 - Redact: opaque black filled path.
 - Text: Helvetica text object, font size = `scale`, fill colour, translated so `position` is the visual centre.
 - Saves to a temp PDF, drops the document (Windows lock release), then retries copying over the original up to 10 times with 300 ms sleeps.

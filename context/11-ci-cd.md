@@ -114,9 +114,8 @@ All gates must pass for the PR to be mergeable.
 
 ## 6. Website CI
 
-- `.github/workflows/website.yml` runs on `main` pushes and PRs.
+- `.github/workflows/website.yml` runs on pushes to `main` and on PRs.
 - Uses Vite to build the React app with `base: '/nixobdo-pdf'`.
 - Lints built files; deploys to GitHub Pages only from `main` (not from `dev`).
 - No `404.html` fallback, so deep‑link refreshes on GitHub Pages may fail if the
-  server is not configured for client‑side routing. This is a known limitation;
-  the site assumes all navigation goes through React Router.
+  route is not exactly configured.

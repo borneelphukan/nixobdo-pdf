@@ -1,5 +1,7 @@
 # nixobdo-pdf - AI Agent Context
 
+> **⚠ This file is outdated.** The root `AGENTS.md` describes the project as of version 0.1.28 (edition 2021, eframe 0.34) and does not cover AI/LLM features. The authoritative, current context lives in the `context/` directory — please read `context/README.md` first.
+
 ## Project Overview
 
 **nixobdo-pdf** is an open-source, distraction-free PDF viewer built with Rust using `eframe`/`egui` (immediate mode GUI) and `pdfium-render` for PDF processing. Designed to provide a clean, distraction-free PDF experience reminiscent of the old Adobe Reader.

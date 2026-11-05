@@ -46,7 +46,7 @@ index.
 
 If the user types a model ID not in the preset list, `llm_is_custom_model` is set
 to `true` and the raw string is stored in `llm_custom_model`. The preset index
-drops to `LLM_PRESETS.len()` (the "Custom" slot).
+drops to `LLM_PRESETS.len()` (the “Custom” slot).
 
 ## 2. AI Request Format
 
@@ -65,8 +65,8 @@ All AI calls are POST requests to the normalized endpoint.
   }
   ```
 - The `messages` array depends on the context:
-  - **Summary:** system prompt "You are a helpful assistant…" + user prompt
-    "Please summarize the following document:\n\n<full_text>".
+  - **Summary:** system prompt “You are a helpful assistant…” + user prompt
+    “Please summarize the following document:\n\n<full_text>”.
   - **Chatbot:** per‑session message history; a system prompt is included in the
     initial message.
 
@@ -80,7 +80,7 @@ All AI calls are POST requests to the normalized endpoint.
   3. Worker sends the POST request via `ureq` (blocking on the worker thread).
   4. On success: `AiSummaryResult { is_chatbot: false, success: true, text }`
      → `ai_summary_full_text` stored, `ai_summary_text` cleared,
-     `ai_summary_display_len = 0`, toast "Summary ready".
+     `ai_summary_display_len = 0`, toast “Summary ready”.
   5. On failure: `AiSummaryResult { is_chatbot: false, success: false, error }`
      → `ai_summary_error` stored, shows error toast.
 - The UI shows a loading state (`ai_summary_loading = true`) while the worker
@@ -94,17 +94,17 @@ All AI calls are POST requests to the normalized endpoint.
   button in the toolbar.
 - **Session lifecycle:**
   1. A new `AiChatSession` is created with a timestamp‑based ID and a name like
-     "Summary – HH:MM".
+     “Summary – HH:MM”.
   2. The session is pushed onto `ai_chat_sessions`; `ai_active_session_id` is set.
   3. User types a message and presses Enter; the message is sent to the LLM.
-  4. On successful reply, the assistant's message is appended to the session's
+  4. On successful reply, the assistant’s message is appended to the session’s
      `messages` vector; `save_settings()` persists the chat history.
   5. On error, `ai_chat_error` is set and displayed in the UI.
 - **UI state:** `ai_chatbot_open`, `ai_chat_loading`, `ai_chat_error`,
   `ai_chat_input`, `ai_chat_display_len`, `ai_chat_start_time`.
-- **No LLM configured:** shows "No LLM Service Available" with "Open Settings"
+- **No LLM configured:** shows “No LLM Service Available” with “Open Settings”
   button.
-- **No document open:** shows "No Document Opened" prompt.
+- **No document open:** shows “No Document Opened” prompt.
 
 ## 5. ChatMessage structure
 

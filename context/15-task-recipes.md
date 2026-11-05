@@ -58,7 +58,7 @@ straightforward because `image` crate supports both reading and writing BMP.
 
 ## 3. Adding a Menu Item
 
-**Goal:** Add a new menu item (e.g. "Toggle Dark Mode") to the menu bar.
+**Goal:** Add a new menu item (e.g. “Toggle Dark Mode”) to the menu bar.
 
 | Step | File | Change |
 |---|---|---|
@@ -107,7 +107,7 @@ ui.menu_button("Rotate PDF", |ui| {
 
 Many UI sections use `ui.scope(|ui| { ... })` or `ui.scope_builder(...)` to
 localize style changes (font sizes, colors, corner radius). This prevents one
-section's visual tweaks from leaking into other parts of the UI.
+section’s visual tweaks from leaking into other parts of the UI.
 
 **Examples from the codebase:**
 
@@ -133,7 +133,7 @@ If a background operation seems to silently fail:
 3. `SaveSignature` and `SaveRotation` have **no** panic protection; if the worker
    thread panics, the UI loses those capabilities entirely until restart.
 4. Look at the toast message: `ExportComplete { success: false }` indicates the
-   worker caught an error or panicked (for Export/Annotations). For signature/rotation
+   worker caught an error or panicked (forExport/Annotations). For signature/rotation
    failures, the flag `is_saving_signature`/`is_saving_rotation` may remain stuck.
 
 ---

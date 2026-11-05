@@ -63,7 +63,7 @@ From `Cargo.toml` (edition 2024):
 | `image` | `0.25.5` | Decode/resize/encode page images; icon loading |
 | `winres` (build) | `0.1.12` | Windows `.exe` icon/manifest |
 
-Notably **not** present: `rayon`, `tokio`, any async runtime, any logging crate, any analytics, any test framework.
+Notably **not** present: `rayon`, `tokio`, any async runtime, any logging crate, any test framework, any analytics.
 
 ## Runtime prerequisites
 

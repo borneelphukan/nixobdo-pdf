@@ -5,7 +5,8 @@ This directory is the **authoritative, current context** for anyone (human or AI
 | Field | Value |
 |---|---|
 | Repository | `github.com/borneelphukan/nixobdo-pdf` |
-| Branch verified | `dev` |
+| Branch verified | `main` |
+| Commit verified | `1333e78 chore: bump version to 0.1.38 (#103)` |
 | Version | `0.1.38` (`Cargo.toml`, `setup.iss`) |
 | Rust edition | `2024` |
 | UI stack | `eframe` / `egui` `0.37` |
@@ -62,8 +63,6 @@ This directory is the **authoritative, current context** for anyone (human or AI
 - PDF engine/cache: `src/document.rs`.
 - Main feature logic: `src/app/state.rs`, `src/app/messages.rs`, `src/ui/`.
 - Release automation: `scripts/release_plan.py`, `scripts/bump_version.py`, `.github/workflows/stable.yml`, `.github/workflows/nightly.yml`.
-
----
 
 ## Keeping this pack accurate
 
