@@ -1,7 +1,7 @@
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "dev" ]
     paths-ignore:
       - 'README.md'
       - 'docs/**'
