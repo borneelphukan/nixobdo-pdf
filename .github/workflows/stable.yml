@@ -129,7 +129,7 @@ jobs:
         run: iscc setup.iss
 
       - name: Upload installer
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-installer
           path: Output\nixobdo-pdfSetup.exe
@@ -182,7 +182,7 @@ jobs:
           tar -czf "dist/$TAR_DIR.tar.gz" "$TAR_DIR"
 
       - name: Upload packages
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ubuntu-installers
           path: |
@@ -227,7 +227,7 @@ jobs:
             "$(uname -m)"
 
       - name: Upload app
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: macos-installers
           path: dist/*.dmg
@@ -238,23 +238,26 @@ jobs:
     needs: [plan, build-windows, build-ubuntu, build-macos]
     if: needs.plan.outputs.mode == 'release'
     runs-on: ubuntu-latest
+    environment:
+      name: release
+      url: ${{ github.server_url }}/${{ github.repository }}/releases/tag/v${{ needs.plan.outputs.version }}
     permissions:
       contents: write
     steps:
       - name: Download Windows installer
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: windows-installer
           path: dist/
 
       - name: Download Ubuntu packages
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ubuntu-installers
           path: dist/
 
       - name: Download macOS app
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: macos-installers
           path: dist/
