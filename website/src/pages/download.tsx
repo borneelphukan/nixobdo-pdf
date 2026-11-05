@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Calendar, ChevronRight, Download, ExternalLink } from "lucide-react";
+import { Calendar, Download, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import GitHubIcon from "@mui/icons-material/GitHub";
 
@@ -188,6 +188,18 @@ export function DocsDownload() {
                       <div>
                         <h4 className="text-white font-medium text-sm">x86_64</h4>
                         <p className="text-slate-500 text-xs mt-1">Plain binaries to run anywhere</p>
+                      </div>
+                    </div>
+                  )}
+                  {/* AppImage */}
+                  {downloadAssets.find((a) => a.name.endsWith(".AppImage")) && (
+                    <div>
+                      <div className="bg-slate-800/80 p-3 rounded-lg text-green-400">
+                        <Download className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-white font-medium text-sm">AppImage (x86_64)</h4>
+                        <p className="text-slate-500 text-xs mt-1">Run as portable application on most Linux distributions</p>
                       </div>
                     </div>
                   )}
