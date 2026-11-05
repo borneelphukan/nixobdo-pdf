@@ -41,7 +41,7 @@ jobs:
           ./packaging/macos/build-app.sh target/release/nixobdo-pdf lib/libpdfium.dylib "$VERSION" dist
 
       - name: Upload DMG Artifact
-        uses: actions/upload-artifact@v8
+        uses: actions/upload-artifact@v7
         with:
           name: macos-dmg
           path: dist/*.dmg
