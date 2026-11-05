@@ -1,4 +1,3 @@
-name: Release (Stable)
 
 on:
   push:
@@ -76,16 +75,12 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.COMMIT_SHA }}
 
-      - name: Install ImageMagick
-        run: brew install imagemagick
 
       - name: Set up Rust
         uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
         with:
           toolchain: stable
 
-      - name: Install ImageMagick
-        run: choco install imagemagick -y
       - name: Convert Logo to ICO
         run: magick -background none -density 256 assets\icons\logo.svg -define icon:auto-resize="256,128,64,48,32,16" assets\logo.ico
 
@@ -117,7 +112,7 @@ jobs:
           ref: ${{ needs.prepare.outputs.COMMIT_SHA }}
 
       - name: Install ImageMagick
-        run: brew install imagemagick
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
 
       - name: Install system dependencies
         run: |
@@ -201,9 +196,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.prepare.outputs.COMMIT_SHA }}
-
-      - name: Install ImageMagick
-        run: brew install imagemagick
 
       - name: Download Windows Installer
         uses: actions/download-artifact@v4
