@@ -81,6 +81,8 @@ jobs:
         with:
           toolchain: stable
 
+      - name: Install ImageMagick
+        run: choco install imagemagick -y
       - name: Convert Logo to ICO
         run: magick -background none -density 256 assets\icons\logo.svg -define icon:auto-resize="256,128,64,48,32,16" assets\logo.ico
 
