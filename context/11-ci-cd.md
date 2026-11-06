@@ -9,13 +9,13 @@ Three primary workflows live in `.github/workflows/`:
 
 | Workflow | Trigger | Purpose |
 |---|---|---|
-| `stable.yml` | Push to `main` | Stable release planning, bump PR, multi‑OS build, publish. |
+| `build.yml` | Push to `main` | Stable release planning, bump PR, multi‑OS build, publish. |
 | `nightly.yml` | Push to `dev` | Rolling `dev-release` prerelease, Ubuntu package build. |
 | `review.yml` | Pull request | PR gates: fmt, clippy, build on 3 OSes, audit, test. |
 | `website.yml` | Push to `main` or PR | Build/lint website (Vite + GitHub Pages). |
 | `deploy.yml` | Push to `main` | Deploy GitHub Pages site. |
 
-## 2. `.github/workflows/stable.yml`
+## 2. `.github/workflows/build.yml`
 
 Triggered on push to `main`. Main flow:
 
@@ -92,7 +92,7 @@ All gates must pass for the PR to be mergeable.
 
 ## 5. Release process (stable → main)
 
-1. **Push to `main`** triggers `stable.yml`.
+1. **Push to `main`** triggers `build.yml`.
 2. `scripts/release_plan.py` examines the git log since the last tag and decides
    one of three modes:
    - **bump** — increment the patch version, create a bump PR.

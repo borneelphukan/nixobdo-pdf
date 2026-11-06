@@ -62,7 +62,7 @@ This directory is the **authoritative, current context** for anyone (human or AI
 - Worker entry: `src/worker/mod.rs::spawn_worker_thread`.
 - PDF engine/cache: `src/document.rs`.
 - Main feature logic: `src/app/state.rs`, `src/app/messages.rs`, `src/ui/`.
-- Release automation: `scripts/release_plan.py`, `scripts/bump_version.py`, `.github/workflows/stable.yml`, `.github/workflows/nightly.yml`.
+- Release automation: `scripts/release_plan.py`, `scripts/bump_version.py`, `.github/workflows/build.yml`, `.github/workflows/nightly.yml`.
 
 ## Keeping this pack accurate
 

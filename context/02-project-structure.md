@@ -10,7 +10,7 @@ nixobdo-pdf/
 │   └── workflows/
 │       ├── review.yml              # PR gates: fmt, clippy, test, audit, 3-OS build
 │       ├── nightly.yml             # Push to dev -> rolling dev-release prerelease
-│       ├── stable.yml              # Push to main -> bump PR or stable release
+│       ├── build.yml               # Push to main -> bump PR or stable release
 │       ├── website.yml             # PR build/lint for website changes
 │       └── deploy.yml              # GitHub Pages deploy from main
 ├── assets/

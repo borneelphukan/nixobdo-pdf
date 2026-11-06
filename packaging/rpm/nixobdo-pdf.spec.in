@@ -1,0 +1,95 @@
+# RPM spec template for nixobdo-pdf.
+#
+# build-rpm.sh substitutes @VERSION@ below and stages the prebuilt binary,
+# libpdfium.so, the .desktop entry, the icons and LICENSE into rpmbuild's
+# %_sourcedir before invoking rpmbuild.
+#
+# The resulting package is a self-contained x86_64 RPM that works on Fedora,
+# RHEL (8/9/10, plus Rocky/Alma/CentOS Stream) and openSUSE (Leap 15+ and
+# Tumbleweed).
+
+# We ship a prebuilt Rust binary, so no debuginfo subpackage is wanted and the
+# post-install brp scripts are skipped (the package may be built on a non-RPM
+# host where those helpers are absent).
+%global debug_package %{nil}
+%global __os_install_post %{nil}
+# xz payload instead of zstd so RHEL 8's rpm (4.14) can still read the package.
+%global _binary_payload w6.xzdio
+
+Name:           nixobdo-pdf
+Version:        @VERSION@
+Release:        1%{?dist}
+Summary:        Distraction-free PDF viewer
+License:        MIT
+URL:            https://borneelphukan.github.io/nixobdo-pdf/
+Vendor:         Borneel Bikash Phukan
+BuildArch:      x86_64
+
+Source0:        nixobdo-pdf
+Source1:        libpdfium.so
+Source2:        nixobdo-pdf.desktop
+Source3:        nixobdo-pdf.svg
+Source4:        nixobdo-pdf.png
+Source5:        LICENSE
+
+# The binary dlopen()s the libpdfium.so shipped next to it, so let rpm derive
+# the so-name requirements from the ELF headers. so-name requires
+# (libgtk-3.so.0, libxkbcommon.so.0, ...) are portable across Fedora/RHEL/
+# openSUSE, unlike distro package names.
+AutoReqProv:    yes
+
+%description
+nixobdo-pdf is an open-source PDF viewer designed to provide a clean,
+distraction-free PDF experience reminiscent of the classic Adobe PDF reader.
+Features include multi-tab viewing, annotation tools (highlight, underline,
+strikethrough, redact, text), digital signatures, search, and file conversion.
+
+%prep
+# Nothing to do - the release binary is built before rpmbuild runs.
+
+%build
+# Nothing to do - we only package the prebuilt release binary.
+
+%install
+rm -rf %{buildroot}
+
+install -D -m 0755 %{SOURCE0} %{buildroot}%{_libdir}/nixobdo-pdf/nixobdo-pdf
+install -D -m 0644 %{SOURCE1} %{buildroot}%{_libdir}/nixobdo-pdf/libpdfium.so
+mkdir -p %{buildroot}%{_bindir}
+ln -sf %{_libdir}/nixobdo-pdf/nixobdo-pdf %{buildroot}%{_bindir}/nixobdo-pdf
+
+install -D -m 0644 %{SOURCE2} %{buildroot}%{_datadir}/applications/nixobdo-pdf.desktop
+install -D -m 0644 %{SOURCE3} %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/nixobdo-pdf.svg
+install -D -m 0644 %{SOURCE4} %{buildroot}%{_datadir}/icons/hicolor/512x512/apps/nixobdo-pdf.png
+install -D -m 0644 %{SOURCE5} %{buildroot}%{_datadir}/licenses/nixobdo-pdf/LICENSE
+
+%post
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database -q %{_datadir}/applications || :
+fi
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -q -t -f %{_datadir}/icons/hicolor || :
+fi
+exit 0
+
+%postun
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database -q %{_datadir}/applications || :
+fi
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -q -t -f %{_datadir}/icons/hicolor || :
+fi
+exit 0
+
+%files
+%license %{_datadir}/licenses/nixobdo-pdf/LICENSE
+%{_bindir}/nixobdo-pdf
+%{_libdir}/nixobdo-pdf/nixobdo-pdf
+%{_libdir}/nixobdo-pdf/libpdfium.so
+%{_datadir}/applications/nixobdo-pdf.desktop
+%{_datadir}/icons/hicolor/scalable/apps/nixobdo-pdf.svg
+%{_datadir}/icons/hicolor/512x512/apps/nixobdo-pdf.png
+
+%changelog
+* Fri Nov 06 2026 Borneel Bikash Phukan <borneelphukan@gmail.com> - @VERSION@-1
+- nixobdo-pdf @VERSION@
