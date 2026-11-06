@@ -57,9 +57,12 @@ jobs:
             $cargo = $regex.Replace($cargo, "`${1}$newVersion`${3}", 1)
             Set-Content Cargo.toml $cargo -NoNewline
 
-            $iss = Get-Content setup.iss -Raw
-            $iss = $iss -replace '(AppVersion=)(\d+\.\d+\.\d+)', "`${1}$newVersion"
-            Set-Content setup.iss $iss -NoNewline
+            $issFiles = @('setup.iss', 'setup-x86.iss', 'setup-arm64.iss')
+            foreach ($issFile in $issFiles) {
+              $iss = Get-Content $issFile -Raw
+              $iss = $iss -replace '(AppVersion=)(\d+\.\d+\.\d+)', "`${1}$newVersion"
+              Set-Content $issFile $iss -NoNewline
+            }
             Write-Host "Bumped to $newVersion"
           }
 
@@ -76,7 +79,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           $branch = "chore/bump-version-${{ steps.version.outputs.VERSION }}"
           git checkout -b $branch
-          git add Cargo.toml setup.iss
+          git add Cargo.toml setup.iss setup-x86.iss setup-arm64.iss
           git commit -m "chore: bump version to ${{ steps.version.outputs.VERSION }}"
           $sha = git rev-parse HEAD
           echo "SHA=$sha" >> $env:GITHUB_OUTPUT
@@ -87,40 +90,78 @@ jobs:
             exit 0
           }
 
-  windows_64:
+  windows:
     needs: prepare
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            label: 64-bit
+            target: x86_64-pc-windows-msvc
+            pdfium: pdfium-win-x64.tgz
+            setup: setup.iss
+          - arch: x86
+            label: 32-bit
+            target: i686-pc-windows-msvc
+            pdfium: pdfium-win-x86.tgz
+            setup: setup-x86.iss
+          - arch: arm64
+            label: ARM64
+            target: aarch64-pc-windows-msvc
+            pdfium: pdfium-win-arm64.tgz
+            setup: setup-arm64.iss
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.prepare.outputs.COMMIT_SHA }}
 
-
       - name: Set up Rust
         uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
         with:
           toolchain: stable
+          target: ${{ matrix.target }}
 
       - name: Convert Logo to ICO
         run: magick -background none -density 256 assets\icons\logo.svg -define icon:auto-resize="256,128,64,48,32,16" assets\logo.ico
 
-      - name: Build nixobdo-pdf
-        run: cargo build --release
+      - name: Build nixobdo-pdf (${{ matrix.label }})
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Download and Extract pdfium
         run: |
-          Invoke-WebRequest -Uri https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-win-x64.tgz -OutFile pdfium.tgz
+          Invoke-WebRequest -Uri https://github.com/bblanchon/pdfium-binaries/releases/latest/download/${{ matrix.pdfium }} -OutFile pdfium.tgz
           tar -xzf pdfium.tgz
           Get-ChildItem -Recurse -Filter pdfium.dll | Copy-Item -Destination .
 
-      - name: Build Installer (Inno Setup)
-        run: iscc setup.iss
+      - name: Stage binary for packaging
+        run: |
+          New-Item -ItemType Directory -Force -Path "target\release" | Out-Null
+          Copy-Item "target\${{ matrix.target }}\release\nixobdo-pdf.exe" "target\release\nixobdo-pdf.exe" -Force
 
-      - name: Upload Artifact
+      - name: Build Installer (Inno Setup)
+        run: iscc ${{ matrix.setup }}
+
+      - name: Build Portable zip (${{ matrix.label }})
+        shell: pwsh
+        run: |
+          $version = "${{ needs.prepare.outputs.VERSION }}"
+          $stage = "portable\nixobdo-pdf-$version-windows-${{ matrix.arch }}"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item "target\${{ matrix.target }}\release\nixobdo-pdf.exe" "$stage\nixobdo-pdf.exe"
+          Copy-Item "pdfium.dll" "$stage\pdfium.dll"
+          Copy-Item "LICENSE" "$stage\LICENSE"
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path "$stage\*" -DestinationPath "dist\nixobdo-pdf-$version-windows-${{ matrix.arch }}-portable.zip" -Force
+
+      - name: Upload Windows artifacts (${{ matrix.label }})
         uses: actions/upload-artifact@v4
         with:
-          name: windows-installer
-          path: Output\nixobdo-pdfSetup.exe
+          name: windows-${{ matrix.arch }}
+          path: |
+            Output\*.exe
+            dist\*.zip
           retention-days: 1
 
   debian-x86_64:
@@ -372,7 +413,7 @@ jobs:
           retention-days: 1
 
   publish-stable:
-    needs: [prepare, windows_64, debian-x86_64, rpm-x86_64, tarball-x86_64, appimage-x86_64, build-macos]
+    needs: [prepare, windows, debian-x86_64, rpm-x86_64, tarball-x86_64, appimage-x86_64, build-macos]
     # Validation runs triggered by pull requests never publish a release.
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
@@ -381,10 +422,22 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.COMMIT_SHA }}
 
-      - name: Download Windows Installer
+      - name: Download Windows x64 artifacts
         uses: actions/download-artifact@v4
         with:
-          name: windows-installer
+          name: windows-x64
+          path: dist/
+
+      - name: Download Windows x86 artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-x86
+          path: dist/
+
+      - name: Download Windows ARM64 artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-arm64
           path: dist/
 
       - name: Download Debian Installer
