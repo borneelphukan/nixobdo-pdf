@@ -1,7 +1,15 @@
 
+name: Build
+
 on:
   push:
     branches: [ "main", "workflow-optimization" ]
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+  # Pull requests run the full build matrix as a validation run: the version is
+  # not bumped and nothing is published (see the guards below).
+  pull_request:
     paths-ignore:
       - 'README.md'
       - 'docs/**'
@@ -13,41 +21,53 @@ permissions:
 
 jobs:
   prepare:
-    runs-on: windows-latest
-    if: "!contains(github.event.head_commit.message, 'chore: bump version')"
+    # Version resolution is cheap; keep it on Linux for PR validation runs.
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'windows-latest' }}
+    if: "github.event_name == 'pull_request' || !contains(github.event.head_commit.message, 'chore: bump version')"
     outputs:
       VERSION: ${{ steps.version.outputs.VERSION }}
-      COMMIT_SHA: ${{ steps.commit.outputs.SHA }}
+      # On pull requests no bump commit exists, so fall back to the event SHA.
+      COMMIT_SHA: ${{ steps.commit.outputs.SHA || github.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
-      - name: Bump patch version
+      - name: Resolve next version
         id: version
         shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           $cargo = Get-Content Cargo.toml -Raw
-          if ($cargo -match 'version\s*=\s*"(\d+)\.(\d+)\.(\d+)"') {
-            $major = [int]$Matches[1]
-            $minor = [int]$Matches[2]
-            $patch = [int]$Matches[3] + 1
-            $newVersion = "$major.$minor.$patch"
+          if ($cargo -notmatch 'version\s*=\s*"(\d+)\.(\d+)\.(\d+)"') {
+            Write-Error "Could not read version from Cargo.toml"
+            exit 1
+          }
+
+          if ($env:EVENT_NAME -eq 'pull_request') {
+            # Validation build: never mutate the repo, just reuse the current version.
+            $newVersion = "$($Matches[1]).$($Matches[2]).$($Matches[3])"
+            Write-Host "Pull request build - using current version $newVersion without bumping"
+          }
+          else {
+            $newVersion = "$([int]$Matches[1]).$([int]$Matches[2]).$([int]$Matches[3] + 1)"
             $regex = [regex]'(version\s*=\s*")(\d+\.\d+\.\d+)(")'
             $cargo = $regex.Replace($cargo, "`${1}$newVersion`${3}", 1)
             Set-Content Cargo.toml $cargo -NoNewline
-            
+
             $iss = Get-Content setup.iss -Raw
             $iss = $iss -replace '(AppVersion=)(\d+\.\d+\.\d+)', "`${1}$newVersion"
             Set-Content setup.iss $iss -NoNewline
-            
-            echo "VERSION=$newVersion" >> $env:GITHUB_OUTPUT
             Write-Host "Bumped to $newVersion"
           }
 
+          echo "VERSION=$newVersion" >> $env:GITHUB_OUTPUT
+
       - name: Commit version bump and create PR
         id: commit
+        if: github.event_name != 'pull_request'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -145,6 +165,49 @@ jobs:
         with:
           name: debian-installer
           path: dist/*
+          retention-days: 1
+
+  rpm-x86_64:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.COMMIT_SHA }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev pkg-config rpm
+
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        with:
+          toolchain: stable
+
+      - name: Download and extract PDFium
+        run: |
+          curl -fsSL https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-linux-x64.tgz -o pdfium.tgz
+          tar -xzf pdfium.tgz
+          cp $(find . -name "libpdfium.so" | head -n 1) libpdfium.so
+
+      - name: Build nixobdo-pdf
+        run: cargo build --release
+
+      - name: Build RPM package (Fedora / RHEL / openSUSE)
+        run: |
+          mkdir -p dist
+          chmod +x packaging/rpm/build-rpm.sh
+          VERSION="${{ needs.prepare.outputs.VERSION }}"
+          ./packaging/rpm/build-rpm.sh target/release/nixobdo-pdf libpdfium.so "$VERSION" dist
+          rpm -qpi dist/*.rpm || true
+          rpm -qpl dist/*.rpm || true
+
+      - name: Upload RPM Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-installer
+          path: dist/*.rpm
           retention-days: 1
 
   tarball-x86_64:
@@ -309,7 +372,9 @@ jobs:
           retention-days: 1
 
   publish-stable:
-    needs: [prepare, windows_64, debian-x86_64, tarball-x86_64, appimage-x86_64, build-macos]
+    needs: [prepare, windows_64, debian-x86_64, rpm-x86_64, tarball-x86_64, appimage-x86_64, build-macos]
+    # Validation runs triggered by pull requests never publish a release.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -326,6 +391,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: debian-installer
+          path: dist/
+
+      - name: Download RPM Installer
+        uses: actions/download-artifact@v4
+        with:
+          name: rpm-installer
           path: dist/
 
       - name: Download tarball Installer
