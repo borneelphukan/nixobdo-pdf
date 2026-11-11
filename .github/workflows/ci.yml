@@ -65,7 +65,7 @@ jobs:
 
       # Pinned so a new stable release cannot introduce lints that fail an
       # unrelated build. Bump deliberately in every workflow.
-      - uses: dtolnay/rust-toolchain@1.120.0
+      - uses: dtolnay/rust-toolchain@1.99.1
         with:
           components: rustfmt, clippy
 
