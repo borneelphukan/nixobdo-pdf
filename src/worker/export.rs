@@ -1,6 +1,6 @@
 use eframe::egui;
 use pdfium_render::prelude::*;
-use std::path::PathBuf;
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 
@@ -25,18 +25,31 @@ impl ExportFormat {
     }
 }
 
+/// Inputs shared by every export routine.
+#[derive(Clone, Copy)]
+pub struct ExportContext<'a> {
+    pub pdf: &'a Pdfium,
+    pub path: &'a Path,
+    pub password: Option<&'a str>,
+    pub out_path: &'a Path,
+    pub msg_tx: &'a Sender<PdfWorkerMessage>,
+    pub egui_ctx: &'a egui::Context,
+    pub cancel_flag: &'a AtomicBool,
+}
+
 /// Export all pages as separate image files inside a ZIP. Returns Ok(message) or Err(message).
-pub fn export_image(
-    pdf: &Pdfium,
-    path: &PathBuf,
-    password: Option<&str>,
-    out_path: &PathBuf,
-    format: ExportFormat,
-    msg_tx: &Sender<PdfWorkerMessage>,
-    ctx: &egui::Context,
-    cancel_flag: &AtomicBool,
-) -> Result<String, String> {
+pub fn export_image(ctx: &ExportContext<'_>, format: ExportFormat) -> Result<String, String> {
     use std::io::Write;
+
+    let ExportContext {
+        pdf,
+        path,
+        password,
+        out_path,
+        msg_tx,
+        egui_ctx: ctx,
+        cancel_flag,
+    } = *ctx;
 
     let doc = pdf
         .load_pdf_from_file(path, password)
@@ -81,12 +94,11 @@ pub fn export_image(
                 image::ImageFormat::Jpeg
             };
 
-            if img.write_to(&mut buf, format_enum).is_ok() {
-                if zip.start_file(file_name, options).is_ok() {
-                    if zip.write_all(&buf.into_inner()).is_ok() {
-                        exported += 1;
-                    }
-                }
+            if img.write_to(&mut buf, format_enum).is_ok()
+                && zip.start_file(file_name, options).is_ok()
+                && zip.write_all(&buf.into_inner()).is_ok()
+            {
+                exported += 1;
             }
         }
     }
@@ -110,16 +122,20 @@ pub fn export_image(
 
 /// Export as DOCX. Returns Ok(message) or Err(message).
 pub fn export_docx(
-    pdf: &Pdfium,
-    path: &PathBuf,
-    password: Option<&str>,
-    out_path: &PathBuf,
+    ctx: &ExportContext<'_>,
     retain_layout: bool,
     include_images: bool,
-    msg_tx: &Sender<PdfWorkerMessage>,
-    ctx: &egui::Context,
-    cancel_flag: &AtomicBool,
 ) -> Result<String, String> {
+    let ExportContext {
+        pdf,
+        path,
+        password,
+        out_path,
+        msg_tx,
+        egui_ctx: ctx,
+        cancel_flag,
+    } = *ctx;
+
     let doc = match pdf.load_pdf_from_file(path, password) {
         Ok(d) => d,
         Err(e) => {
@@ -166,9 +182,9 @@ pub fn export_docx(
                                 u == 0x09
                                     || u == 0x0A
                                     || u == 0x0D
-                                    || (u >= 0x20 && u <= 0xD7FF)
-                                    || (u >= 0xE000 && u <= 0xFFFD)
-                                    || (u >= 0x10000 && u <= 0x10FFFF)
+                                    || (0x20..=0xD7FF).contains(&u)
+                                    || (0xE000..=0xFFFD).contains(&u)
+                                    || (0x10000..=0x10FFFF).contains(&u)
                             })
                             .collect();
 
@@ -218,9 +234,9 @@ fn export_docx_layout_text<'a>(mut docx: docx_rs::Docx, text: &PdfPageText<'a>) 
         let is_valid = u == 0x09
             || u == 0x0A
             || u == 0x0D
-            || (u >= 0x20 && u <= 0xD7FF)
-            || (u >= 0xE000 && u <= 0xFFFD)
-            || (u >= 0x10000 && u <= 0x10FFFF);
+            || (0x20..=0xD7FF).contains(&u)
+            || (0xE000..=0xFFFD).contains(&u)
+            || (0x10000..=0x10FFFF).contains(&u);
         let char_text = if is_valid { char_text } else { ' ' };
 
         let char_size = if let Ok(text_obj) = c.text_object() {
@@ -258,12 +274,11 @@ fn export_docx_layout_text<'a>(mut docx: docx_rs::Docx, text: &PdfPageText<'a>) 
             }
 
             current_font_size = char_size;
-        } else if let Some(lx) = last_x {
-            if char_x - lx > char_size * 0.3 {
-                if !current_run_text.ends_with(' ') {
-                    current_run_text.push(' ');
-                }
-            }
+        } else if let Some(lx) = last_x
+            && char_x - lx > char_size * 0.3
+            && !current_run_text.ends_with(' ')
+        {
+            current_run_text.push(' ');
         }
 
         current_run_text.push(char_text);
@@ -292,22 +307,22 @@ fn export_docx_images<'a>(
 ) -> docx_rs::Docx {
     let mut added_images = false;
     for obj in page.objects().iter() {
-        if let Some(img_obj) = obj.as_image_object() {
-            if let Ok(img) = img_obj.get_raw_image() {
-                let mut bytes: Vec<u8> = Vec::new();
-                if img
-                    .write_to(
-                        &mut std::io::Cursor::new(&mut bytes),
-                        image::ImageFormat::Jpeg,
-                    )
-                    .is_ok()
-                    && !bytes.is_empty()
-                {
-                    let pic = docx_rs::Pic::new(&bytes);
-                    let run = docx_rs::Run::new().add_image(pic);
-                    docx = docx.add_paragraph(docx_rs::Paragraph::new().add_run(run));
-                    added_images = true;
-                }
+        if let Some(img_obj) = obj.as_image_object()
+            && let Ok(img) = img_obj.get_raw_image()
+        {
+            let mut bytes: Vec<u8> = Vec::new();
+            if img
+                .write_to(
+                    &mut std::io::Cursor::new(&mut bytes),
+                    image::ImageFormat::Jpeg,
+                )
+                .is_ok()
+                && !bytes.is_empty()
+            {
+                let pic = docx_rs::Pic::new(&bytes);
+                let run = docx_rs::Run::new().add_image(pic);
+                docx = docx.add_paragraph(docx_rs::Paragraph::new().add_run(run));
+                added_images = true;
             }
         }
     }
@@ -339,16 +354,20 @@ fn export_docx_images<'a>(
 
 /// Export as DOC (RTF). Returns Ok(message) or Err(message).
 pub fn export_doc_rtf(
-    pdf: &Pdfium,
-    path: &PathBuf,
-    password: Option<&str>,
-    out_path: &PathBuf,
+    ctx: &ExportContext<'_>,
     retain_layout: bool,
     include_images: bool,
-    msg_tx: &Sender<PdfWorkerMessage>,
-    ctx: &egui::Context,
-    cancel_flag: &AtomicBool,
 ) -> Result<String, String> {
+    let ExportContext {
+        pdf,
+        path,
+        password,
+        out_path,
+        msg_tx,
+        egui_ctx: ctx,
+        cancel_flag,
+    } = *ctx;
+
     let doc = pdf
         .load_pdf_from_file(path, password)
         .map_err(|e| format!("Failed to load PDF for DOC: {:?}", e))?;
@@ -385,24 +404,24 @@ pub fn export_doc_rtf(
                             char_y = bounds.bottom().value;
                             char_x = bounds.left().value;
                         }
-                        if let Some(ly) = last_y {
-                            if (ly - char_y).abs() > 6.0 {
-                                content.push('\n');
-                            }
+                        if let Some(ly) = last_y
+                            && (ly - char_y).abs() > 6.0
+                        {
+                            content.push('\n');
                         }
-                        if let Some(lx) = last_x {
-                            if char_x - lx > 4.0 {
-                                content.push(' ');
-                            }
+                        if let Some(lx) = last_x
+                            && char_x - lx > 4.0
+                        {
+                            content.push(' ');
                         }
 
                         let u = char_text as u32;
                         if u == 0x09
                             || u == 0x0A
                             || u == 0x0D
-                            || (u >= 0x20 && u <= 0xD7FF)
-                            || (u >= 0xE000 && u <= 0xFFFD)
-                            || (u >= 0x10000 && u <= 0x10FFFF)
+                            || (0x20..=0xD7FF).contains(&u)
+                            || (0xE000..=0xFFFD).contains(&u)
+                            || (0x10000..=0x10FFFF).contains(&u)
                         {
                             content.push(char_text);
                         } else {
@@ -423,9 +442,9 @@ pub fn export_doc_rtf(
                             u == 0x09
                                 || u == 0x0A
                                 || u == 0x0D
-                                || (u >= 0x20 && u <= 0xD7FF)
-                                || (u >= 0xE000 && u <= 0xFFFD)
-                                || (u >= 0x10000 && u <= 0x10FFFF)
+                                || (0x20..=0xD7FF).contains(&u)
+                                || (0xE000..=0xFFFD).contains(&u)
+                                || (0x10000..=0x10FFFF).contains(&u)
                         })
                         .collect();
                     content.push_str(&sanitized_text);
@@ -437,24 +456,24 @@ pub fn export_doc_rtf(
         if include_images {
             let mut added_images = false;
             for obj in page.objects().iter() {
-                if let Some(img_obj) = obj.as_image_object() {
-                    if let Ok(img) = img_obj.get_raw_image() {
-                        let mut bytes: Vec<u8> = Vec::new();
-                        if img
-                            .write_to(
-                                &mut std::io::Cursor::new(&mut bytes),
-                                image::ImageFormat::Jpeg,
-                            )
-                            .is_ok()
-                        {
-                            content.push_str("{\\pict\\jpegblip\\picwgoal1000\\pichgoal1000\n");
-                            for b in bytes {
-                                use std::fmt::Write;
-                                let _ = write!(&mut content, "{:02x}", b);
-                            }
-                            content.push_str("\n}\n");
-                            added_images = true;
+                if let Some(img_obj) = obj.as_image_object()
+                    && let Ok(img) = img_obj.get_raw_image()
+                {
+                    let mut bytes: Vec<u8> = Vec::new();
+                    if img
+                        .write_to(
+                            &mut std::io::Cursor::new(&mut bytes),
+                            image::ImageFormat::Jpeg,
+                        )
+                        .is_ok()
+                    {
+                        content.push_str("{\\pict\\jpegblip\\picwgoal1000\\pichgoal1000\n");
+                        for b in bytes {
+                            use std::fmt::Write;
+                            let _ = write!(&mut content, "{:02x}", b);
                         }
+                        content.push_str("\n}\n");
+                        added_images = true;
                     }
                 }
             }

@@ -20,11 +20,16 @@
 2. Run the installer and launch the app.
 
 ### Ubuntu / Debian
-Download the `.deb` package from **[GitHub Releases](https://github.com/borneelphukan/nixobdo-pdf/releases/latest)** and install:
+Install from the signed apt repository:
+```bash
+curl -fsSL https://borneelphukan.github.io/nixobdo-pdf/install.sh | sudo bash
+```
+
+Or download the `.deb` package from **[GitHub Releases](https://github.com/borneelphukan/nixobdo-pdf/releases/latest)** and install it manually:
 ```bash
 sudo apt install ./nixobdo-pdf_*_amd64.deb
 ```
-*Alternatively, download the portable tarball (`nixobdo-pdf-*-linux-x64.tar.gz`), extract it, and run `./install.sh`.*
+*Alternatively, download the portable tarball (`nixobdo-pdf-*-linux-x86_64.tar.gz`), extract it, and run `./install.sh`.*
 
 > [!NOTE]
 > The application bundles the PDFium library in installer packages. For manual builds, PDFium must be placed alongside the executable or in the `lib/` directory.

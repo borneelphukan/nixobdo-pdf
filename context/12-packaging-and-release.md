@@ -1,84 +1,122 @@
 # 12 — Packaging and Release
 
-This document describes how Windows, macOS, and Linux installers are produced,
-and the current state of code signing and notarization.
+This document describes how Windows, macOS and Linux packages are produced, and
+the current state of code signing and notarization.
 
-## 1. Windows Installer
+## 1. Windows installer
 
-- **Script:** `setup.iss` (Inno Setup 6).
-- **Build output:** `target/release/nixobdo-pdf.exe` — the Inno Setup compiler
-  produces `nixobdo-pdf.exe` (the installer) alongside the release binary.
-- **Contents:** the application binary, PDFium `pdfium.dll`, `settings.json`,
-  `Cargo.toml`/`Cargo.lock` (optional), icons, and a shortcut in the Start
-  menu.
-- **Auto‑update:** The updater checks GitHub Releases API for a newer
-  `tag_name`; if newer than the installed version, it downloads the new
-  `nixobdo-pdfSetup.exe` from a hard‑coded URL and launches it.
-- **Signing:** The Inno Setup script can be run with `/si` (sign) and `/vi`
-  (verify) flags if a code‑signing certificate is available; currently the repo
-  does not enforce signing, but the resulting installer may be flagged by
-  Windows SmartScreen.
+- **Script:** `installer/nixobdo-pdf.iss` (Inno Setup 6), parameterised by
+  preprocessor defines.
+- **Defines supplied by CI:** `MyAppVersion`, `MyVersionInfo` (four-field
+  numeric), `MyArch` (`x64`/`x86`/`arm64`), `MySourceExe`, `MyPdfiumDll` and
+  `MyOutputBaseFilename`.
+- **Output directory:** `Output/` at the repository root.
+- **Contents:** `nixobdo-pdf.exe`, `pdfium.dll`, and `LICENSE`/`README.md`
+  under `docs/`.
+- **Architecture:** `x64` uses `ArchitecturesInstallIn64BitMode=x64compatible`;
+  `arm64` installs in 64-bit ARM mode; `x86` installs in 32-bit mode so it also
+  runs on 32-bit Windows.
+- **Auto-update:** the updater queries the GitHub Releases API and downloads
+  `nixobdo-pdfSetup.exe` from a hard-coded URL. The x64 installer therefore
+  keeps that exact asset name; non-x64 installers append `-x86` or `-arm64`.
+- **Signing:** not performed. The resulting installer may trigger Windows
+  SmartScreen.
 
-## 2. macOS App Bundle
+## 2. macOS app bundle
 
 - **Script:** `packaging/macos/build-app.sh`.
-- **Output:** An `.app` bundle (e.g. `nixobdo-pdf.app`) placed beside the
-  release binary.
+- **Usage:** `build-app.sh [BINARY] [LIBPDFIUM] [VERSION] [OUT_DIR] [ARCH]`.
+- **Output:** a `.app` bundle and a DMG named
+  `nixobdo-pdf-<version>-macos-<arch>.dmg`. CI passes `universal`, giving
+  `nixobdo-pdf-<version>-macos-universal.dmg`.
 - **Bundle contents:**
-  - `nixobdo-pdf` executable (the Rust binary).
-  - `libpdfium.dylib` — PDFium binary copied from the build environment.
-  - `Resources/AppIcon.icns` — ICNS generated from `assets/logo.png` at sizes
-    16/32/128/256/512 with retina doubles.
-  - `Info.plist` — standard macOS plist with bundle identifier,
-    `LSApplicationCategoryType: productivity`, `NSHighResolutionCapable: true`.
-- **Code signing:** The app is **ad‑hoc signed** (notarization is not performed).
-  The signing identity is expected to be set in the build environment; without
-  a valid signature the app may show a warning on macOS 10.15+.
-- **Entitlements:** Minimal; `NSHighResolutionCapable` is the only special
-  entitlement.
+  - `Contents/MacOS/nixobdo-pdf` — the Rust binary (universal in CI).
+  - `Contents/MacOS/libpdfium.dylib` and `Contents/Resources/libpdfium.dylib` —
+    PDFium is looked up next to the executable first.
+  - `Contents/Resources/AppIcon.icns` — generated from `assets/logo.png`.
+  - `Contents/Info.plist` — bundle identifier, version, minimum macOS 11.0 and
+    `NSHighResolutionCapable`.
+- **Code signing:** ad-hoc signed with `codesign --sign -`. Not notarized, so
+  Gatekeeper still shows a warning for downloaded builds.
+- **Default PDFium path:** `lib/libpdfium.dylib` (the checked-in development
+  copy), overridable with the second argument.
 
-## 3. Linux Packaging
-
-Three sub‑scripts under `packaging/linux/`:
+## 3. Linux packaging
 
 | Script | Output |
 |---|---|
-| `build-deb.sh` | `.deb` package for amd64, depends on `libc6, libgtk-3-0 | libgtk-3-0t64, libxcb1, libxcb-render0, libxcb-shape0, libxcb-xfixes0, libxkbcommon0`. |
-| `install.sh` | Portable tarball installer; extracts to `opt/` and creates a `.desktop` entry. |
-| `uninstall.sh` | Removes the tarball, `.desktop`, and resets icon cache. |
+| `packaging/linux/build-deb.sh` | `.deb` for amd64 with dependencies `libc6`, GTK 3, XCB and xkbcommon. |
+| `packaging/linux/build-tarball.sh` | Portable `nixobdo-pdf-<version>-linux-<arch>.tar.gz`. |
+| `packaging/linux/build-appimage.sh` | `nixobdo-pdf-<version>-<arch>.AppImage`. |
+| `packaging/rpm/build-rpm.sh` | `nixobdo-pdf-<version>-1.<arch>.rpm` from `packaging/rpm/nixobdo-pdf.spec.in`. |
+| `packaging/linux/install.sh` | Installs a staged tarball into `/usr/local` or `~/.local`. |
+| `packaging/linux/uninstall.sh` | Removes those installed files. |
 
-### `build-deb.sh` flow
+`build-deb.sh` and `build-rpm.sh` take positional arguments
+`BINARY LIBPDFIUM VERSION OUTPUT_DIR`; the tarball and AppImage builders read
+`VERSION`, `ARCH`, `BINARY`, `LIBPDFIUM` and `OUT_DIR` from the environment.
 
-1. Copies `assets/logo.png` to the debian package icon path
-   (`/usr/share/icons/hicolor/512x512/apps/nixobdo-pdf.png`).
-2. Computes `Installed-Size` via `du -sk`.
-3. Generates `DEBIAN/control` with package name, version, dependencies, and
-   description.
-4. Generates `DEBIAN/postinst` and `DEBIAN/postrm` scripts for icon cache
-   updates.
-5. Packages the whole staging tree into a `.deb` using `dpkg-deb`.
+All Linux packages place `libpdfium.so` next to the binary or under
+`/usr/lib/nixobdo-pdf/`, because the application loads PDFium from the
+executable directory first.
 
-### Packaging script commonalities
+### AppImage
 
-- All scripts expect `chmod +x` to have been run once.
-- They reference `$REPO_ROOT` (the repository root) for assets and lib PDFium.
-- The Linux build in CI (`nightly.yml`) runs `./packaging/linux/build-deb.sh
-  target/release/nixobdo-pdf libpdfium.so "$VERSION" dist`.
+The AppImage contains:
 
-## 4. Release Assets
+- `usr/bin/nixobdo-pdf` and `usr/bin/libpdfium.so` (so the executable-relative
+  lookup succeeds),
+- a fallback copy under `usr/lib/nixobdo-pdf/`,
+- the desktop entry and icon,
+- an `AppRun` that execs `usr/bin/nixobdo-pdf`.
 
-A successful stable release publishes the following assets under a `v<version>`
-tag:
+`appimagetool` is downloaded on demand unless `APPIMAGETOOL` points at an
+existing binary.
+
+## 4. apt repository and Pages
+
+`packaging/apt/build-repo.py` assembles a static apt repository from the `.deb`
+files:
+
+```text
+<out>/apt/dists/stable/Release
+<out>/apt/dists/stable/main/binary-amd64/Packages[.gz|.xz]
+<out>/apt/pool/main/n/nixobdo-pdf/*.deb
+<out>/install.sh
+<out>/index.html
+```
+
+`publish-pages` copies the website build over this output and deploys the merged
+tree to GitHub Pages, so the repository is served from
+`https://borneelphukan.github.io/nixobdo-pdf/apt/`.
+
+Users install with:
+
+```bash
+curl -fsSL https://borneelphukan.github.io/nixobdo-pdf/install.sh | sudo bash
+```
+
+`packaging/apt/install.sh` supports `--print`, `--remove`, `--yes` and
+`--help`. When a signing key is published it writes a
+`Signed-By:` source; otherwise it falls back to `Trusted: yes`.
+
+## 5. Release assets
+
+A tagged release (`v<version>`) publishes:
 
 | Asset | Platform | Format |
 |---|---|---|
-| Installer | Windows | `.exe` (Inno Setup built) |
-| Package | Linux | `.deb` (via `build-deb.sh`) + `.tar.gz` portable tarball |
-| Bundle | macOS | `.app` DMG (hand‑built from `build-app.sh`) |
-| Metadata | All | `SHA256SUMS` file with checksums for each artifact |
+| `nixobdo-pdfSetup.exe` | Windows x64 | Inno Setup installer |
+| `nixobdo-pdfSetup-x86.exe` | Windows x86 | Inno Setup installer |
+| `nixobdo-pdfSetup-arm64.exe` | Windows ARM64 | Inno Setup installer |
+| `nixobdo-pdf-<version>-windows-<arch>-portable.zip` | Windows | Portable zip |
+| `nixobdo-pdf_<version>_amd64.deb` | Linux | Debian package |
+| `nixobdo-pdf-<version>-1.x86_64.rpm` | Linux | RPM package |
+| `nixobdo-pdf-<version>-linux-x86_64.tar.gz` | Linux | Portable tarball |
+| `nixobdo-pdf-<version>-x86_64.AppImage` | Linux | AppImage |
+| `nixobdo-pdf-<version>-macos-universal.dmg` | macOS | Universal DMG |
+| `SHA256SUMS` | All | Checksums for every asset |
 
-## 5. Obsolete workflows
-
-- `scratch/nightly.yml` and `scratch/stable.yml` are **obsolete copies** of the
-  release workflows and **must not** be used as the source of truth. The current
-  workflows are in `.github/workflows/`.
+The website's download page classifies assets by extension and, for Windows, by
+`x86`/`arm64` tokens in the file name. Keep those names stable when changing the
+workflow.

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Bump the project version everywhere and add a CHANGELOG section.
+"""Bump the project version and add a CHANGELOG section.
 
-Updates Cargo.toml, Cargo.lock, setup.iss, and CHANGELOG.md so a release build
-can use `cargo build --locked`.
+Updates Cargo.toml, Cargo.lock, and CHANGELOG.md so a release build can use
+`cargo build --locked`. The Windows installer takes its version from the
+release workflow defines and keeps a neutral `0.0.0` fallback, so it is not
+rewritten here.
 """
 
 from __future__ import annotations
@@ -73,15 +75,6 @@ def update_lock(version: str) -> None:
     if count != 1:
         sys.exit("Could not update nixobdo-pdf version in Cargo.lock")
     write("Cargo.lock", updated)
-
-
-def update_setup(version: str) -> None:
-    replace_once(
-        "setup.iss",
-        rf"^(AppVersion=){VERSION}",
-        rf"\g<1>{version}",
-        "AppVersion",
-    )
 
 
 def git_subjects(since_tag: str) -> list[str]:
@@ -175,7 +168,6 @@ def main() -> None:
 
     update_cargo(args.version)
     update_lock(args.version)
-    update_setup(args.version)
     upsert_changelog(args.version, args.from_tag)
 
     print(f"Bumped nixobdo-pdf to {args.version}")

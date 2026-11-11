@@ -75,13 +75,12 @@ impl NixobdoPdfApp {
                         .add_enabled(self.active_tab_index.is_some(), egui::Button::new("Rename"))
                         .clicked()
                     {
-                        if let Some(active_idx) = self.active_tab_index {
-                            if let Some(tab) = self.tabs.get(active_idx) {
+                        if let Some(active_idx) = self.active_tab_index
+                            && let Some(tab) = self.tabs.get(active_idx) {
                                 self.rename_buffer = tab.file_name.clone();
                                 self.rename_window_open = true;
                                 self.focus_rename_input = true;
                             }
-                        }
                         ui.close();
                     }
 
@@ -92,18 +91,16 @@ impl NixobdoPdfApp {
                         )
                         .clicked()
                     {
-                        if let Some(active_idx) = self.active_tab_index {
-                            if let Some(tab) = self.tabs.get(active_idx) {
+                        if let Some(active_idx) = self.active_tab_index
+                            && let Some(tab) = self.tabs.get(active_idx) {
                                 let name = if tab.file_name.to_lowercase().ends_with(".pdf") {
                                     tab.file_name[..tab.file_name.len() - 4].to_string()
                                 } else {
                                     tab.file_name.clone()
-                                }
-                                .into();
+                                };
                                 self.export_name = name;
                                 self.export_window_open = true;
                             }
-                        }
                         ui.close();
                     }
                 });
@@ -118,8 +115,7 @@ impl NixobdoPdfApp {
                             if let Some(path) = rfd::FileDialog::new()
                                 .add_filter("Images", &["png", "jpg", "jpeg"])
                                 .pick_file()
-                            {
-                                if let Ok(img) = image::open(&path) {
+                                && let Ok(img) = image::open(&path) {
                                     let rgba = img.to_rgba8();
                                     let size = [rgba.width() as usize, rgba.height() as usize];
                                     let pixels = rgba.as_flat_samples();
@@ -144,7 +140,6 @@ impl NixobdoPdfApp {
                                             self.tabs.get(idx).map(|t| t.selected_page)
                                         });
                                 }
-                            }
                             ui.close();
                         }
                     });
@@ -182,15 +177,14 @@ impl NixobdoPdfApp {
                                 ))
                                 .clicked()
                             {
-                                if let Some(active_idx) = self.active_tab_index {
-                                    if let Some(tab) = self.tabs.get_mut(active_idx) {
+                                if let Some(active_idx) = self.active_tab_index
+                                    && let Some(tab) = self.tabs.get_mut(active_idx) {
                                         self.pending_rotation -= 90;
                                         for rot in &mut tab.page_rotations {
                                             *rot -= 90;
                                         }
                                         self.is_rotating_document = true;
                                     }
-                                }
                                 ui.close();
                             }
 
@@ -204,15 +198,14 @@ impl NixobdoPdfApp {
                                 ))
                                 .clicked()
                             {
-                                if let Some(active_idx) = self.active_tab_index {
-                                    if let Some(tab) = self.tabs.get_mut(active_idx) {
+                                if let Some(active_idx) = self.active_tab_index
+                                    && let Some(tab) = self.tabs.get_mut(active_idx) {
                                         self.pending_rotation += 90;
                                         for rot in &mut tab.page_rotations {
                                             *rot += 90;
                                         }
                                         self.is_rotating_document = true;
                                     }
-                                }
                                 ui.close();
                             }
                         });
@@ -316,8 +309,8 @@ impl NixobdoPdfApp {
                         .add_enabled(has_llm && self.active_tab_index.is_some(), egui::Button::new("Summarize with AI"))
                         .clicked()
                     {
-                        if let Some(tab_idx) = self.active_tab_index {
-                            if let Some(tab) = self.tabs.get(tab_idx) {
+                        if let Some(tab_idx) = self.active_tab_index
+                            && let Some(tab) = self.tabs.get(tab_idx) {
                                 let full_text = tab.page_texts.join("\n");
                                 self.ai_chatbot_open = true;
                                 self.ai_chat_loading = true;
@@ -360,7 +353,6 @@ impl NixobdoPdfApp {
                                         ctx: ui.ctx().clone(),
                                     });
                             }
-                        }
                         ui.close();
                     }
                 });

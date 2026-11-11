@@ -43,27 +43,26 @@ impl NixobdoPdfApp {
                 });
             });
 
-        if perform_rename {
-            if let Some(active_idx) = self.active_tab_index {
-                if let Some(tab) = self.tabs.get_mut(active_idx) {
-                    let old_path = tab.path.clone();
-                    let mut new_path = old_path.clone();
-                    new_path.set_file_name(&self.rename_buffer);
+        if perform_rename
+            && let Some(active_idx) = self.active_tab_index
+            && let Some(tab) = self.tabs.get_mut(active_idx)
+        {
+            let old_path = tab.path.clone();
+            let mut new_path = old_path.clone();
+            new_path.set_file_name(&self.rename_buffer);
 
-                    if fs::rename(&old_path, &new_path).is_ok() {
-                        tab.path = new_path.clone();
-                        tab.file_name = self.rename_buffer.clone();
+            if fs::rename(&old_path, &new_path).is_ok() {
+                tab.path = new_path.clone();
+                tab.file_name = self.rename_buffer.clone();
 
-                        // Update recent files
-                        self.recent_files.retain(|p| p != &old_path);
-                        if !self.recent_files.contains(&new_path) {
-                            self.recent_files.insert(0, new_path);
-                            self.recent_files.truncate(5);
-                        }
-                    } else {
-                        eprintln!("Failed to rename file on disk.");
-                    }
+                // Update recent files
+                self.recent_files.retain(|p| p != &old_path);
+                if !self.recent_files.contains(&new_path) {
+                    self.recent_files.insert(0, new_path);
+                    self.recent_files.truncate(5);
                 }
+            } else {
+                eprintln!("Failed to rename file on disk.");
             }
         }
 

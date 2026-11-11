@@ -96,8 +96,8 @@ main()
 The recent changelog and code show active work in:
 
 - AI/LLM integration (local LLM presets, API-key mode, chat sessions, selection explanation)
-- release engineering (version-tag-driven stable releases, macOS artifacts, advisory CI gates)
+- release engineering (tag-driven releases, multi-arch packages, apt repository, blocking CI gates)
 - annotation reliability on Windows (panic recovery, temp-file retries)
 - platform packaging (Debian package, portable tarball, macOS app bundle)
 
-For exact historical detail, see `CHANGELOG.md`. Do not infer unreleased intent from `scratch/`; it contains superseded workflow drafts.
+For exact historical detail, see `CHANGELOG.md`. The workflows in `.github/workflows/` are the only source of truth for release automation.

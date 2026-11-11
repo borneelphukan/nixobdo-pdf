@@ -79,10 +79,10 @@ impl NixobdoPdfApp {
                                     .map(|p| p.to_string_lossy().to_string())
                                     .unwrap_or_else(|| "Select Folder...".to_string());
 
-                                if ui.button(&location_text).clicked() {
-                                    if let Some(folder) = rfd::FileDialog::new().pick_folder() {
-                                        self.export_location = Some(folder);
-                                    }
+                                if ui.button(&location_text).clicked()
+                                    && let Some(folder) = rfd::FileDialog::new().pick_folder()
+                                {
+                                    self.export_location = Some(folder);
                                 }
                             });
                             ui.add_space(2.0);
@@ -142,29 +142,26 @@ impl NixobdoPdfApp {
                     });
             });
 
-        if perform_export {
-            if let Some(active_idx) = self.active_tab_index {
-                if let Some(tab) = self.tabs.get(active_idx) {
-                    if let Some(location) = &self.export_location {
-                        let final_name =
-                            format!("{}.{}", self.export_name, self.export_format.extension());
-                        let out_path = location.join(final_name);
+        if perform_export
+            && let Some(active_idx) = self.active_tab_index
+            && let Some(tab) = self.tabs.get(active_idx)
+            && let Some(location) = &self.export_location
+        {
+            let final_name = format!("{}.{}", self.export_name, self.export_format.extension());
+            let out_path = location.join(final_name);
 
-                        self.export_cancel_flag.store(false, Ordering::Relaxed);
+            self.export_cancel_flag.store(false, Ordering::Relaxed);
 
-                        let _ = self.pdf_task_tx.send(PdfWorkerTask::Export {
-                            path: tab.path.clone(),
-                            password: tab.password.clone(),
-                            out_path,
-                            format: self.export_format,
-                            retain_layout: true,
-                            include_images: true,
-                            ctx: ui.ctx().clone(),
-                            cancel_flag: self.export_cancel_flag.clone(),
-                        });
-                    }
-                }
-            }
+            let _ = self.pdf_task_tx.send(PdfWorkerTask::Export {
+                path: tab.path.clone(),
+                password: tab.password.clone(),
+                out_path,
+                format: self.export_format,
+                retain_layout: true,
+                include_images: true,
+                ctx: ui.ctx().clone(),
+                cancel_flag: self.export_cancel_flag.clone(),
+            });
         }
         if close_window {
             self.export_window_open = false;

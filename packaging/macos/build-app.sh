@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 BINARY_PATH="${1:-$REPO_ROOT/target/release/nixobdo-pdf}"
-LIBPDFIUM_PATH="${2:-$REPO_ROOT/libpdfium.dylib}"
+LIBPDFIUM_PATH="${2:-$REPO_ROOT/lib/libpdfium.dylib}"
 VERSION="${3:-}"
 OUTPUT_DIR="${4:-$REPO_ROOT/dist}"
 ARCH="${5:-$(uname -m)}"

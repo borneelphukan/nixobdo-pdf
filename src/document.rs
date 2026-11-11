@@ -6,7 +6,7 @@ use std::sync::mpsc::Sender;
 
 pub fn clean_cache() {
     let cache_root = dirs::cache_dir()
-        .unwrap_or_else(|| std::env::temp_dir())
+        .unwrap_or_else(std::env::temp_dir)
         .join("nixobdo-pdf-cache");
 
     if !cache_root.exists() {
@@ -32,11 +32,11 @@ pub fn clean_cache() {
                     last_access = meta.modified().unwrap_or(std::time::UNIX_EPOCH);
                 }
 
-                if let Ok(age) = now.duration_since(last_access) {
-                    if age > max_age {
-                        let _ = std::fs::remove_dir_all(&path);
-                        continue;
-                    }
+                if let Ok(age) = now.duration_since(last_access)
+                    && age > max_age
+                {
+                    let _ = std::fs::remove_dir_all(&path);
+                    continue;
                 }
 
                 let mut dir_size = 0;
@@ -100,8 +100,8 @@ pub fn find_closest_char(
     if chars.is_empty() {
         return None;
     }
-    let rx = ((mouse_pos.x - page_rect.min.x) / page_rect.width()) as f32;
-    let ry = ((mouse_pos.y - page_rect.min.y) / page_rect.height()) as f32;
+    let rx = (mouse_pos.x - page_rect.min.x) / page_rect.width();
+    let ry = (mouse_pos.y - page_rect.min.y) / page_rect.height();
 
     let mut closest_idx = None;
     let mut min_dist = f32::MAX;
@@ -247,17 +247,12 @@ pub struct AnnotationAction {
     pub underline: bool,
 }
 
-#[derive(PartialEq, Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug, Default)]
 pub enum PageLayoutMode {
+    #[default]
     ContinuousScroll,
     SinglePage,
     TwoPage,
-}
-
-impl Default for PageLayoutMode {
-    fn default() -> Self {
-        PageLayoutMode::ContinuousScroll
-    }
 }
 
 pub struct PdfDocumentState {
@@ -319,16 +314,16 @@ impl PdfDocumentState {
         self.path.hash(&mut hasher);
         if let Ok(meta) = std::fs::metadata(&self.path) {
             meta.len().hash(&mut hasher);
-            if let Ok(time) = meta.modified() {
-                if let Ok(duration) = time.duration_since(std::time::UNIX_EPOCH) {
-                    duration.as_secs().hash(&mut hasher);
-                }
+            if let Ok(time) = meta.modified()
+                && let Ok(duration) = time.duration_since(std::time::UNIX_EPOCH)
+            {
+                duration.as_secs().hash(&mut hasher);
             }
         }
         let cache_key = format!("{:x}", hasher.finish());
 
         dirs::cache_dir()
-            .unwrap_or_else(|| std::env::temp_dir())
+            .unwrap_or_else(std::env::temp_dir)
             .join("nixobdo-pdf-cache")
             .join(&cache_key)
     }
@@ -345,86 +340,82 @@ impl PdfDocumentState {
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_else(|| "Untitled".to_string());
 
-        let is_password_protected =
-            match pdfium.load_pdf_from_file(path.to_str().unwrap_or_default(), None) {
-                Err(PdfiumError::PdfiumLibraryInternalError(
-                    PdfiumInternalError::PasswordError,
-                )) => true,
-                _ => false,
-            };
+        let is_password_protected = matches!(
+            pdfium.load_pdf_from_file(path.to_str().unwrap_or_default(), None),
+            Err(PdfiumError::PdfiumLibraryInternalError(
+                PdfiumInternalError::PasswordError
+            ))
+        );
         let use_cache = !is_password_protected;
 
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         path.hash(&mut hasher);
         if let Ok(meta) = std::fs::metadata(&path) {
             meta.len().hash(&mut hasher);
-            if let Ok(time) = meta.modified() {
-                if let Ok(duration) = time.duration_since(std::time::UNIX_EPOCH) {
-                    duration.as_secs().hash(&mut hasher);
-                }
+            if let Ok(time) = meta.modified()
+                && let Ok(duration) = time.duration_since(std::time::UNIX_EPOCH)
+            {
+                duration.as_secs().hash(&mut hasher);
             }
         }
         let cache_key = format!("{:x}", hasher.finish());
 
         let cache_dir = dirs::cache_dir()
-            .unwrap_or_else(|| std::env::temp_dir())
+            .unwrap_or_else(std::env::temp_dir)
             .join("nixobdo-pdf-cache")
             .join(&cache_key);
 
-        if use_cache && cache_dir.exists() {
-            if let Ok(meta_bytes) = std::fs::read(cache_dir.join("metadata.bin")) {
-                if let Ok((page_count, page_texts, page_chars, page_links, page_sizes)) =
-                    bincode::deserialize::<(
-                        usize,
-                        Vec<String>,
-                        Vec<Vec<PdfCharInfo>>,
-                        Vec<Vec<PdfLinkInfo>>,
-                        Vec<(f32, f32)>,
-                    )>(&meta_bytes)
-                {
-                    let _ = tx.send(PdfWorkerMessage::DocumentInfo {
+        if use_cache
+            && cache_dir.exists()
+            && let Ok(meta_bytes) = std::fs::read(cache_dir.join("metadata.bin"))
+            && let Ok((page_count, page_texts, page_chars, page_links, page_sizes)) =
+                bincode::deserialize::<(
+                    usize,
+                    Vec<String>,
+                    Vec<Vec<PdfCharInfo>>,
+                    Vec<Vec<PdfLinkInfo>>,
+                    Vec<(f32, f32)>,
+                )>(&meta_bytes)
+        {
+            let _ = tx.send(PdfWorkerMessage::DocumentInfo {
+                path: path.clone(),
+                file_name: file_name.clone(),
+                page_count,
+                error: None,
+                password: None,
+                use_cache: true,
+            });
+            ctx.request_repaint();
+
+            let mut success = true;
+            for index in 0..page_count {
+                if let Ok(thumb) = image::open(cache_dir.join(format!("thumb_{}.png", index))) {
+                    let thumb_rgba = thumb.to_rgba8();
+                    let thumbnail_image = egui::ColorImage::from_rgba_unmultiplied(
+                        [thumb_rgba.width() as usize, thumb_rgba.height() as usize],
+                        thumb_rgba.as_flat_samples().as_slice(),
+                    );
+                    let _ = tx.send(PdfWorkerMessage::PageData {
                         path: path.clone(),
-                        file_name: file_name.clone(),
-                        page_count,
-                        error: None,
-                        password: None,
-                        use_cache: true,
+                        index,
+                        image: None,
+                        thumbnail_image: Some(thumbnail_image),
+                        text: page_texts[index].clone(),
+                        chars: page_chars[index].clone(),
+                        links: page_links[index].clone(),
+                        page_size: egui::vec2(page_sizes[index].0, page_sizes[index].1),
                     });
                     ctx.request_repaint();
-
-                    let mut success = true;
-                    for index in 0..page_count {
-                        if let Ok(thumb) =
-                            image::open(cache_dir.join(format!("thumb_{}.png", index)))
-                        {
-                            let thumb_rgba = thumb.to_rgba8();
-                            let thumbnail_image = egui::ColorImage::from_rgba_unmultiplied(
-                                [thumb_rgba.width() as usize, thumb_rgba.height() as usize],
-                                thumb_rgba.as_flat_samples().as_slice(),
-                            );
-                            let _ = tx.send(PdfWorkerMessage::PageData {
-                                path: path.clone(),
-                                index,
-                                image: None,
-                                thumbnail_image: Some(thumbnail_image),
-                                text: page_texts[index].clone(),
-                                chars: page_chars[index].clone(),
-                                links: page_links[index].clone(),
-                                page_size: egui::vec2(page_sizes[index].0, page_sizes[index].1),
-                            });
-                            ctx.request_repaint();
-                        } else {
-                            success = false;
-                            break;
-                        }
-                    }
-                    if success {
-                        let _ = tx.send(PdfWorkerMessage::Finished { path: path.clone() });
-                        ctx.request_repaint();
-                        let _ = std::fs::File::create(cache_dir.join("accessed.txt"));
-                        return;
-                    }
+                } else {
+                    success = false;
+                    break;
                 }
+            }
+            if success {
+                let _ = tx.send(PdfWorkerMessage::Finished { path: path.clone() });
+                ctx.request_repaint();
+                let _ = std::fs::File::create(cache_dir.join("accessed.txt"));
+                return;
             }
         }
 
@@ -498,17 +489,15 @@ impl PdfDocumentState {
                                     }
                                 } else if let Some(local_dest) =
                                     action.as_local_destination_action()
+                                    && let Ok(dest) = local_dest.destination()
+                                    && let Ok(page_idx) = dest.page_index()
                                 {
-                                    if let Ok(dest) = local_dest.destination() {
-                                        if let Ok(page_idx) = dest.page_index() {
-                                            target = Some(PdfLinkTarget::Page(page_idx as usize));
-                                        }
-                                    }
-                                }
-                            } else if let Some(dest) = link.destination() {
-                                if let Ok(page_idx) = dest.page_index() {
                                     target = Some(PdfLinkTarget::Page(page_idx as usize));
                                 }
+                            } else if let Some(dest) = link.destination()
+                                && let Ok(page_idx) = dest.page_index()
+                            {
+                                target = Some(PdfLinkTarget::Page(page_idx as usize));
                             }
 
                             if let Some(t) = target {
@@ -607,12 +596,12 @@ impl PdfDocumentState {
                     ctx.request_repaint();
                 }
 
-                if use_cache {
-                    if let Ok(meta_bytes) = bincode::serialize(&(
+                if use_cache
+                    && let Ok(meta_bytes) = bincode::serialize(&(
                         page_count, all_texts, all_chars, all_links, all_sizes,
-                    )) {
-                        let _ = std::fs::write(cache_dir.join("metadata.bin"), meta_bytes);
-                    }
+                    ))
+                {
+                    let _ = std::fs::write(cache_dir.join("metadata.bin"), meta_bytes);
                 }
 
                 let _ = tx.send(PdfWorkerMessage::Finished { path: path.clone() });

@@ -1,0 +1,30 @@
+# cargo-audit configuration, read automatically from .cargo/audit.toml by
+# `cargo audit` (see .github/workflows/audit.yml).
+#
+# Only ignore an advisory when it provably does not affect this project, for
+# example an unused feature or API, a target we do not ship, or a vulnerability
+# with no fixed release yet. Always record crate, reason and a revisit date so
+# the ignore can be re-checked when Cargo.lock changes.
+
+[advisories]
+ignore = [
+    # zip 8.6.0 is pinned transitively by docx-rs 0.4.22 (the latest release).
+    # All four advisories affect archive *extraction* (ZipArchive::extract /
+    # ZipStreamReader::extract). nixobdo-pdf only writes archives: image export
+    # uses zip::ZipWriter directly, and docx-rs writes DOCX containers. No
+    # extraction API is reachable, so these cannot be triggered by user data.
+    # Revisit when docx-rs allows zip >= 9.
+    "RUSTSEC-2026-0367", # zip: SUID/SGID preservation during extraction
+    "RUSTSEC-2026-0368", # zip: symlink targets escape destination
+    "RUSTSEC-2026-0369", # zip: permissions applied through symlinks
+    "RUSTSEC-2026-0429", # zip: abort on symlink with large declared size
+]
+
+# Uncomment to also warn about categories of informational advisories
+# (for example "unmaintained", "unsound", "yanked").
+# informational_warnings = ["unmaintained"]
+
+# Uncomment to make informational advisories fail the audit as well. Keep this
+# off until the project has triaged the existing informational findings.
+# [output]
+# deny = ["unmaintained"]

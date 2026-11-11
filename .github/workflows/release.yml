@@ -1,0 +1,798 @@
+name: Release
+
+# Produces every distributable for nixobdo-pdf:
+#   Linux  : Debian package, RPM, tarball and AppImage (x86_64)
+#   Windows: Installer and portable zip (64-bit, 32-bit, ARM64)
+#   macOS  : Universal disk image
+# plus the apt repository and landing page on GitHub Pages.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    # Ignored for tag pushes, so releasing a tag never depends on which files
+    # changed. Branch pushes only rebuild packages/site for relevant commits.
+    paths:
+      - "src/**"
+      - "build.rs"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "installer/**"
+      - "packaging/**"
+      - "assets/**"
+      - "scripts/**"
+      - "website/**"
+      - ".github/workflows/release.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "build.rs"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "installer/**"
+      - "packaging/**"
+      - "assets/**"
+      - "scripts/**"
+      # Website-only changes are validated by the lightweight Website workflow
+      # instead of triggering the full packaging matrix.
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
+  schedule:
+    # Rebuild weekly so the apt repository and Pages site stay available and
+    # pick up new runner images. Heavy packaging jobs skip scheduled runs.
+    - cron: "37 5 * * 1"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  metadata:
+    name: Read version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      numeric: ${{ steps.meta.outputs.numeric }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version from Cargo.toml
+        id: meta
+        run: |
+          version="$(awk -F'"' '/^version[[:space:]]*=/ {print $2; exit}' Cargo.toml)"
+          test -n "$version" || { echo "version not found in Cargo.toml" >&2; exit 1; }
+          # Four-field numeric version for Windows installer metadata.
+          IFS=. read -r major minor patch _rest <<< "${version%%-*}"
+          numeric="${major:-0}.${minor:-0}.${patch:-0}.0"
+          {
+            echo "version=$version"
+            echo "numeric=$numeric"
+          } >> "$GITHUB_OUTPUT"
+          echo "### Build $version ($numeric)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Tag matches Cargo.toml
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          expected="v${{ steps.meta.outputs.version }}"
+          if [ "${{ github.ref_name }}" != "$expected" ]; then
+            echo "::error::tag ${{ github.ref_name }} does not match Cargo.toml version ($expected)"
+            exit 1
+          fi
+
+  debian-x86_64:
+    name: Debian package (x86_64)
+    needs: metadata
+    # Runs on every trigger, including the weekly schedule, so the apt
+    # repository on Pages always has a package to serve.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config dpkg-dev desktop-file-utils libgtk-3-dev \
+            libx11-dev libxcb1-dev libxcb-composite0-dev libxcb-cursor-dev \
+            libxcb-image0-dev libxcb-icccm4-dev libxcb-keysyms1-dev \
+            libxcb-randr0-dev libxcb-render0-dev libxcb-render-util0-dev \
+            libxcb-shape0-dev libxcb-xfixes0-dev libxcb-xinerama0-dev \
+            libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev
+
+      - uses: dtolnay/rust-toolchain@1.99.1
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> target
+          key: linux-x86_64-release
+
+      - name: Download PDFium
+        run: |
+          mkdir -p pdfium-extract
+          curl -fsSL https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-linux-x64.tgz \
+            | tar -xz -C pdfium-extract
+          cp "$(find pdfium-extract -name libpdfium.so | head -n 1)" libpdfium.so
+
+      - name: Build release binary
+        run: cargo build --release --locked
+
+      - name: Build Debian package
+        env:
+          VERSION: ${{ needs.metadata.outputs.version }}
+        run: |
+          mkdir -p dist/deb
+          packaging/linux/build-deb.sh \
+            target/release/nixobdo-pdf libpdfium.so "$VERSION" dist/deb
+          deb="dist/deb/nixobdo-pdf_${VERSION}_amd64.deb"
+          dpkg-deb --field "$deb" \
+            Package Version Architecture Depends Installed-Size \
+            >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify the package layout
+        env:
+          VERSION: ${{ needs.metadata.outputs.version }}
+        run: |
+          deb="dist/deb/nixobdo-pdf_${VERSION}_amd64.deb"
+          data="$(mktemp -d)"
+          control="$(mktemp -d)"
+          dpkg-deb --extract "$deb" "$data"
+          dpkg-deb --control "$deb" "$control"
+          desktop-file-validate "$data/usr/share/applications/nixobdo-pdf.desktop"
+          test -x "$data/usr/bin/nixobdo-pdf"
+          test -s "$data/usr/lib/nixobdo-pdf/nixobdo-pdf"
+          test -s "$data/usr/lib/nixobdo-pdf/libpdfium.so"
+          test -s "$data/usr/share/icons/hicolor/512x512/apps/nixobdo-pdf.png"
+          for script in postinst postrm; do
+            test -x "$control/$script"
+            sh -n "$control/$script"
+          done
+          echo "package layout OK"
+          {
+            echo '```'
+            dpkg-deb --contents "$deb" | awk '{print $1, $6}'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          rm -rf "$data" "$control"
+
+      - name: Upload Debian package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Debian package (x86_64)
+          if-no-files-found: error
+          retention-days: 30
+          path: dist/deb/*.deb
+
+  linux-packages:
+    name: Linux packages (${{ matrix.label }})
+    needs: metadata
+    # Run for every push, pull request and manual dispatch; only the weekly
+    # schedule skips the expensive packaging matrix.
+    if: github.event_name != 'schedule'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: x86_64
+            arch: x86_64
+            runner: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config libgtk-3-dev rpm zstd file squashfs-tools \
+            libx11-dev libxcb1-dev libxcb-composite0-dev libxcb-cursor-dev \
+            libxcb-image0-dev libxcb-icccm4-dev libxcb-keysyms1-dev \
+            libxcb-randr0-dev libxcb-render0-dev libxcb-render-util0-dev \
+            libxcb-shape0-dev libxcb-xfixes0-dev libxcb-xinerama0-dev \
+            libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev
+
+      - uses: dtolnay/rust-toolchain@1.99.1
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> target
+          key: linux-${{ matrix.arch }}-release
+
+      - name: Download PDFium
+        run: |
+          mkdir -p pdfium-extract
+          curl -fsSL https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-linux-x64.tgz \
+            | tar -xz -C pdfium-extract
+          cp "$(find pdfium-extract -name libpdfium.so | head -n 1)" libpdfium.so
+
+      - name: Build release binary
+        run: cargo build --release --locked
+
+      - name: Build tarball
+        env:
+          VERSION: ${{ needs.metadata.outputs.version }}
+          ARCH: ${{ matrix.arch }}
+          OUT_DIR: dist/tarball
+        run: packaging/linux/build-tarball.sh
+
+      - name: Upload tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tarball (${{ matrix.label }})
+          if-no-files-found: error
+          retention-days: 30
+          path: dist/tarball/*
+
+      - name: Build AppImage
+        env:
+          VERSION: ${{ needs.metadata.outputs.version }}
+          ARCH: ${{ matrix.arch }}
+          OUT_DIR: dist/appimage
+        run: packaging/linux/build-appimage.sh
+
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppImage (${{ matrix.label }})
+          if-no-files-found: error
+          retention-days: 30
+          path: dist/appimage/*
+
+      - name: Build RPM package
+        env:
+          VERSION: ${{ needs.metadata.outputs.version }}
+          OUT_DIR: dist/rpm
+        run: |
+          mkdir -p "$OUT_DIR"
+          packaging/rpm/build-rpm.sh \
+            target/release/nixobdo-pdf libpdfium.so "$VERSION" "$OUT_DIR"
+
+      - name: Upload RPM package
+        uses: actions/upload-artifact@v4
+        with:
+          name: RPM package (${{ matrix.label }})
+          if-no-files-found: error
+          retention-days: 30
+          path: dist/rpm/*.rpm
+
+  windows:
+    name: Windows (${{ matrix.label }})
+    needs: metadata
+    # Run for every push, pull request and manual dispatch; only the weekly
+    # schedule skips the expensive packaging matrix.
+    if: github.event_name != 'schedule'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: 64-bit
+            arch: x64
+            target: x86_64-pc-windows-msvc
+            pdfium: pdfium-win-x64.tgz
+          - label: 32-bit
+            arch: x86
+            target: i686-pc-windows-msvc
+            pdfium: pdfium-win-x86.tgz
+          - label: ARM64
+            arch: arm64
+            target: aarch64-pc-windows-msvc
+            pdfium: pdfium-win-arm64.tgz
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> target
+          key: windows-${{ matrix.target }}-release
+
+      - name: Convert logo to ICO
+        run: |
+          magick -background none -density 256 assets\icons\logo.svg -define icon:auto-resize="256,128,64,48,32,16" assets\logo.ico
+
+      - name: Build release binary
+        run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: Download PDFium
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path pdfium-extract | Out-Null
+          Invoke-WebRequest `
+            -Uri "https://github.com/bblanchon/pdfium-binaries/releases/latest/download/${{ matrix.pdfium }}" `
+            -OutFile pdfium.tgz
+          tar -xzf pdfium.tgz -C pdfium-extract
+          $dll = Get-ChildItem -Path pdfium-extract -Recurse -Filter pdfium.dll |
+            Select-Object -First 1
+          if (-not $dll) { throw "pdfium.dll was not found in the archive" }
+          Copy-Item $dll.FullName -Destination pdfium.dll
+
+      - name: Install Inno Setup
+        id: inno
+        shell: pwsh
+        run: |
+          $iscc = $null
+          foreach ($root in @(${env:ProgramFiles(x86)}, $env:ProgramFiles)) {
+            if (-not $root) { continue }
+            foreach ($dir in Get-ChildItem $root -Directory -Filter 'Inno Setup*' -ErrorAction SilentlyContinue) {
+              $candidate = Join-Path $dir.FullName 'ISCC.exe'
+              if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+                $iscc = $candidate
+                break
+              }
+            }
+            if ($iscc) { break }
+          }
+
+          if (-not $iscc) {
+            choco install innosetup --no-progress -y
+            if ($LASTEXITCODE -ne 0) { throw "Inno Setup installation failed with exit code $LASTEXITCODE" }
+            foreach ($root in @(${env:ProgramFiles(x86)}, $env:ProgramFiles)) {
+              if (-not $root) { continue }
+              foreach ($dir in Get-ChildItem $root -Directory -Filter 'Inno Setup*' -ErrorAction SilentlyContinue) {
+                $candidate = Join-Path $dir.FullName 'ISCC.exe'
+                if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+                  $iscc = $candidate
+                  break
+                }
+              }
+              if ($iscc) { break }
+            }
+          }
+
+          if (-not $iscc) { throw "ISCC.exe could not be located" }
+          "iscc=$iscc" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "using Inno Setup: $iscc"
+
+      - name: Build installer and portable zip
+        id: package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $version = "${{ needs.metadata.outputs.version }}"
+          $numeric = "${{ needs.metadata.outputs.numeric }}"
+          $arch = "${{ matrix.arch }}"
+          $source = (Resolve-Path "target\${{ matrix.target }}\release\nixobdo-pdf.exe").Path
+          $pdfium = (Resolve-Path "pdfium.dll").Path
+          $iscc = "${{ steps.inno.outputs.iscc }}"
+
+          # The x64 installer keeps the historical name because the in-app
+          # updater downloads nixobdo-pdfSetup.exe from the latest release.
+          if ($arch -eq "x64") {
+            $base = "nixobdo-pdfSetup"
+          } else {
+            $base = "nixobdo-pdfSetup-$arch"
+          }
+
+          $isccArgs = @(
+            "/DMyAppVersion=$version"
+            "/DMyVersionInfo=$numeric"
+            "/DMyArch=$arch"
+            "/DMySourceExe=$source"
+            "/DMyPdfiumDll=$pdfium"
+            "/DMyOutputBaseFilename=$base"
+            "installer\nixobdo-pdf.iss"
+          )
+          & $iscc @isccArgs
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
+
+          $setup = "Output\$base.exe"
+          if (-not (Test-Path -LiteralPath $setup)) { throw "installer was not created at $setup" }
+
+          $stage = "target\portable-$arch"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item $source $stage
+          Copy-Item $pdfium $stage
+          Copy-Item "LICENSE" $stage
+          Copy-Item "README.md" $stage
+          $portable = "target\nixobdo-pdf-$version-windows-$arch-portable.zip"
+          Compress-Archive -Path "$stage\*" -DestinationPath $portable -Force
+
+          "setup=$setup" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "portable=$portable" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "created $setup and $portable"
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Installer (${{ matrix.label }})
+          if-no-files-found: error
+          retention-days: 30
+          path: ${{ steps.package.outputs.setup }}
+
+      - name: Upload portable zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: Portable (${{ matrix.label }})
+          if-no-files-found: error
+          retention-days: 30
+          path: ${{ steps.package.outputs.portable }}
+
+  macos-universal:
+    name: Disk image (Universal)
+    needs: metadata
+    # Run for every push, pull request and manual dispatch; only the weekly
+    # schedule skips the expensive packaging matrix.
+    if: github.event_name != 'schedule'
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          targets: x86_64-apple-darwin,aarch64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> target
+          key: macos-universal-release
+
+      - name: Build release binaries
+        run: |
+          cargo build --release --locked --target aarch64-apple-darwin
+          cargo build --release --locked --target x86_64-apple-darwin
+
+      - name: Create universal binary
+        run: |
+          lipo -create \
+            -output target/release/nixobdo-pdf \
+            target/aarch64-apple-darwin/release/nixobdo-pdf \
+            target/x86_64-apple-darwin/release/nixobdo-pdf
+          lipo -info target/release/nixobdo-pdf
+
+      - name: Download PDFium
+        run: |
+          mkdir -p pdfium-extract
+          curl -fsSL https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-mac-univ.tgz \
+            | tar -xz -C pdfium-extract
+          cp "$(find pdfium-extract -name libpdfium.dylib | head -n 1)" libpdfium.dylib
+
+      - name: Build disk image
+        env:
+          VERSION: ${{ needs.metadata.outputs.version }}
+        run: |
+          packaging/macos/build-app.sh \
+            target/release/nixobdo-pdf libpdfium.dylib \
+            "$VERSION" dist/macos-universal universal
+
+      - name: Upload disk image
+        uses: actions/upload-artifact@v4
+        with:
+          name: Disk image (Universal)
+          if-no-files-found: error
+          retention-days: 30
+          path: dist/macos-universal/*.dmg
+
+  website:
+    name: Build website
+    needs: metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: website/package.json
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: website/.nvmrc
+          cache: pnpm
+          cache-dependency-path: website/pnpm-lock.yaml
+
+      - name: Build the landing page
+        working-directory: website
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+
+      - name: Upload the site artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-dist
+          if-no-files-found: error
+          retention-days: 7
+          path: website/dist
+
+  publish-pages:
+    name: Publish apt repository
+    needs: [ci, debian-x86_64, website]
+    # `ci` is skipped only on the weekly schedule, so that case must not block
+    # Pages; every other run has to pass it. This keeps the apt repository from
+    # serving a commit that failed fmt/clippy/tests.
+    if: >-
+      !cancelled() && github.event_name != 'pull_request' &&
+      needs.debian-x86_64.result == 'success' &&
+      needs.website.result == 'success' &&
+      (needs.ci.result == 'success' || needs.ci.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the Debian package
+        uses: actions/download-artifact@v4
+        with:
+          name: Debian package (x86_64)
+          path: dist
+
+      - name: Download the website artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: website-dist
+          path: site
+
+      - name: Prepare signing key material
+        id: key
+        env:
+          PRIVATE_KEY: ${{ secrets['APT_REPO_PRIVATE_KEY'] }}
+          PASSPHRASE: ${{ secrets.APT_REPO_PASSPHRASE }}
+          KEY_ID: ${{ vars.APT_REPO_KEY_ID }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/apt-signing"
+          if [ -n "$PRIVATE_KEY" ] && [ -n "$KEY_ID" ]; then
+            printf '%s\n' "$PRIVATE_KEY" > "$RUNNER_TEMP/apt-signing/repo-key.asc"
+            chmod 600 "$RUNNER_TEMP/apt-signing/repo-key.asc"
+            if [ -n "$PASSPHRASE" ]; then
+              printf '%s' "$PASSPHRASE" > "$RUNNER_TEMP/apt-signing/passphrase.txt"
+              chmod 600 "$RUNNER_TEMP/apt-signing/passphrase.txt"
+            fi
+            {
+              echo "id=$KEY_ID"
+              echo "key=$RUNNER_TEMP/apt-signing/repo-key.asc"
+              echo "pass=$RUNNER_TEMP/apt-signing/passphrase.txt"
+            } >> "$GITHUB_OUTPUT"
+            echo "Repository will be GPG signed with key \`$KEY_ID\`." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::APT_REPO_PRIVATE_KEY or APT_REPO_KEY_ID is not configured, publishing an unsigned repository (clients need [trusted=yes])"
+            echo "Repository published **unsigned**: configure the \`APT_REPO_PRIVATE_KEY\` secret and the \`APT_REPO_KEY_ID\` variable." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Build the apt repository
+        env:
+          KEY_ID: ${{ steps.key.outputs.id }}
+          KEY_FILE: ${{ steps.key.outputs.key }}
+          PASSPHRASE_FILE: ${{ steps.key.outputs.pass }}
+        run: |
+          mkdir -p pages
+          args=(--debs dist --out pages --suite stable --component main
+                --origin nixobdo-pdf --label "nixobdo-pdf")
+          if [ -n "$KEY_ID" ]; then
+            args+=(--gpg-key-id "$KEY_ID" --gpg-key-file "$KEY_FILE"
+                   --gpg-passphrase-file "$PASSPHRASE_FILE")
+          fi
+          python3 packaging/apt/build-repo.py "${args[@]}"
+
+      - name: Verify the repository metadata
+        run: |
+          test -f pages/apt/dists/stable/Release
+          test -f pages/apt/dists/stable/main/binary-amd64/Packages
+          test -f pages/install.sh
+          sh -n pages/install.sh
+          python3 - pages/apt/dists/stable <<'PY'
+          import hashlib, os, sys
+          base = sys.argv[1]
+          release = open(os.path.join(base, "Release"), encoding="utf-8").read()
+          for field in ("Suite: stable", "Components: main", "Architectures: amd64"):
+              assert field in release, f"Release is missing {field!r}"
+          assert "SHA256:" in release, "Release has no SHA256 section"
+          entries = [
+              line.split()
+              for line in release.split("SHA256:", 1)[1].strip().splitlines()
+          ]
+          assert entries, "SHA256 section is empty"
+          for digest, size, name in entries:
+              blob = open(os.path.join(base, name), "rb").read()
+              assert len(blob) == int(size), f"size mismatch for {name}"
+              assert hashlib.sha256(blob).hexdigest() == digest, f"sha256 mismatch for {name}"
+          if os.path.exists(os.path.join(base, "InRelease")):
+              print("InRelease present")
+          print(f"Release lists {len(entries)} files, every checksum matches")
+          PY
+
+      - name: Configure GitHub Pages
+        id: deployment
+        uses: actions/configure-pages@v5
+        with:
+          # Enable Pages on first run so a fresh repository does not fail
+          # with "Get Pages site failed ... Not Found".
+          enablement: true
+
+      - name: Merge the website into the Pages site
+        run: |
+          # The landing page takes the site root; the apt repository keeps
+          # living under /apt and /install.sh stays where it is.
+          cp -r site/. pages/
+          test -f pages/index.html
+          test -f pages/apt/dists/stable/Release
+          test -f pages/install.sh
+          echo "Pages site root:"
+          find pages -mindepth 1 -maxdepth 1 -print | sort | head -n 20
+
+      - name: Upload the repository to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
+
+      - name: Show the install command
+        run: |
+          {
+            echo "### Site and install"
+            echo "Landing page: ${{ steps.deploy.outputs.page_url }}"
+            echo '```bash'
+            echo "curl -fsSL ${{ steps.deploy.outputs.page_url }}/install.sh | sudo bash"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # The tag commit must pass fmt, clippy (-D warnings), tests and the release
+  # build before anything is published. These steps mirror the `check` job in
+  # .github/workflows/ci.yml; keep the two in sync when the checks change.
+  ci:
+    name: Quality gate (fmt, clippy, tests)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config libgtk-3-dev \
+            libx11-dev libxcb1-dev libxcb-composite0-dev libxcb-cursor-dev \
+            libxcb-image0-dev libxcb-icccm4-dev libxcb-keysyms1-dev \
+            libxcb-randr0-dev libxcb-render0-dev libxcb-render-util0-dev \
+            libxcb-shape0-dev libxcb-xfixes0-dev libxcb-xinerama0-dev \
+            libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev
+
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+      - name: Tests
+        run: cargo test --locked
+
+  release:
+    name: Attach artifacts to release
+    needs:
+      - ci
+      - debian-x86_64
+      - linux-packages
+      - windows
+      - macos-universal
+    # Runs whenever the packaging jobs produced artifacts: pushes, pull
+    # requests and manual runs. Only the weekly schedule skips it. Attaching to
+    # a GitHub Release still requires a v* tag; other runs publish the verified
+    # bundle as a workflow artifact instead.
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download every packaging artifact
+        uses: actions/download-artifact@v4
+        with:
+          # The website artifact is only consumed by the Pages job.
+          pattern: "!website-dist"
+          merge-multiple: true
+          path: release
+
+      - name: Verify deliverables and generate SHA256 checksums
+        working-directory: release
+        run: |
+          set -euo pipefail
+          # Unknown or newly added files are still hashed and published, so this
+          # list never needs a manual count bump: a missing entry only means the
+          # deliverable is not asserted, not that the release fails.
+          mapfile -t files < <(find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%P\n' | sort)
+          [ "${#files[@]}" -gt 0 ] || { echo "no artifacts were downloaded" >&2; exit 1; }
+
+          expected=(
+            # Debian package
+            'nixobdo-pdf_*_amd64.deb'
+            # Linux packages
+            'nixobdo-pdf-*-1.x86_64.rpm'
+            'nixobdo-pdf-*-linux-x86_64.tar.gz'
+            'nixobdo-pdf-*-x86_64.AppImage'
+            # Windows. The x64 installer is intentionally unversioned and
+            # unqualified: the in-app updater hardcodes that asset name.
+            'nixobdo-pdfSetup.exe'
+            'nixobdo-pdfSetup-x86.exe'
+            'nixobdo-pdfSetup-arm64.exe'
+            'nixobdo-pdf-*-windows-x64-portable.zip'
+            'nixobdo-pdf-*-windows-x86-portable.zip'
+            'nixobdo-pdf-*-windows-arm64-portable.zip'
+            # macOS
+            'nixobdo-pdf-*-macos-universal.dmg'
+          )
+          missing=0
+          for pattern in "${expected[@]}"; do
+            compgen -G "$pattern" >/dev/null || {
+              echo "::error::missing deliverable: $pattern"
+              missing=1
+            }
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "downloaded files:" >&2
+            printf '  %s\n' "${files[@]}" >&2
+            exit 1
+          fi
+
+          sha256sum -- "${files[@]}" > SHA256SUMS
+          sha256sum --check --strict --quiet SHA256SUMS
+          {
+            echo "### Release artifacts"
+            echo "Verified ${#expected[@]} required deliverables in ${#files[@]} files."
+            echo '```'
+            cat SHA256SUMS
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the verified bundle
+        # A release needs a tag; every other run keeps the identical, already
+        # checksummed bundle as a workflow artifact so the packaging result is
+        # still downloadable.
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-bundle
+          path: release/*
+          retention-days: 14
+
+      - name: Attach artifacts to the GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # This job never checks out the repository, so gh cannot discover the
+          # owner/name from git; point it at the repository explicitly.
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          tag="${{ github.ref_name }}"
+          test -s release/SHA256SUMS
+          files=(release/*)
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --title "nixobdo-pdf $tag" --generate-notes
+          fi
+          gh release upload "$tag" "${files[@]}" --clobber
+          printf 'attached %d artifacts to release %s\n' "${#files[@]}" "$tag"

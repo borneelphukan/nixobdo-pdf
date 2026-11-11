@@ -56,9 +56,9 @@ either align the copy with actual behavior or remove the aspirational sections.
 
 ## 4. Build and deploy
 
-- `cargo run -p nixobdo-pdf-website` (or equivalent) builds the React app with
-  Vite using the `/nixobdo-pdf` base.
-- The `website.yml` workflow runs on `main` pushes and PRs, lints the build, and
-  triggers `deploy.yml` to push to GitHub Pages.
-- Deployment is **only** from `main`; pushes to `dev` do NOT deploy, even
-  though the build may run.
+- Build locally with `cd website && pnpm install && pnpm build`; Vite uses the
+  `/nixobdo-pdf` base.
+- The `website.yml` workflow lints and builds website-only pull requests without
+  the desktop packaging matrix.
+- `release.yml` builds the site and deploys it to GitHub Pages together with the
+  apt repository. Deployment only happens outside pull requests.

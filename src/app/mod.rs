@@ -205,10 +205,10 @@ impl Default for NixobdoPdfApp {
         let mut loaded_settings = AppSettings::default();
         if let Some(config_dir) = dirs::config_dir() {
             let path = config_dir.join("nixobdo-pdf").join("settings.json");
-            if let Ok(content) = std::fs::read_to_string(path) {
-                if let Ok(settings) = serde_json::from_str::<AppSettings>(&content) {
-                    loaded_settings = settings;
-                }
+            if let Ok(content) = std::fs::read_to_string(path)
+                && let Ok(settings) = serde_json::from_str::<AppSettings>(&content)
+            {
+                loaded_settings = settings;
             }
         }
 
