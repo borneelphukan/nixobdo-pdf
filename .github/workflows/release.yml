@@ -149,7 +149,11 @@ jobs:
           dpkg-deb --extract "$deb" "$data"
           dpkg-deb --control "$deb" "$control"
           desktop-file-validate "$data/usr/share/applications/nixobdo-pdf.desktop"
-          test -x "$data/usr/bin/nixobdo-pdf"
+          # /usr/bin/nixobdo-pdf is an absolute symlink into the package, so it
+          # cannot be resolved from the extracted tree; assert the link itself.
+          test -L "$data/usr/bin/nixobdo-pdf"
+          test "$(readlink "$data/usr/bin/nixobdo-pdf")" = "/usr/lib/nixobdo-pdf/nixobdo-pdf"
+          test -x "$data/usr/lib/nixobdo-pdf/nixobdo-pdf"
           test -s "$data/usr/lib/nixobdo-pdf/nixobdo-pdf"
           test -s "$data/usr/lib/nixobdo-pdf/libpdfium.so"
           test -s "$data/usr/share/icons/hicolor/512x512/apps/nixobdo-pdf.png"
