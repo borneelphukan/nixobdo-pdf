@@ -23,27 +23,26 @@ impl NixobdoPdfApp {
 
         let has_zoom_modifier = ui.ctx().input(|i| i.modifiers.command || i.modifiers.ctrl);
 
-        if has_zoom_modifier && delta != 0.0 {
-            if let Some(active_idx) = self.active_tab_index {
-                if let Some(tab) = self.tabs.get_mut(active_idx) {
-                    if delta > 0.0 {
-                        tab.zoom += 0.1;
-                    } else {
-                        tab.zoom = (tab.zoom - 0.1).max(0.0);
-                    }
-                }
+        if has_zoom_modifier
+            && delta != 0.0
+            && let Some(active_idx) = self.active_tab_index
+            && let Some(tab) = self.tabs.get_mut(active_idx)
+        {
+            if delta > 0.0 {
+                tab.zoom += 0.1;
+            } else {
+                tab.zoom = (tab.zoom - 0.1).max(0.0);
             }
         }
 
         // Handle zoom with Trackpad pinch
         let zoom_gesture = ui.ctx().input(|i| i.zoom_delta());
-        if zoom_gesture != 1.0 {
-            if let Some(active_idx) = self.active_tab_index {
-                if let Some(tab) = self.tabs.get_mut(active_idx) {
-                    let new_zoom = (1.0 + tab.zoom) * zoom_gesture - 1.0;
-                    tab.zoom = new_zoom.max(0.0);
-                }
-            }
+        if zoom_gesture != 1.0
+            && let Some(active_idx) = self.active_tab_index
+            && let Some(tab) = self.tabs.get_mut(active_idx)
+        {
+            let new_zoom = (1.0 + tab.zoom) * zoom_gesture - 1.0;
+            tab.zoom = new_zoom.max(0.0);
         }
 
         // Handle Copy selection shortcut (Cmd+C / Ctrl+C)

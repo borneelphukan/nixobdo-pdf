@@ -1,72 +1,51 @@
 name: Website
 
+# The release workflow builds the site for GitHub Pages, but it also builds
+# every desktop package. Keeping landing-page-only changes in this small
+# workflow avoids a full Linux/Windows/macOS packaging matrix for a CSS tweak.
+
 on:
   pull_request:
-    branches:
-      - main
-      - dev
-    types:
-      - opened
-      - synchronize
-      - reopened
-      - ready_for_review
     paths:
       - "website/**"
       - ".github/workflows/website.yml"
-      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: website-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
-concurrency:
-  group: website-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  website-build:
-    name: Build website
+  build:
+    name: Lint, type-check and build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
-        working-directory: ./website
+        working-directory: website
     steps:
-      - &checkout
-        name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v4
 
-      - &setup-pnpm
-        name: Setup pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
           package_json_file: website/package.json
           run_install: false
 
-      - &setup-node
-        name: Setup Node
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@v4
         with:
           node-version-file: website/.nvmrc
           cache: pnpm
           cache-dependency-path: website/pnpm-lock.yaml
 
-      - &install-dependencies
-        name: Install dependencies
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build
-        run: pnpm build
-
-  website-lint:
-    name: Lint website
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./website
-    steps:
-      - *checkout
-      - *setup-pnpm
-      - *setup-node
-      - *install-dependencies
-
       - name: Lint
-        run: pnpm lint
+        run: pnpm run lint
+
+      - name: Build
+        run: pnpm run build

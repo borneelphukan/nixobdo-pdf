@@ -34,8 +34,10 @@ fn main() -> eframe::Result<()> {
         "nixobdo-pdf",
         options,
         Box::new(|cc| {
-            let mut style = egui::Style::default();
-            style.visuals = egui::Visuals::dark();
+            let mut style = egui::Style {
+                visuals: egui::Visuals::dark(),
+                ..Default::default()
+            };
 
             // Light gray accent color for selection
             let accent = egui::Color32::from_rgb(180, 180, 180);

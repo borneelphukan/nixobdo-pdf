@@ -1,121 +1,136 @@
-# 11 — CI/CD, Nightly Builds, and Stable Releases
+# 11 — CI/CD and Releases
 
-This document describes the GitHub Actions workflows, release gates, and the
-automated release process for `nixobdo-pdf`.
+This document describes the GitHub Actions workflows and the release gates for
+`nixobdo-pdf`. The repository uses four focused workflows instead of one large
+build workflow.
 
 ## 1. Workflow overview
 
-Three primary workflows live in `.github/workflows/`:
+Four workflows live in `.github/workflows/`:
 
 | Workflow | Trigger | Purpose |
 |---|---|---|
-| `build.yml` | Push to `main` | Stable release planning, bump PR, multi‑OS build, publish. |
-| `nightly.yml` | Push to `dev` | Rolling `dev-release` prerelease, Ubuntu package build. |
-| `review.yml` | Pull request | PR gates: fmt, clippy, build on 3 OSes, audit, test. |
-| `website.yml` | Push to `main` or PR | Build/lint website (Vite + GitHub Pages). |
-| `deploy.yml` | Push to `main` | Deploy GitHub Pages site. |
+| `audit.yml` | Weekly schedule, dependency changes, manual | RustSec audit of `Cargo.lock`. |
+| `ci.yml` | Push to `main`, pull request, manual | fmt, Clippy, tests and packaging-asset checks. |
+| `release.yml` | Push to `main` or `v*` tag, pull request, manual, weekly schedule | Build every package, publish the apt repository, attach assets to tagged releases. |
+| `website.yml` | Pull request touching `website/**`, manual | Lint, type-check and build the landing page without the desktop matrix. |
 
-## 2. `.github/workflows/build.yml`
+## 2. `audit.yml`
 
-Triggered on push to `main`. Main flow:
+- Runs `cargo audit` weekly (Sundays at 06:00 UTC) so a newly published advisory
+  against a pinned dependency is reported even when the repository is idle.
+- Also runs when `Cargo.toml`, `Cargo.lock`, `.cargo/audit.toml` or the workflow
+  itself changes.
+- Vulnerabilities fail the job. Informational categories (unmaintained, unsound,
+  yanked) are printed but do not fail the run.
+- Deliberate ignores live in `.cargo/audit.toml`, each with a reason and a
+  revisit condition. The four `zip 8.6.0` extraction advisories are ignored
+  because `docx-rs 0.4.22` pins `zip` 8 and the application only writes ZIP
+  archives; no extraction API is reachable.
 
-1. **Plan** — runs `scripts/release_plan.py` to determine the next version and
-   mode (`bump`/`release`/`skip`).
-2. **Bump version and changelog** — if mode is `bump`, runs
-   `scripts/bump_version.py` to update `Cargo.toml`, `Cargo.lock`,
-   `setup.iss`, and `CHANGELOG.md`; then commits, pushes, and opens a PR
-   (`chore/bump-version-<VERSION>`) against `main`.
-3. **Build Windows installer** — if mode is `release`, builds the Windows
-   installer on `windows-latest` using `cargo build --locked` and Inno Setup
-   (`setup.iss`).
-4. **Build Linux/macOS** — builds release binaries on `ubuntu-latest` and
-   `macos-latest`; packages Linux .deb via `packaging/linux/build-deb.sh` and
-   macOS .app via `packaging/macos/build-app.sh`.
-5. **Publish release** — if mode is `release`, creates a `v<version>` GitHub
-   release and uploads Windows installer, Linux .deb, macOS DMG, and
-   `SHA256SUMS` file.
+## 3. `ci.yml`
 
-### Version bump PR
+Two jobs run on every relevant push and pull request:
 
-- Branch name: `chore/bump-version-<VERSION>`.
-- Updates: `Cargo.toml`, `Cargo.lock`, `setup.iss`, `CHANGELOG.md`.
-- Commit message: `chore: bump version to <VERSION>`.
-- Auto‑pr: `gh pr create --title "chore: bump version to $VERSION" --base main --head "$BRANCH"`.
-- If a PR with that branch already exists, it is updated rather than creating a
-  new one.
+### `check`
 
-### Build gates (blocking)
+1. Install GTK/X11/Wayland build dependencies.
+2. Install the pinned Rust `1.99.1` toolchain with `rustfmt` and `clippy`.
+3. `cargo fmt --all -- --check` — **blocking**.
+4. `cargo clippy --all-targets --locked -- -D warnings` — **blocking**.
+5. `cargo test --locked` — **blocking** (there are currently zero tests, but
+   the job compiles the test target).
 
-- `cargo fmt --all -- --check` — **blocking**; fails the workflow.
-- `cargo build --locked` on Ubuntu, Windows, macOS — **blocking**; each must
-  succeed.
-- `cargo test --locked --all-targets` — **blocking but empty** (no Rust tests);
-  still runs and passes with zero tests.
-- `rust-audit` (cargo‑audit) — **advisory** (`continue-on-error: true`);
-  not currently blocking but the intent is to make it blocking once the
-  dependency tree is clean.
-- `clippy` — **advisory**; warnings do not fail the job but are tracked.
+### `linux-assets`
 
-## 3. `.github/workflows/nightly.yml`
+- Validates `packaging/linux/nixobdo-pdf.desktop` with
+  `desktop-file-validate`.
+- Runs `bash -n` / `sh -n` over every packaging script, and
+  `python3 -m py_compile` over the apt-repository and version scripts.
+- Asserts that `installer/nixobdo-pdf.iss` remains parameterised by the
+  release defines.
 
-Triggered on push to `dev` branch. Flow:
+## 4. `release.yml`
 
-1. **Build Windows dev installer** — produces
-   `nixobdo-pdf-dev-<run_number>.exe` with 1‑day retention.
-2. **Build Ubuntu packages** — cross‑compiles for Linux, builds .deb and
-   tarball, stores under `dist/`.
-3. **Publish dev-release prerelease** — the nightly build publishes a
-   `dev-release` prerelease on GitHub, tracking the latest nightly commit.
+The release pipeline is **tag-driven**. It reads the version from `Cargo.toml`,
+and a `v*` tag must match that version exactly. There is no automatic version
+bump PR.
 
-### Key steps
+### Jobs
 
-- Installs system deps (`libgtk-3-dev`, etc.).
-- Sets up Rust toolchain, caches Rust build.
-- Downloads and extracts PDFium binaries from `bblanchon/pdfium-binaries`.
-- Builds with `cargo build --release --locked`.
-- Builds Ubuntu packages via `packaging/linux/build-deb.sh`.
-- Builds macOS app bundle via `packaging/macos/build-app.sh`.
+| Job | What it produces |
+|---|---|
+| `metadata` | Version and four-field numeric version; validates tag/version match. |
+| `debian-x86_64` | `.deb` for amd64 and apt repository input. Runs even on the weekly schedule. |
+| `linux-packages` | Tarball, AppImage and RPM for x86_64. |
+| `windows` | Inno Setup installer and portable zip for x64, x86 and ARM64. |
+| `macos-universal` | Universal `.app` bundle and DMG. |
+| `website` | Static Vite build for GitHub Pages. |
+| `publish-pages` | apt repository + website deployed to GitHub Pages. |
+| `ci` | The same fmt/Clippy/tests gate as `ci.yml`, enforced before publishing. |
+| `release` | Verifies all deliverables, writes `SHA256SUMS`, uploads a workflow artifact, and attaches files to the GitHub release on a `v*` tag. |
 
-## 4. `.github/workflows/review.yml`
+### Artifact names
 
-Runs on every Pull Request. Gates:
+| Platform | Asset |
+|---|---|
+| Windows x64 | `nixobdo-pdfSetup.exe` (exact historical name required by the in-app updater) |
+| Windows x86 | `nixobdo-pdfSetup-x86.exe` |
+| Windows ARM64 | `nixobdo-pdfSetup-arm64.exe` |
+| Windows portable | `nixobdo-pdf-<version>-windows-<arch>-portable.zip` |
+| Debian | `nixobdo-pdf_<version>_amd64.deb` |
+| RPM | `nixobdo-pdf-<version>-1.x86_64.rpm` |
+| Tarball | `nixobdo-pdf-<version>-linux-x86_64.tar.gz` |
+| AppImage | `nixobdo-pdf-<version>-x86_64.AppImage` |
+| macOS | `nixobdo-pdf-<version>-macos-universal.dmg` |
 
-| Gate | Command | Status |
-|---|---|---|
-| **fmt** | `cargo fmt --all -- --check` | **blocking** |
-| **clippy** | `cargo clippy --locked --all-targets` | **blocking** (warnings become errors via `-D warnings` in CI config) |
-| **rust build** | `cargo build --locked` on Ubuntu, Windows, macOS (matrix) | **blocking** |
-| **rust-audit** | `cargo audit` (advisory, `continue-on-error: true`) | **advisory** |
-| **test** | `cargo test --locked --all-targets` | **blocking but empty** (0 tests) |
+The website's download page detects Windows architecture from the file name
+(`x86`/`arm64`), so those suffixes are part of the contract.
 
-All gates must pass for the PR to be mergeable.
+### PDFium
 
-## 5. Release process (stable → main)
+Every packaging job downloads the matching binary from
+`bblanchon/pdfium-binaries` at the latest release:
 
-1. **Push to `main`** triggers `build.yml`.
-2. `scripts/release_plan.py` examines the git log since the last tag and decides
-   one of three modes:
-   - **bump** — increment the patch version, create a bump PR.
-   - **release** — if the push includes a `v<version>` tag, or if the plan
-     decides a release is warranted, proceed to full build+publish.
-   - **skip** — no release this cycle; workflow exits early.
-3. If mode is `bump`, the bump PR is opened. The PR author (or maintainer) merges
-   it, which updates `Cargo.toml`, `Cargo.lock`, `setup.iss`, and
-   `CHANGELOG.md` with an entry for the new version.
-4. After the bump PR is merged (or if mode was `release`), the workflow builds
-   installers for all three platforms, publishes a GitHub release at
-   `v<version>`, and uploads:
-   - Windows: `nixobdo-pdfSetup.exe`
-   - Linux: `.deb` tarball and/or `.tar.gz`
-   - macOS: `.app` DMG
-   - `SHA256SUMS` file for checksum verification.
-5. The new tag `v<version>` is created on `main`; future pushes compare against
-   this tag.
+- Linux: `pdfium-linux-x64.tgz` → `libpdfium.so`
+- Windows: `pdfium-win-{x64,x86,arm64}.tgz` → `pdfium.dll`
+- macOS: `pdfium-mac-univ.tgz` → `libpdfium.dylib`
 
-## 6. Website CI
+Downloads are extracted into a scratch directory to avoid picking up the
+checked-in copies under `lib/`.
 
-- `.github/workflows/website.yml` runs on pushes to `main` and on PRs.
-- Uses Vite to build the React app with `base: '/nixobdo-pdf'`.
-- Lints built files; deploys to GitHub Pages only from `main` (not from `dev`).
-- No `404.html` fallback, so deep‑link refreshes on GitHub Pages may fail if the
-  route is not exactly configured.
+## 5. `website.yml`
+
+- Runs on pull requests that touch `website/**` or the workflow itself.
+- Installs pnpm (version from `website/package.json`) and Node (from
+  `website/.nvmrc`), then runs `pnpm lint` and `pnpm build`.
+- The release workflow performs the same build for GitHub Pages; this smaller
+  workflow just avoids the desktop packaging matrix for website-only changes.
+
+## 6. Release process
+
+1. Update `Cargo.toml` (and ideally `CHANGELOG.md`) on `main`.
+2. Run `scripts/bump_version.py --version <version>` to synchronise
+   `Cargo.toml`, `Cargo.lock` and the changelog. The installer version comes
+   from the release workflow defines, so it is not rewritten.
+3. Commit, push `main`, and create/push a matching `v<version>` tag.
+4. `release.yml` validates the tag against `Cargo.toml`, builds every package,
+   and attaches the verified artifacts to the GitHub release.
+5. Ordinary pushes to `main` still build and verify the full bundle, but only
+   publish it as a workflow artifact; no GitHub release is created without a
+   tag.
+6. The weekly scheduled run refreshes the apt repository and Pages site without
+   rebuilding the heavy packaging matrix.
+
+## 7. GitHub Pages
+
+`publish-pages` deploys two things to the same Pages site:
+
+- the website build at the site root (`/nixobdo-pdf/`), and
+- the apt repository under `/nixobdo-pdf/apt/` plus the installer script at
+  `/nixobdo-pdf/install.sh`.
+
+The apt repository is GPG-signed when `APT_REPO_PRIVATE_KEY`,
+`APT_REPO_PASSPHRASE` and the `APT_REPO_KEY_ID` variable are configured;
+otherwise it is published unsigned and `install.sh` falls back to
+`Trusted: yes`.

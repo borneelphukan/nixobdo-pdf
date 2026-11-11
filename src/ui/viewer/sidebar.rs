@@ -12,8 +12,8 @@ impl NixobdoPdfApp {
             .exact_size(180.0)
             .show(ui, |ui| {
                 let mut pages_empty = true;
-                if let Some(active_idx) = self.active_tab_index {
-                    if let Some(tab) = self.tabs.get_mut(active_idx) {
+                if let Some(active_idx) = self.active_tab_index
+                    && let Some(tab) = self.tabs.get_mut(active_idx) {
                         pages_empty = tab.pages.is_empty();
 
                         if !pages_empty {
@@ -147,7 +147,6 @@ impl NixobdoPdfApp {
                             });
                         }
                     }
-                }
 
                 if pages_empty {
                     ui.centered_and_justified(|ui| {

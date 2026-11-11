@@ -8,11 +8,10 @@ nixobdo-pdf/
 │   ├── CODEOWNERS                  # Everything owned by @borneelphukan
 │   ├── dependabot.yml              # Weekly cargo + actions updates into dev
 │   └── workflows/
-│       ├── review.yml              # PR gates: fmt, clippy, test, audit, 3-OS build
-│       ├── nightly.yml             # Push to dev -> rolling dev-release prerelease
-│       ├── build.yml               # Push to main -> bump PR or stable release
-│       ├── website.yml             # PR build/lint for website changes
-│       └── deploy.yml              # GitHub Pages deploy from main
+│       ├── audit.yml               # Weekly RustSec audit + dependency changes
+│       ├── ci.yml                  # fmt, clippy, tests, packaging-asset checks
+│       ├── release.yml             # Packages, apt repo, Pages, tagged releases
+│       └── website.yml             # PR lint/build for website-only changes
 ├── assets/
 │   ├── cover.png                   # README banner
 │   ├── logo.png                    # App icon (also converted to ICO in CI)
@@ -31,29 +30,36 @@ nixobdo-pdf/
 │       ├── rotate_right.svg
 │       ├── github.svg
 │       └── website.svg
+├── .cargo/
+│   └── audit.toml                  # Triaged cargo-audit ignores with reasons
+├── installer/
+│   └── nixobdo-pdf.iss             # Parameterised Inno Setup installer
 ├── lib/
 │   ├── libpdfium.dylib             # macOS PDFium binary shipped in repo
 │   └── pdfium.dll                  # Windows PDFium binary shipped in repo
 ├── packaging/
+│   ├── apt/
+│   │   ├── build-repo.py           # Builds the static, optionally signed apt repo
+│   │   └── install.sh              # curl | sudo bash repository installer
 │   ├── linux/
 │   │   ├── build-deb.sh            # Builds the .deb staging tree
+│   │   ├── build-tarball.sh        # Portable tarball
+│   │   ├── build-appimage.sh       # AppImage
 │   │   ├── install.sh              # Portable tarball installer
 │   │   ├── uninstall.sh            # Portable uninstaller
 │   │   └── nixobdo-pdf.desktop     # XDG desktop entry
+│   ├── rpm/
+│   │   ├── build-rpm.sh            # RPM builder
+│   │   └── nixobdo-pdf.spec.in     # RPM spec template
 │   └── macos/
 │       └── build-app.sh            # .app bundle + Info.plist + icns + DMG
 ├── scripts/
-│   ├── release_plan.py             # Decides bump/release/skip for stable CI
-│   └── bump_version.py             # Updates Cargo.toml, Cargo.lock, setup.iss, CHANGELOG
-├── scratch/
-│   ├── nightly.yml                 # OBSOLETE workflow draft (do not use)
-│   └── stable.yml                  # OBSOLETE workflow draft (do not use)
+│   └── bump_version.py             # Updates Cargo.toml, Cargo.lock, CHANGELOG
 ├── src/                            # Rust application (see below)
 ├── website/                        # React/Vite documentation + marketing site
 ├── Cargo.toml / Cargo.lock         # Rust manifest / locked dependency graph
 ├── build.rs                        # Windows icon resources + GIT_BRANCH env
-├── rust-toolchain.toml             # stable + clippy + rustfmt
-├── setup.iss                       # Inno Setup Windows installer script
+├── rust-toolchain.toml             # pinned Rust 1.99.1 + clippy + rustfmt
 ├── AGENTS.md                       # OLD agent notes; prefer context/
 ├── README.md                       # User-facing quick start
 ├── CHANGELOG.md                    # Release history
@@ -121,11 +127,13 @@ src/
 | Sidebar visibility gesture | `src/ui/viewer/separator.rs` |
 | AI chat panel | `src/ui/chatbot.rs` |
 | Modal/native auxiliary windows | `src/ui/dialogs/` |
-| Release decision logic | `scripts/release_plan.py` |
 | Release version/changelog edits | `scripts/bump_version.py` |
-| Windows installer definition | `setup.iss` |
+| Windows installer definition | `installer/nixobdo-pdf.iss` |
 | Linux packaging | `packaging/linux/` |
+| RPM packaging | `packaging/rpm/` |
+| apt repository | `packaging/apt/` |
 | macOS packaging | `packaging/macos/build-app.sh` |
+| CI/CD workflows | `.github/workflows/` |
 | Website | `website/src/` |
 
 ## Module dependency direction
@@ -167,7 +175,6 @@ If you are changing behaviour, these are the files most likely to need edits:
 
 - `src/ui/mod.rs` only declares modules; each module adds `impl NixobdoPdfApp` methods. There are no separate widget structs for most UI.
 - `src/ui/dialogs/mod.rs` fixes the dialog dispatch order: rename → export → about → update → export progress → custom colour → LLM settings → AI summary → password.
-- `assets/logo.ico` is **not** committed. CI generates it with ImageMagick before Windows compilation; `build.rs` safely skips resources if absent.
+- `assets/logo.ico` is **not** committed (it is ignored). The Windows release job generates it with ImageMagick before compilation; `build.rs` safely skips resources if absent.
 - `website/.vite/` is a local Vite cache, not application source.
-- `scratch/` is dead weight and diverges from `.github/workflows/`; never copy from it.
 - There is no `tests/` directory and no `#[test]` in `src/`.

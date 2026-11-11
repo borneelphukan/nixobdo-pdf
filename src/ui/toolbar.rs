@@ -7,36 +7,31 @@ impl NixobdoPdfApp {
 
         // Pre-calculate search matches
         let mut match_pages = Vec::new();
-        if let Some(active_idx) = self.active_tab_index {
-            if let Some(tab) = self.tabs.get(active_idx) {
-                if !self.search_query.is_empty() {
-                    let query_chars: Vec<char> = self.search_query.to_lowercase().chars().collect();
-                    for (page_idx, page_chars) in tab.page_chars.iter().enumerate() {
-                        let page_chars_lower: Vec<char> = page_chars
-                            .iter()
-                            .map(|char_info| {
-                                char_info.c.to_lowercase().next().unwrap_or(char_info.c)
-                            })
-                            .collect();
+        if let Some(active_idx) = self.active_tab_index
+            && let Some(tab) = self.tabs.get(active_idx)
+            && !self.search_query.is_empty()
+        {
+            let query_chars: Vec<char> = self.search_query.to_lowercase().chars().collect();
+            for (page_idx, page_chars) in tab.page_chars.iter().enumerate() {
+                let page_chars_lower: Vec<char> = page_chars
+                    .iter()
+                    .map(|char_info| char_info.c.to_lowercase().next().unwrap_or(char_info.c))
+                    .collect();
 
-                        let mut i = 0;
-                        while i + query_chars.len() <= page_chars_lower.len()
-                            && !query_chars.is_empty()
-                        {
-                            let mut is_match = true;
-                            for j in 0..query_chars.len() {
-                                if page_chars_lower[i + j] != query_chars[j] {
-                                    is_match = false;
-                                    break;
-                                }
-                            }
-                            if is_match {
-                                match_pages.push(page_idx);
-                                i += query_chars.len();
-                            } else {
-                                i += 1;
-                            }
+                let mut i = 0;
+                while i + query_chars.len() <= page_chars_lower.len() && !query_chars.is_empty() {
+                    let mut is_match = true;
+                    for j in 0..query_chars.len() {
+                        if page_chars_lower[i + j] != query_chars[j] {
+                            is_match = false;
+                            break;
                         }
+                    }
+                    if is_match {
+                        match_pages.push(page_idx);
+                        i += query_chars.len();
+                    } else {
+                        i += 1;
                     }
                 }
             }
@@ -162,52 +157,47 @@ impl NixobdoPdfApp {
                             .send_viewport_cmd(egui::ViewportCommand::Fullscreen(!is_fullscreen));
                     }
 
-                    if has_active_tab {
-                        if let Some(active_idx) = self.active_tab_index {
-                            if let Some(tab) = self.tabs.get_mut(active_idx) {
-                                let step = if tab.layout_mode
-                                    == crate::document::PageLayoutMode::TwoPage
-                                {
-                                    2
-                                } else {
-                                    1
-                                };
-                                if zoom_out {
-                                    tab.zoom = (tab.zoom - 10.0).max(0.0);
-                                } else if zoom_in {
-                                    tab.zoom += 10.0;
-                                } else if zoom_reset {
-                                    tab.zoom = 0.0;
-                                } else if zoom_response.changed() {
-                                    tab.zoom = (current_zoom - 100.0).max(0.0);
-                                }
-                                if page_up && tab.selected_page > 0 {
-                                    tab.selected_page = tab.selected_page.saturating_sub(step);
-                                    tab.scroll_to_page = Some(tab.selected_page);
-                                }
-                                if page_down && tab.selected_page + step < tab.pages.len() {
-                                    tab.selected_page += step;
-                                    tab.scroll_to_page = Some(tab.selected_page);
-                                } else if page_down && tab.selected_page + 1 < tab.pages.len() {
-                                    tab.selected_page += 1;
-                                    tab.scroll_to_page = Some(tab.selected_page);
-                                }
+                    if has_active_tab
+                        && let Some(active_idx) = self.active_tab_index
+                        && let Some(tab) = self.tabs.get_mut(active_idx)
+                    {
+                        let step = if tab.layout_mode == crate::document::PageLayoutMode::TwoPage {
+                            2
+                        } else {
+                            1
+                        };
+                        if zoom_out {
+                            tab.zoom = (tab.zoom - 10.0).max(0.0);
+                        } else if zoom_in {
+                            tab.zoom += 10.0;
+                        } else if zoom_reset {
+                            tab.zoom = 0.0;
+                        } else if zoom_response.changed() {
+                            tab.zoom = (current_zoom - 100.0).max(0.0);
+                        }
+                        if page_up && tab.selected_page > 0 {
+                            tab.selected_page = tab.selected_page.saturating_sub(step);
+                            tab.scroll_to_page = Some(tab.selected_page);
+                        }
+                        if page_down && tab.selected_page + step < tab.pages.len() {
+                            tab.selected_page += step;
+                            tab.scroll_to_page = Some(tab.selected_page);
+                        } else if page_down && tab.selected_page + 1 < tab.pages.len() {
+                            tab.selected_page += 1;
+                            tab.scroll_to_page = Some(tab.selected_page);
+                        }
 
-                                if rotate_left || rotate_right {
-                                    let d = if rotate_left { -90 } else { 90 };
-                                    if tab.selected_page < tab.page_rotations.len() {
-                                        tab.page_rotations[tab.selected_page] =
-                                            (tab.page_rotations[tab.selected_page] + d)
-                                                .rem_euclid(360);
-                                    }
-                                    if tab.layout_mode == crate::document::PageLayoutMode::TwoPage
-                                        && tab.selected_page + 1 < tab.page_rotations.len()
-                                    {
-                                        tab.page_rotations[tab.selected_page + 1] =
-                                            (tab.page_rotations[tab.selected_page + 1] + d)
-                                                .rem_euclid(360);
-                                    }
-                                }
+                        if rotate_left || rotate_right {
+                            let d = if rotate_left { -90 } else { 90 };
+                            if tab.selected_page < tab.page_rotations.len() {
+                                tab.page_rotations[tab.selected_page] =
+                                    (tab.page_rotations[tab.selected_page] + d).rem_euclid(360);
+                            }
+                            if tab.layout_mode == crate::document::PageLayoutMode::TwoPage
+                                && tab.selected_page + 1 < tab.page_rotations.len()
+                            {
+                                tab.page_rotations[tab.selected_page + 1] =
+                                    (tab.page_rotations[tab.selected_page + 1] + d).rem_euclid(360);
                             }
                         }
                     }
@@ -220,7 +210,7 @@ impl NixobdoPdfApp {
                         && !self
                             .password_prompt
                             .as_ref()
-                            .map_or(false, |p| p.path == t.path)
+                            .is_some_and(|p| p.path == t.path)
                 });
                 if any_loading {
                     ui.spinner();
@@ -288,32 +278,30 @@ impl NixobdoPdfApp {
                             if response.changed() {
                                 self.search_active_match = 0;
                                 // Immediately navigate to first match if available
-                                if !match_pages.is_empty() {
-                                    if let Some(active_idx) = self.active_tab_index {
-                                        if let Some(tab) = self.tabs.get_mut(active_idx) {
-                                            let target_page = match_pages[0];
-                                            tab.scroll_to_page = Some(target_page);
-                                            tab.selected_page = target_page;
-                                        }
-                                    }
+                                if !match_pages.is_empty()
+                                    && let Some(active_idx) = self.active_tab_index
+                                    && let Some(tab) = self.tabs.get_mut(active_idx)
+                                {
+                                    let target_page = match_pages[0];
+                                    tab.scroll_to_page = Some(target_page);
+                                    tab.selected_page = target_page;
                                 }
                             }
 
                             if response.lost_focus()
                                 && ui.ctx().input(|i| i.key_pressed(egui::Key::Enter))
+                                && !match_pages.is_empty()
                             {
-                                if !match_pages.is_empty() {
-                                    self.search_active_match =
-                                        (self.search_active_match + 1) % match_pages.len();
-                                    if let Some(active_idx) = self.active_tab_index {
-                                        if let Some(tab) = self.tabs.get_mut(active_idx) {
-                                            let target_page = match_pages[self.search_active_match];
-                                            tab.scroll_to_page = Some(target_page);
-                                            tab.selected_page = target_page;
-                                        }
-                                    }
-                                    response.request_focus(); // keep focus to allow rapid pressing
+                                self.search_active_match =
+                                    (self.search_active_match + 1) % match_pages.len();
+                                if let Some(active_idx) = self.active_tab_index
+                                    && let Some(tab) = self.tabs.get_mut(active_idx)
+                                {
+                                    let target_page = match_pages[self.search_active_match];
+                                    tab.scroll_to_page = Some(target_page);
+                                    tab.selected_page = target_page;
                                 }
+                                response.request_focus(); // keep focus to allow rapid pressing
                             }
 
                             if has_search_modifier
@@ -526,13 +514,13 @@ impl NixobdoPdfApp {
                             }
                         }
 
-                        if size_changed || style_changed || color_changed {
-                            if is_text_tool_active || has_pending_text {
+                        if (size_changed || style_changed || color_changed)
+                            && (is_text_tool_active || has_pending_text) {
                                 let target_index = self.active_text_annotation_index
                                     .or_else(|| self.pending_annotations.iter().enumerate().rev().find(|(_, a)| a.tool == crate::document::AnnotationTool::Text).map(|(i, _)| i));
 
-                                if let Some(idx) = target_index {
-                                    if let Some(action) = self.pending_annotations.get_mut(idx) {
+                                if let Some(idx) = target_index
+                                    && let Some(action) = self.pending_annotations.get_mut(idx) {
                                         if size_changed {
                                             action.scale = Some(self.text_annotation_size);
                                         }
@@ -545,23 +533,19 @@ impl NixobdoPdfApp {
                                             action.color = current_color;
                                         }
                                     }
-                                }
                             }
-                        }
                     }
 
                     ui.separator();
 
-                    if ui.add_enabled(!self.pending_annotations.is_empty(), egui::Button::new("Undo")).clicked() || ui.ctx().input(|i| i.modifiers.command && i.key_pressed(egui::Key::Z)) {
-                        if let Some(action) = self.pending_annotations.pop() {
+                    if (ui.add_enabled(!self.pending_annotations.is_empty(), egui::Button::new("Undo")).clicked() || ui.ctx().input(|i| i.modifiers.command && i.key_pressed(egui::Key::Z)))
+                        && let Some(action) = self.pending_annotations.pop() {
                             self.redo_annotations.push(action);
                         }
-                    }
-                    if ui.add_enabled(!self.redo_annotations.is_empty(), egui::Button::new("Redo")).clicked() || ui.ctx().input(|i| i.modifiers.command && i.key_pressed(egui::Key::Y)) {
-                        if let Some(action) = self.redo_annotations.pop() {
+                    if (ui.add_enabled(!self.redo_annotations.is_empty(), egui::Button::new("Redo")).clicked() || ui.ctx().input(|i| i.modifiers.command && i.key_pressed(egui::Key::Y)))
+                        && let Some(action) = self.redo_annotations.pop() {
                             self.pending_annotations.push(action);
                         }
-                    }
 
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui.button("Cancel").clicked() {
@@ -580,9 +564,9 @@ impl NixobdoPdfApp {
                                 .set_level(rfd::MessageLevel::Warning)
                                 .show();
 
-                            if confirm == rfd::MessageDialogResult::Yes {
-                                if let Some(active_idx) = self.active_tab_index {
-                                    if let Some(tab) = self.tabs.get(active_idx) {
+                            if confirm == rfd::MessageDialogResult::Yes
+                                && let Some(active_idx) = self.active_tab_index
+                                    && let Some(tab) = self.tabs.get(active_idx) {
                                         self.is_saving_annotations = true;
                                         let _ = self.pdf_task_tx.send(crate::worker::PdfWorkerTask::SaveAnnotations {
                                             path: tab.path.clone(),
@@ -591,8 +575,6 @@ impl NixobdoPdfApp {
                                             ctx: ui.ctx().clone(),
                                         });
                                     }
-                                }
-                            }
                         }
                     });
                 });

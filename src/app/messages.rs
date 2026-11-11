@@ -41,7 +41,7 @@ impl NixobdoPdfApp {
                                 } else {
                                     rfd::MessageDialog::new()
                                         .set_title("Nixobdo PDF Reader")
-                                        .set_description(&format!("Nixobdo PDF Reader could not open '{}' because it is either not a supported file type or because the file has been damaged.", file_name))
+                                        .set_description(format!("Nixobdo PDF Reader could not open '{}' because it is either not a supported file type or because the file has been damaged.", file_name))
                                         .set_level(rfd::MessageLevel::Info)
                                         .show();
                                     tab_to_remove = Some(i);
@@ -193,17 +193,16 @@ impl NixobdoPdfApp {
                     if is_chatbot {
                         self.ai_chat_loading = false;
                         if success {
-                            if let Some(active_id) = &self.ai_active_session_id {
-                                if let Some(session) = self
+                            if let Some(active_id) = &self.ai_active_session_id
+                                && let Some(session) = self
                                     .ai_chat_sessions
                                     .iter_mut()
                                     .find(|s| &s.id == active_id)
-                                {
-                                    session.messages.push(crate::app::ChatMessage {
-                                        role: "assistant".to_string(),
-                                        content: text,
-                                    });
-                                }
+                            {
+                                session.messages.push(crate::app::ChatMessage {
+                                    role: "assistant".to_string(),
+                                    content: text,
+                                });
                             }
                             self.ai_chat_start_time = ui.ctx().input(|i| i.time);
                             self.ai_chat_display_len = 0;

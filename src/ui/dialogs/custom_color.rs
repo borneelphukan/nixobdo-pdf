@@ -35,7 +35,7 @@ fn color_slider_1d(
                 mesh.colored_vertex(egui::pos2(x, rect.top()), color);
                 mesh.colored_vertex(egui::pos2(x, rect.bottom()), color);
                 if i < N {
-                    mesh.add_triangle(2 * i + 0, 2 * i + 1, 2 * i + 2);
+                    mesh.add_triangle(2 * i, 2 * i + 1, 2 * i + 2);
                     mesh.add_triangle(2 * i + 1, 2 * i + 2, 2 * i + 3);
                 }
             }
@@ -167,10 +167,10 @@ impl NixobdoPdfApp {
                         [ui.available_width(), 30.0],
                         egui::TextEdit::singleline(&mut hex).hint_text("#000000"),
                     );
-                    if response.changed() {
-                        if let Ok(color) = egui::Color32::from_hex(&hex) {
-                            self.custom_text_color_temp = color;
-                        }
+                    if response.changed()
+                        && let Ok(color) = egui::Color32::from_hex(&hex)
+                    {
+                        self.custom_text_color_temp = color;
                     }
 
                     ui.add_space(16.0);

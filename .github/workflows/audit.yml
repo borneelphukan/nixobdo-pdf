@@ -1,0 +1,56 @@
+name: Security audit
+
+# Flags dependencies locked in Cargo.lock that have known RustSec advisories.
+# Runs even when the repository is idle, because a pinned dependency can become
+# vulnerable without any commit of ours.
+
+on:
+  schedule:
+    # Sundays at 06:00 UTC.
+    - cron: "0 6 * * 0"
+  push:
+    paths:
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".cargo/audit.toml"
+      - ".github/workflows/audit.yml"
+  pull_request:
+    paths:
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".cargo/audit.toml"
+      - ".github/workflows/audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audit-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  audit:
+    name: cargo audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+
+      - name: Audit dependencies
+        # Default level fails only on vulnerabilities. Unmaintained and unsound
+        # advisories are printed but do not fail the run; triage those in
+        # .cargo/audit.toml (which cargo audit picks up automatically).
+        run: |
+          set -o pipefail
+          cargo audit 2>&1 | tee audit.log
+          {
+            echo "### cargo audit"
+            echo '```'
+            cat audit.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

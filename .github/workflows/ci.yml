@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "build.rs"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "assets/**"
+      - "packaging/**"
+      - "installer/**"
+      - "scripts/**"
+      - ".cargo/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "build.rs"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "assets/**"
+      - "packaging/**"
+      - "installer/**"
+      - "scripts/**"
+      - ".cargo/**"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  # CI always builds from a warm cache; incremental artifacts only bloat the
+  # cache and increase runner memory/disk usage.
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  check:
+    name: fmt, clippy and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config libgtk-3-dev \
+            libx11-dev libxcb1-dev libxcb-composite0-dev libxcb-cursor-dev \
+            libxcb-image0-dev libxcb-icccm4-dev libxcb-keysyms1-dev \
+            libxcb-randr0-dev libxcb-render0-dev libxcb-render-util0-dev \
+            libxcb-shape0-dev libxcb-xfixes0-dev libxcb-xinerama0-dev \
+            libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev
+
+      # Pinned so a new stable release cannot introduce lints that fail an
+      # unrelated build. Bump deliberately in every workflow.
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        # Warnings are errors, so this is a hard gate.
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+      - name: Tests
+        run: cargo test --locked
+
+  linux-assets:
+    name: packaging assets are consistent
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate desktop entry
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends desktop-file-utils
+          desktop-file-validate packaging/linux/nixobdo-pdf.desktop
+
+      - name: Shell script syntax
+        run: |
+          bash -n packaging/linux/build-deb.sh
+          bash -n packaging/linux/build-tarball.sh
+          bash -n packaging/linux/build-appimage.sh
+          bash -n packaging/linux/install.sh
+          bash -n packaging/linux/uninstall.sh
+          bash -n packaging/rpm/build-rpm.sh
+          bash -n packaging/macos/build-app.sh
+          sh -n packaging/apt/install.sh
+          python3 -m py_compile packaging/apt/build-repo.py
+          python3 -m py_compile scripts/bump_version.py
+
+      - name: Installer definition is parameterised
+        run: |
+          grep -q 'MyAppVersion' installer/nixobdo-pdf.iss
+          grep -q 'MyArch' installer/nixobdo-pdf.iss
+          grep -q 'MySourceExe' installer/nixobdo-pdf.iss
+          grep -q 'MyPdfiumDll' installer/nixobdo-pdf.iss
+          grep -q 'MyOutputBaseFilename' installer/nixobdo-pdf.iss

@@ -125,41 +125,21 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                         let tx = msg_tx_clone.clone();
                         // Wrap in catch_unwind so a panic in export doesn't kill the worker thread
                         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                            let export_ctx = export::ExportContext {
+                                pdf,
+                                path: &path,
+                                password: password.as_deref(),
+                                out_path: &out_path,
+                                msg_tx: &tx,
+                                egui_ctx: &ctx,
+                                cancel_flag: &cancel_flag,
+                            };
                             if format == ExportFormat::Png || format == ExportFormat::Jpeg {
-                                export::export_image(
-                                    pdf,
-                                    &path,
-                                    password.as_deref(),
-                                    &out_path,
-                                    format,
-                                    &tx,
-                                    &ctx,
-                                    &cancel_flag,
-                                )
+                                export::export_image(&export_ctx, format)
                             } else if format == ExportFormat::Docx {
-                                export::export_docx(
-                                    pdf,
-                                    &path,
-                                    password.as_deref(),
-                                    &out_path,
-                                    retain_layout,
-                                    include_images,
-                                    &tx,
-                                    &ctx,
-                                    &cancel_flag,
-                                )
+                                export::export_docx(&export_ctx, retain_layout, include_images)
                             } else {
-                                export::export_doc_rtf(
-                                    pdf,
-                                    &path,
-                                    password.as_deref(),
-                                    &out_path,
-                                    retain_layout,
-                                    include_images,
-                                    &tx,
-                                    &ctx,
-                                    &cancel_flag,
-                                )
+                                export::export_doc_rtf(&export_ctx, retain_layout, include_images)
                             }
                         }));
 
@@ -192,18 +172,17 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                                     .into_reader()
                                     .read_to_string(&mut json)
                                     .is_ok()
+                                    && let Some(tag_idx) = json.find("\"tag_name\":")
                                 {
-                                    if let Some(tag_idx) = json.find("\"tag_name\":") {
-                                        let rest = &json[tag_idx + 11..];
-                                        if let Some(start_quote) = rest.find('"') {
-                                            let rest = &rest[start_quote + 1..];
-                                            if let Some(end_quote) = rest.find('"') {
-                                                let tag = &rest[..end_quote];
-                                                let latest_version = tag.trim_start_matches('v');
-                                                if latest_version != env!("CARGO_PKG_VERSION") {
-                                                    is_available = true;
-                                                    version = Some(latest_version.to_string());
-                                                }
+                                    let rest = &json[tag_idx + 11..];
+                                    if let Some(start_quote) = rest.find('"') {
+                                        let rest = &rest[start_quote + 1..];
+                                        if let Some(end_quote) = rest.find('"') {
+                                            let tag = &rest[..end_quote];
+                                            let latest_version = tag.trim_start_matches('v');
+                                            if latest_version != env!("CARGO_PKG_VERSION") {
+                                                is_available = true;
+                                                version = Some(latest_version.to_string());
                                             }
                                         }
                                     }
@@ -324,14 +303,14 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                                             pdfium_render::prelude::PdfPoints::new(target_w)
                                         ) {
                                             let _ = object.translate(
-                                                pdfium_render::prelude::PdfPoints::new(x as f32),
-                                                pdfium_render::prelude::PdfPoints::new(y as f32)
+                                                pdfium_render::prelude::PdfPoints::new(x),
+                                                pdfium_render::prelude::PdfPoints::new(y)
                                             );
 
                                             let _ = page.objects_mut().add_image_object(object);
 
                                             // Save the document back
-                                            if let Ok(_) = doc.save_to_file(path.to_str().unwrap_or_default()) {
+                                            if doc.save_to_file(path.to_str().unwrap_or_default()).is_ok() {
                                                 let _ = tx.send(PdfWorkerMessage::SignatureSaved { path: path.clone() });
                                             } else {
                                                 let _ = tx.send(PdfWorkerMessage::ExportComplete { success: false, message: "Failed to save PDF".into() });
@@ -385,7 +364,7 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                                         page.set_rotation(new_rot);
                                     }
                                 }
-                                if let Ok(_) = doc.save_to_file(path.to_str().unwrap_or_default()) {
+                                if doc.save_to_file(path.to_str().unwrap_or_default()).is_ok() {
                                     let _ = tx.send(PdfWorkerMessage::RotationSaved {
                                         path: path.clone(),
                                     });
@@ -552,19 +531,19 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                                                     }
                                                 }
                                                 crate::document::AnnotationTool::Text => {
-                                                    if let Some(text) = &action.text {
-                                                        if !text.is_empty() {
-                                                            let pos = action
-                                                                .position
-                                                                .unwrap_or(egui::pos2(0.5, 0.5));
-                                                            let scale =
-                                                                action.scale.unwrap_or(12.0);
+                                                    if let Some(text) = &action.text
+                                                        && !text.is_empty()
+                                                    {
+                                                        let pos = action
+                                                            .position
+                                                            .unwrap_or(egui::pos2(0.5, 0.5));
+                                                        let scale = action.scale.unwrap_or(12.0);
 
-                                                            let font_size = scale;
-                                                            let doc_fonts = doc.fonts_mut();
-                                                            let font = doc_fonts.helvetica();
+                                                        let font_size = scale;
+                                                        let doc_fonts = doc.fonts_mut();
+                                                        let font = doc_fonts.helvetica();
 
-                                                            if let Ok(mut text_obj) = pdfium_render::prelude::PdfPageTextObject::new(&doc, text, font, pdfium_render::prelude::PdfPoints::new(font_size)) {
+                                                        if let Ok(mut text_obj) = pdfium_render::prelude::PdfPageTextObject::new(&doc, text, font, pdfium_render::prelude::PdfPoints::new(font_size)) {
                                                                   let _ = text_obj.set_fill_color(pdf_color);
 
                                                                   let text_w = text_obj.width().unwrap_or(pdfium_render::prelude::PdfPoints::new(0.0)).value;
@@ -577,7 +556,6 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
 
                                                                   let _ = page.objects_mut().add_text_object(text_obj);
                                                               }
-                                                        }
                                                     }
                                                 }
                                             }
@@ -594,7 +572,7 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                                             .unwrap_or_default()
                                             .as_millis()
                                     ));
-                                    if let Ok(_) = doc.save_to_file(&tmp_path) {
+                                    if doc.save_to_file(&tmp_path).is_ok() {
                                         drop(doc); // Release file lock on Windows before copy!
 
                                         // Retry copying up to 10 times in case of transient locks from antivirus, etc.
@@ -686,18 +664,17 @@ pub fn spawn_worker_thread(task_rx: Receiver<PdfWorkerTask>, msg_tx: Sender<PdfW
                                     .into_reader()
                                     .read_to_string(&mut json)
                                     .is_ok()
+                                    && let Some(tag_idx) = json.find("\"tag_name\":")
                                 {
-                                    if let Some(tag_idx) = json.find("\"tag_name\":") {
-                                        let rest = &json[tag_idx + 11..];
-                                        if let Some(start_quote) = rest.find('"') {
-                                            let rest = &rest[start_quote + 1..];
-                                            if let Some(end_quote) = rest.find('"') {
-                                                let tag = &rest[..end_quote];
-                                                let latest_version = tag.trim_start_matches('v');
-                                                if latest_version != env!("CARGO_PKG_VERSION") {
-                                                    is_available = true;
-                                                    version = Some(latest_version.to_string());
-                                                }
+                                    let rest = &json[tag_idx + 11..];
+                                    if let Some(start_quote) = rest.find('"') {
+                                        let rest = &rest[start_quote + 1..];
+                                        if let Some(end_quote) = rest.find('"') {
+                                            let tag = &rest[..end_quote];
+                                            let latest_version = tag.trim_start_matches('v');
+                                            if latest_version != env!("CARGO_PKG_VERSION") {
+                                                is_available = true;
+                                                version = Some(latest_version.to_string());
                                             }
                                         }
                                     }
@@ -879,7 +856,7 @@ fn summarize_with_llm(
         .map_err(|e| {
             let err_str = e.to_string().to_lowercase();
             if err_str.contains("refused") || err_str.contains("10061") {
-                format!("Connection Refused. If using Local LLM, ensure your server is running. If using API Key, check your Endpoint URL.")
+                "Connection Refused. If using Local LLM, ensure your server is running. If using API Key, check your Endpoint URL.".to_string()
             } else {
                 format!("Request failed: {}", e)
             }

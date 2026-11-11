@@ -159,7 +159,7 @@ cargo check                  # Type check
 ```
 
 ### Windows Installer
-- `setup.iss` (Inno Setup script) for Windows installer
+- `installer/nixobdo-pdf.iss` (parameterised Inno Setup script) for the Windows installer
 - Build outputs to `target/release/nixobdo-pdf.exe`
 
 ## Entry Point (main.rs)

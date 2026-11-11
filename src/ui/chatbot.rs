@@ -136,8 +136,8 @@ impl NixobdoPdfApp {
                     .auto_shrink([false, false])
                     .stick_to_bottom(true)
                     .show(ui, |ui| {
-                        if let Some(active_id) = &self.ai_active_session_id {
-                            if let Some(session) = self.ai_chat_sessions.iter().find(|s| &s.id == active_id) {
+                        if let Some(active_id) = &self.ai_active_session_id
+                            && let Some(session) = self.ai_chat_sessions.iter().find(|s| &s.id == active_id) {
                                 let history_len = session.messages.len();
                                 for (i, msg) in session.messages.iter().enumerate() {
                                     if msg.role == "system" || i == 1 {
@@ -202,20 +202,17 @@ impl NixobdoPdfApp {
                                     }
                                 }
                             }
-                        }
 
                         if self.ai_chat_loading {
                             ui.add_space(16.0);
                             ui.horizontal(|ui| {
                                 ui.spinner();
                                 let mut text = "Thinking...";
-                                if let Some(active_id) = &self.ai_active_session_id {
-                                    if let Some(session) = self.ai_chat_sessions.iter().find(|s| &s.id == active_id) {
-                                        if session.messages.len() <= 2 {
+                                if let Some(active_id) = &self.ai_active_session_id
+                                    && let Some(session) = self.ai_chat_sessions.iter().find(|s| &s.id == active_id)
+                                        && session.messages.len() <= 2 {
                                             text = "Summarizing...";
                                         }
-                                    }
-                                }
                                 ui.label(text);
                             });
                             ui.ctx().request_repaint(); // keep animating spinner
