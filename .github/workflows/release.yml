@@ -64,7 +64,7 @@ jobs:
       version: ${{ steps.meta.outputs.version }}
       numeric: ${{ steps.meta.outputs.numeric }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Read version from Cargo.toml
         id: meta
@@ -97,7 +97,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install build dependencies
         run: |
@@ -170,7 +170,7 @@ jobs:
           rm -rf "$data" "$control"
 
       - name: Upload Debian package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Debian package (x86_64)
           if-no-files-found: error
@@ -193,7 +193,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install build dependencies
         run: |
@@ -231,7 +231,7 @@ jobs:
         run: packaging/linux/build-tarball.sh
 
       - name: Upload tarball
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Tarball (${{ matrix.label }})
           if-no-files-found: error
@@ -246,7 +246,7 @@ jobs:
         run: packaging/linux/build-appimage.sh
 
       - name: Upload AppImage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: AppImage (${{ matrix.label }})
           if-no-files-found: error
@@ -263,7 +263,7 @@ jobs:
             target/release/nixobdo-pdf libpdfium.so "$VERSION" "$OUT_DIR"
 
       - name: Upload RPM package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: RPM package (${{ matrix.label }})
           if-no-files-found: error
@@ -295,7 +295,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@1.99.1
         with:
@@ -413,7 +413,7 @@ jobs:
           Write-Host "created $setup and $portable"
 
       - name: Upload installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Installer (${{ matrix.label }})
           if-no-files-found: error
@@ -421,7 +421,7 @@ jobs:
           path: ${{ steps.package.outputs.setup }}
 
       - name: Upload portable zip
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Portable (${{ matrix.label }})
           if-no-files-found: error
@@ -439,7 +439,7 @@ jobs:
     env:
       MACOSX_DEPLOYMENT_TARGET: "11.0"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@1.99.1
         with:
@@ -479,7 +479,7 @@ jobs:
             "$VERSION" dist/macos-universal universal
 
       - name: Upload disk image
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Disk image (Universal)
           if-no-files-found: error
@@ -492,15 +492,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           package_json_file: website/package.json
           run_install: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: website/.nvmrc
           cache: pnpm
@@ -513,7 +513,7 @@ jobs:
           pnpm run build
 
       - name: Upload the site artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: website-dist
           if-no-files-found: error
@@ -541,16 +541,16 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Download the Debian package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: Debian package (x86_64)
           path: dist
 
       - name: Download the website artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: website-dist
           path: site
@@ -625,7 +625,7 @@ jobs:
 
       - name: Configure GitHub Pages
         id: deployment
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
         with:
           # Enable Pages on first run so a fresh repository does not fail
           # with "Get Pages site failed ... Not Found".
@@ -643,13 +643,13 @@ jobs:
           find pages -mindepth 1 -maxdepth 1 -print | sort | head -n 20
 
       - name: Upload the repository to GitHub Pages
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: pages
 
       - name: Deploy to GitHub Pages
         id: deploy
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
       - name: Show the install command
         run: |
@@ -670,7 +670,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install build dependencies
         run: |
@@ -714,7 +714,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download every packaging artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           # The website artifact is only consumed by the Pages job.
           pattern: "!website-dist"
@@ -777,7 +777,7 @@ jobs:
         # checksummed bundle as a workflow artifact so the packaging result is
         # still downloadable.
         if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-bundle
           path: release/*
