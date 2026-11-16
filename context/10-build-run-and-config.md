@@ -105,3 +105,47 @@ cargo run -- path/to/file.pdf
 | Lint (clippy) | `cargo clippy --locked --all-targets` |
 | Dependency audit | `cargo audit` |
 | Run all checks | `cargo fmt --check && cargo clippy --locked --all-targets && cargo build --locked && cargo test --locked --all-targets` |
+
+## 5. Containerised run (`Dockerfile`)
+
+`nixobdo-pdf` is a native GUI application, so running it in a container means
+rendering it to a virtual display and streaming that display out to a client.
+The `Dockerfile` (with `docker/entrypoint.sh`) does this with `Xvfb` →
+`x11vnc` → `websockify`/`noVNC`, and the viewer is opened in a browser.
+
+```bash
+docker build -t nixobdo-pdf .
+docker run --rm -p 6080:6080 nixobdo-pdf
+# open http://localhost:6080/vnc.html?autoconnect=true&resize=scale
+```
+
+Key points:
+
+- **Architecture:** the image is pinned to `linux/amd64` in both stages because
+  the runtime PDFium binary (`pdfium-linux-x64.tgz`) is x64-only. The build
+  stage (`rust:1.99.1-bookworm`, matching `rust-toolchain.toml`) installs the
+  same GTK/XCB/Wayland build dependencies as `.github/workflows/ci.yml`.
+- **PDFium** is downloaded during the build and copied next to the executable
+  in `/usr/local/bin/`, satisfying the executable-relative lookup
+  (`<exe_dir>/libpdfium.so`) from §1 — so the system-library fallback is not
+  relied upon inside the image.
+- **Software GL:** the runtime stage installs `libgl1`/`libegl1`/`libglx-mesa0`
+  (llvmpipe) because a container has no GPU; `egui` renders through Mesa.
+- **Non-root:** the app runs as the `nixobdo` user, so `settings.json` and the
+  render cache live under `/home/nixobdo/.config` and `/home/nixobdo/.cache`.
+- **Config knobs:** `RESOLUTION`, `VNC_PORT`, `NOVNC_PORT`, and `VNC_PASSWORD`.
+  `x11vnc` is started with `-localhost`, so the VNC server listens only on
+  loopback and is reachable solely through `websockify`/noVNC. The container
+  `EXPOSE`s just the browser port (`6080`); the VNC port is never published.
+- **Compose:** a `docker-compose.yml` at the repo root builds the same image,
+  pins `platform: linux/amd64`, publishes only `6080`, and documents how to
+  mount a docs folder and open a PDF via `command`.
+- **CI:** `.github/workflows/ci.yml` has a `docker` job that runs
+  `docker compose config -q`, builds the image with the GHA cache (no push),
+  then starts it and polls the noVNC port as a smoke test.
+- **Arguments** passed to `docker run` are forwarded to the binary, e.g. a PDF
+  path to open on startup.
+- `.dockerignore` trims the build context to the crate inputs only
+  (`Cargo.toml`/`Cargo.lock`/`build.rs`/`rust-toolchain.toml`/`src`/`assets`);
+  `website/`, `packaging/`, `installer/`, `context/`, and the `lib/` PDFium
+  copies are excluded.

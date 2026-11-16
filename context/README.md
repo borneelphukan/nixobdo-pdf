@@ -63,6 +63,7 @@ This directory is the **authoritative, current context** for anyone (human or AI
 - PDF engine/cache: `src/document.rs`.
 - Main feature logic: `src/app/state.rs`, `src/app/messages.rs`, `src/ui/`.
 - Release automation: `scripts/bump_version.py` and `.github/workflows/{audit,ci,release,website}.yml`.
+- Containerised GUI run: `Dockerfile` and `docker/entrypoint.sh` (see [10-build-run-and-config.md](10-build-run-and-config.md) §5).
 
 ## Keeping this pack accurate
 

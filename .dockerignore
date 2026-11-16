@@ -1,0 +1,40 @@
+# Keep the Docker build context to just what `cargo build` and the runtime
+# stage need. Everything here is either host-only build output, packaging that
+# the image builds directly, or docs/assets the binary does not read.
+
+# Host build artifacts and outputs
+target/
+dist/
+**/target/
+
+# PDFium copies for other platforms — the image downloads the linux-x64 one.
+lib/
+*.dylib
+*.dll
+
+# Source we never compile into the viewer
+website/
+installer/
+packaging/
+.github/
+context/
+scripts/
+
+# Documentation and repo metadata not read at build time
+*.md
+AGENTS.md
+LICENSE
+CHANGELOG.md
+.git/
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# Editor / OS noise
+.vscode/
+.idea/
+.DS_Store
+
+# Keep: Cargo.toml, Cargo.lock, rust-toolchain.toml, build.rs, src/, assets/,
+# and docker/entrypoint.sh.

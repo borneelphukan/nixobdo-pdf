@@ -32,6 +32,11 @@ nixobdo-pdf/
 │       └── website.svg
 ├── .cargo/
 │   └── audit.toml                  # Triaged cargo-audit ignores with reasons
+├── .dockerignore                   # Build-context trim for the Docker image
+├── Dockerfile                      # Containerised GUI run (Xvfb + noVNC)
+├── docker-compose.yml              # Compose wrapper for the same image
+├── docker/
+│   └── entrypoint.sh               # Starts Xvfb → x11vnc → noVNC, then the app
 ├── installer/
 │   └── nixobdo-pdf.iss             # Parameterised Inno Setup installer
 ├── lib/
@@ -135,6 +140,7 @@ src/
 | macOS packaging | `packaging/macos/build-app.sh` |
 | CI/CD workflows | `.github/workflows/` |
 | Website | `website/src/` |
+| Containerised run | `Dockerfile`, `docker/entrypoint.sh`, `.dockerignore` |
 
 ## Module dependency direction
 

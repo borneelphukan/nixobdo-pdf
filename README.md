@@ -81,6 +81,32 @@ sudo apt install ./nixobdo-pdf_*_amd64.deb
    cargo run
    ```
 
+### Docker
+The container runs the viewer on a virtual display and streams it to your browser via noVNC, so you do not need to install Rust, GTK or PDFium locally.
+
+```bash
+docker build -t nixobdo-pdf .
+docker run --rm -p 6080:6080 nixobdo-pdf
+```
+
+Or with Compose:
+```bash
+docker compose up --build
+```
+
+Then open **http://localhost:6080/vnc.html?autoconnect=true&resize=scale** in a browser.
+
+The noVNC browser port (`6080`) is the only published port — the VNC server itself stays bound to loopback inside the container, so the browser is the intended way in.
+
+- To open a PDF on startup, mount a folder and pass the path as an argument:
+  ```bash
+  docker run --rm -p 6080:6080 -v "$PWD:/docs:ro" nixobdo-pdf /docs/report.pdf
+  ```
+- Set `VNC_PASSWORD` to password-protect the desktop (noVNC will prompt for it), and `RESOLUTION` to change the window size (default `1600x1000x24`).
+
+> [!NOTE]
+> The image is built for `linux/amd64`, because the bundled PDFium binary is x64 only. The build compiles the app from source, so the first `docker build` takes a while; subsequent builds reuse the Cargo cache.
+
 ---
 
 ## Technical Details
