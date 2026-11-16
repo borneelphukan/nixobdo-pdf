@@ -1,0 +1,31 @@
+# Compose file for the containerised nixobdo-pdf viewer.
+#
+#   docker compose up --build
+#   # open http://localhost:6080/vnc.html?autoconnect=true&resize=scale
+#
+# The browser via noVNC is the only exposed path in; the VNC server stays on
+# loopback inside the container.
+
+services:
+  nixobdo-pdf:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Pin the architecture: the runtime PDFium binary is x64-only.
+    platform: linux/amd64
+    image: nixobdo-pdf:local
+    container_name: nixobdo-pdf
+    restart: unless-stopped
+    environment:
+      # noVNC is published as the only port; set these to tune the session.
+      RESOLUTION: "1600x1000x24"
+      NOVNC_PORT: "6080"
+      # Optional: password-protect the desktop (noVNC prompts for it).
+      # VNC_PASSWORD: "change-me"
+    ports:
+      - "6080:6080"
+    # Mount documents read-only and open one on startup by editing `command`.
+    volumes:
+      - ./:/docs:ro
+    # Example: start with a PDF already open.
+    # command: ["/docs/report.pdf"]

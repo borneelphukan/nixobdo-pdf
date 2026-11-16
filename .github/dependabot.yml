@@ -19,6 +19,17 @@ updates:
     target-branch: main
     schedule:
       interval: weekly
+    ignore:
+      # The ref of this action is a Rust toolchain version, not an action
+      # release, so Dependabot "bumps" it to branches that have no matching
+      # rustup download (1.120.0 does not exist) and every build job dies at
+      # toolchain install. Pin it deliberately in rust-toolchain.toml and each
+      # workflow instead.
+      - dependency-name: dtolnay/rust-toolchain
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
     groups:
       github-actions:
         patterns:

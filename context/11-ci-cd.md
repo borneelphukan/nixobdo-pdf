@@ -11,7 +11,7 @@ Four workflows live in `.github/workflows/`:
 | Workflow | Trigger | Purpose |
 |---|---|---|
 | `audit.yml` | Weekly schedule, dependency changes, manual | RustSec audit of `Cargo.lock`. |
-| `ci.yml` | Push to `main`, pull request, manual | fmt, Clippy, tests and packaging-asset checks. |
+| `ci.yml` | Push to `main`, pull request, manual | fmt, Clippy, tests, packaging-asset checks, and a container image build + smoke test. |
 | `release.yml` | Push to `main` or `v*` tag, pull request, manual, weekly schedule | Build every package, publish the apt repository, attach assets to tagged releases. |
 | `website.yml` | Pull request touching `website/**`, manual | Lint, type-check and build the landing page without the desktop matrix. |
 
@@ -30,7 +30,7 @@ Four workflows live in `.github/workflows/`:
 
 ## 3. `ci.yml`
 
-Two jobs run on every relevant push and pull request:
+Three jobs run on every relevant push and pull request:
 
 ### `check`
 
@@ -49,6 +49,17 @@ Two jobs run on every relevant push and pull request:
   `python3 -m py_compile` over the apt-repository and version scripts.
 - Asserts that `installer/nixobdo-pdf.iss` remains parameterised by the
   release defines.
+
+### `docker`
+
+- Runs only when the container inputs change (`Dockerfile`, `.dockerignore`,
+  `docker/**`, `docker-compose.yml`) in addition to the normal source triggers.
+- Validates `docker-compose.yml` with `docker compose config -q`.
+- Builds the image through `docker/build-push-action` with a GitHub Actions
+  cache (`type=gha`); it does **not** push. The image is pinned to
+  `linux/amd64`, matching the x64-only PDFium runtime binary.
+- Starts the built container and polls the noVNC port (`/vnc.html`) as a smoke
+  test, dumping container logs on failure.
 
 ## 4. `release.yml`
 
