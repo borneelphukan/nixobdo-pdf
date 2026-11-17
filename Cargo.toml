@@ -8,7 +8,7 @@ eframe = "0.37.0"
 egui = "0.37.0"
 egui_extras = { version = "0.37.0", features = ["svg", "image"] }
 pdfium-render = { version = "0.8.37", features = ["image"] }
-rfd = "0.17.2"
+rfd = "0.18.0"
 webbrowser = "1.2.4"
 docx-rs = "0.4.22"
 zip = "9.0.4"
